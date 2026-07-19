@@ -11,15 +11,28 @@ This is the macro-fallacy-resistant path: instead of asking one model
 the model about each chunk and then aggregate the chunk-level
 summaries (which preserves more unique facts).
 
+Three entry points:
+
+* :func:`ppa_compress` — return only the compressed message list.
+* :func:`compress_with_stats` — return a :class:`CompressResult` with
+  cache-hit / cache-miss bookkeeping.
+* :func:`compress_to_bundle` — return a :class:`CompressionBundle`
+  with per-leaf provenance, suitable for building OKF concepts.
+
 The two LLM calls per chunk are:
 
-* **Leaf summary** — ``SUMMARIZE_PROMPT``. One call per leaf, cache key
-  derived from ``(model, text_sha256, prompt_template_version)``.
-* **Combine** — ``COMBINE_PROMPT``. One call on the list of leaf
-  summaries.
+* **Leaf summary** — one call per leaf, cache key derived from
+  ``(model, text_sha256, prompt_template_version)``.
+* **Combine** — one call on the list of leaf summaries.
 
-If a message already fits the budget, the function short-circuits and
-returns the input untouched.
+If a message already fits the budget, every entry point short-circuits
+and returns the input untouched (no LLM calls).
+
+References:
+
+* https://arxiv.org/abs/2607.15277 — Partition, Prompt, Aggregate.
+* https://arxiv.org/abs/2510.26493 — Context Engineering 2.0.
+* https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing
 """
 
 from __future__ import annotations
@@ -30,7 +43,17 @@ from typing import Any, Optional
 
 from ceng.backends import Backend, get_backend
 from ceng.cache import NAMESPACE_SUMMARIZE, Cache, make_key
-from ceng.partition import partition_text
+from ceng.okf import (
+    CENG_BUNDLE_INDEX,
+    CENG_COMBINED_SUMMARY,
+    CENG_LEAF_SUMMARY,
+    Concept,
+    Frontmatter,
+    RESERVED_INDEX,
+    now_iso,
+    write_bundle,
+)
+from ceng.partition import Partition, partition_text
 from ceng.tokens import count_tokens
 
 
@@ -44,6 +67,11 @@ COMBINE_SYSTEM = (
     "same document into ONE coherent summary. Preserve every unique fact, "
     "entity, and number across sections. Do not invent details."
 )
+
+
+# ---------------------------------------------------------------------------
+# Public dataclasses
+# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -74,6 +102,70 @@ class CompressResult:
     model: str
 
 
+@dataclass(frozen=True)
+class LeafArtifact:
+    """One leaf's contribution to a :class:`CompressionBundle`.
+
+    Attributes:
+        index: Zero-based ordinal within the original document, in
+            document order.
+        text: The original leaf text before summarisation.
+        summary: The leaf-level summary produced by the LLM (or read
+            from cache).
+        cache_hit: Whether the leaf summary came from cache.
+    """
+
+    index: int
+    text: str
+    summary: str
+    cache_hit: bool
+
+
+@dataclass
+class CompressionBundle:
+    """Rich compression output exposing per-leaf provenance.
+
+    Use :func:`compress_to_bundle` to construct one, or
+    :func:`ppa_compress_to_okf` to also persist it as an OKF bundle.
+
+    Attributes:
+        messages: The compressed message list (the same shape as
+            :func:`ppa_compress` returns).
+        original_text: The pre-compression text of the source message.
+        original_tokens: Token count of the source message.
+        compressed_tokens: Token count of ``combined_summary``.
+        leaves: Per-leaf records in document order. Empty for inputs
+            that already fit the budget.
+        combined_summary: The aggregated coherent summary produced by
+            the combine step. Empty string for no-op short-circuits.
+        cache_hits: Total number of leaf summaries served from cache.
+        cache_misses: Total number of leaf summaries freshly computed.
+        backend: Backend used for every call.
+        model: Model id used.
+    """
+
+    messages: list[dict]
+    original_text: str
+    original_tokens: int
+    compressed_tokens: int
+    leaves: tuple[LeafArtifact, ...]
+    combined_summary: str
+    cache_hits: int
+    cache_misses: int
+    backend: Backend
+    model: str
+
+    @property
+    def leaf_count(self) -> int:
+        """Number of leaves in the bundle."""
+        return len(self.leaves)
+
+
+# ---------------------------------------------------------------------------
+# Public entry points
+# ---------------------------------------------------------------------------
+
+
 def ppa_compress(
     messages: list[dict],
     *,
@@ -88,33 +180,12 @@ def ppa_compress(
 ) -> list[dict]:
     """Compress the longest user message in ``messages``.
 
-    Args:
-        messages: OpenAI-style chat messages list. The longest message
-            whose ``role == "user"`` is the compression target. If no
-            such message exists, the list is returned unchanged.
-        budget_tokens: Target token count for the compressed message.
-            Soft target — the actual output is bounded by the model's
-            response and the combiner prompt.
-        llm: Model id accepted by the active backend.
-        cache_dir: Path to the on-disk cache directory.
-        backend: Optional :class:`Backend` instance. Defaults to the
-            module-level active backend (set with
-            :func:`ceng.backends.set_backend`).
-        tokenizer: Optional ``tiktoken`` encoding for accurate
-            budgeting.
-        summary_max_tokens: Per-leaf summary target. Defaults to
-            ``budget_tokens // 4``.
-        partition_max_tokens: Per-leaf partition ceiling. Defaults to
-            ``summary_max_tokens * 2``.
-        **call_kw: Forwarded to ``backend.complete`` for every call
-            (``temperature``, ``max_tokens``, etc.).
-
-    Returns:
-        A new message list with the user-message replaced by the
-        compressed text. Use :class:`CompressResult` (returned from
-        :func:`compress_with_stats`) when you also want stats.
+    See :mod:`ceng.compress` for the full algorithm. Returns only the
+    compressed message list; use :func:`compress_with_stats` when you
+    also want cache-hit bookkeeping, or :func:`compress_to_bundle`
+    when you want per-leaf provenance.
     """
-    result = compress_with_stats(
+    bundle = compress_to_bundle(
         messages,
         budget_tokens=budget_tokens,
         llm=llm,
@@ -125,7 +196,7 @@ def ppa_compress(
         partition_max_tokens=partition_max_tokens,
         **call_kw,
     )
-    return result.messages
+    return bundle.messages
 
 
 def compress_with_stats(
@@ -141,6 +212,48 @@ def compress_with_stats(
     **call_kw: Any,
 ) -> CompressResult:
     """Same as :func:`ppa_compress` but also returns the stats block."""
+    bundle = compress_to_bundle(
+        messages,
+        budget_tokens=budget_tokens,
+        llm=llm,
+        cache_dir=cache_dir,
+        backend=backend,
+        tokenizer=tokenizer,
+        summary_max_tokens=summary_max_tokens,
+        partition_max_tokens=partition_max_tokens,
+        **call_kw,
+    )
+    return CompressResult(
+        messages=bundle.messages,
+        original_tokens=bundle.original_tokens,
+        compressed_tokens=bundle.compressed_tokens,
+        leaf_count=bundle.leaf_count,
+        cache_hits=bundle.cache_hits,
+        cache_misses=bundle.cache_misses,
+        backend=bundle.backend,
+        model=bundle.model,
+    )
+
+
+def compress_to_bundle(
+    messages: list[dict],
+    *,
+    budget_tokens: int,
+    llm: str = "gpt-4o-mini",
+    cache_dir: str = ".ceng_cache",
+    backend: Optional[Backend] = None,
+    tokenizer: Any = None,
+    summary_max_tokens: Optional[int] = None,
+    partition_max_tokens: Optional[int] = None,
+    **call_kw: Any,
+) -> CompressionBundle:
+    """Compress ``messages`` and return a :class:`CompressionBundle`.
+
+    The bundle carries the same compressed message list as
+    :func:`ppa_compress` plus per-leaf provenance so that callers
+    (e.g. :func:`ppa_compress_to_okf`) can build persistent
+    representations of the work.
+    """
     if budget_tokens <= 0:
         raise ValueError("budget_tokens must be positive")
     if summary_max_tokens is None:
@@ -153,79 +266,303 @@ def compress_with_stats(
     target_index, target_text = _pick_target_message(messages)
     original_tokens = count_tokens(target_text, tokenizer)
     if original_tokens <= budget_tokens:
-        return CompressResult(
+        return CompressionBundle(
             messages=[dict(m) for m in messages],
+            original_text=target_text,
             original_tokens=original_tokens,
             compressed_tokens=original_tokens,
-            leaf_count=0,
+            leaves=(),
+            combined_summary="",
             cache_hits=0,
             cache_misses=0,
             backend=backend,
             model=llm,
         )
 
-    leaves = partition_text(target_text, max_tokens=partition_max_tokens, tokenizer=tokenizer)
-    if not leaves:
-        return _no_op_result(messages, target_text, original_tokens, backend, llm)
-    if len(leaves) == 1:
-        compressed = _summarize_leaf(
-            backend=backend,
-            model=llm,
-            leaf=leaves[0].text,
-            target_tokens=summary_max_tokens,
-            cache=cache,
-            tokenizer=tokenizer,
-            call_kw=call_kw,
-        )
-        cache_hits = 1 if compressed.cache_hit else 0
-        cache_misses = 0 if compressed.cache_hit else 1
-        messages = _replace_message(messages, target_index, _wrap_compressed(compressed.text, target_text))
-        return CompressResult(
-            messages=messages,
+    partitions = partition_text(target_text, max_tokens=partition_max_tokens, tokenizer=tokenizer)
+    if not partitions:
+        return CompressionBundle(
+            messages=[dict(m) for m in messages],
+            original_text=target_text,
             original_tokens=original_tokens,
-            compressed_tokens=count_tokens(compressed.text, tokenizer),
-            leaf_count=1,
-            cache_hits=cache_hits,
-            cache_misses=cache_misses,
+            compressed_tokens=original_tokens,
+            leaves=(),
+            combined_summary="",
+            cache_hits=0,
+            cache_misses=0,
             backend=backend,
             model=llm,
         )
 
-    summarised = [
-        _summarize_leaf(
+    leaf_results: list[tuple[Partition, _LeafResult]] = []
+    for partition in partitions:
+        leaf_results.append(
+            (
+                partition,
+                _summarize_leaf(
+                    backend=backend,
+                    model=llm,
+                    leaf=partition.text,
+                    target_tokens=summary_max_tokens,
+                    cache=cache,
+                    tokenizer=tokenizer,
+                    call_kw=call_kw,
+                ),
+            )
+        )
+
+    leaves: list[LeafArtifact] = [
+        LeafArtifact(
+            index=p.index,
+            text=p.text,
+            summary=r.text,
+            cache_hit=r.cache_hit,
+        )
+        for p, r in leaf_results
+    ]
+    hits = sum(1 for leaf in leaves if leaf.cache_hit)
+    misses = len(leaves) - hits
+
+    if len(partitions) == 1:
+        final_text = leaves[0].summary
+    else:
+        final_text = _combine_summaries(
             backend=backend,
             model=llm,
-            leaf=leaf.text,
+            summaries=[leaf.summary for leaf in leaves],
             target_tokens=summary_max_tokens,
             cache=cache,
-            tokenizer=tokenizer,
             call_kw=call_kw,
         )
-        for leaf in leaves
-    ]
-    hits = sum(1 for s in summarised if s.cache_hit)
-    misses = len(summarised) - hits
-    combined_text = _combine_summaries(
-        backend=backend,
-        model=llm,
-        summaries=[s.text for s in summarised],
-        target_tokens=summary_max_tokens,
-        cache=cache,
-        call_kw=call_kw,
+
+    new_messages = _replace_message(
+        messages, target_index, _wrap_compressed(final_text, target_text)
     )
-    messages = _replace_message(
-        messages, target_index, _wrap_compressed(combined_text, target_text)
-    )
-    return CompressResult(
-        messages=messages,
+    return CompressionBundle(
+        messages=new_messages,
+        original_text=target_text,
         original_tokens=original_tokens,
-        compressed_tokens=count_tokens(combined_text, tokenizer),
-        leaf_count=len(leaves),
+        compressed_tokens=count_tokens(final_text, tokenizer),
+        leaves=tuple(leaves),
+        combined_summary=final_text,
         cache_hits=hits,
         cache_misses=misses,
         backend=backend,
         model=llm,
     )
+
+
+def ppa_compress_to_okf(
+    messages: list[dict],
+    *,
+    bundle_dir: str,
+    bundle_name: str = "ppa-context",
+    budget_tokens: int,
+    llm: str = "gpt-4o-mini",
+    cache_dir: str = ".ceng_cache",
+    backend: Optional[Backend] = None,
+    tokenizer: Any = None,
+    summary_max_tokens: Optional[int] = None,
+    partition_max_tokens: Optional[int] = None,
+    **call_kw: Any,
+) -> list[Concept]:
+    """Compress ``messages`` and persist the result as an OKF bundle.
+
+    Each leaf becomes a concept of type :data:`ceng.okf.CENG_LEAF_SUMMARY`,
+    the combined summary becomes a concept of type
+    :data:`ceng.okf.CENG_COMBINED_SUMMARY`, and a top-level
+    ``index.md`` of type :data:`ceng.okf.CENG_BUNDLE_INDEX` lists them
+    all with cross-links. When the input already fits the budget the
+    call short-circuits and writes only the bundle index pointing at
+    the original message.
+
+    Args:
+        messages: OpenAI-style chat messages list.
+        bundle_dir: Directory under which the bundle subdirectory is
+            created. The bundle is written to ``{bundle_dir}/{bundle_name}``.
+        bundle_name: Subdirectory name for the bundle. Must be a safe
+            filename component.
+        budget_tokens: Token budget for the compressed output.
+        llm: Model id used for summary and combine calls.
+        cache_dir: Path to the on-disk cache.
+        backend: Optional :class:`Backend`; defaults to the active one.
+        tokenizer: Optional ``tiktoken`` encoding for token budgeting.
+        summary_max_tokens: Per-leaf summary target.
+        partition_max_tokens: Per-leaf partition ceiling.
+        **call_kw: Forwarded to ``backend.complete`` for every call.
+
+    Returns:
+        The list of :class:`Concept` instances persisted on disk,
+        in bundle order (leaves first, then the combined summary,
+        then the index pointing at both).
+
+    Raises:
+        ValueError: If arguments are invalid or the path scheme
+            doesn't permit the requested bundle layout.
+    """
+    if not bundle_name or bundle_name != bundle_name.strip():
+        raise ValueError("bundle_name must be a non-empty directory name")
+    if "/" in bundle_name or "\\" in bundle_name or bundle_name in {".", ".."}:
+        raise ValueError(f"bundle_name must not contain path separators: {bundle_name!r}")
+
+    bundle = compress_to_bundle(
+        messages,
+        budget_tokens=budget_tokens,
+        llm=llm,
+        cache_dir=cache_dir,
+        backend=backend,
+        tokenizer=tokenizer,
+        summary_max_tokens=summary_max_tokens,
+        partition_max_tokens=partition_max_tokens,
+        **call_kw,
+    )
+
+    root = _safe_join(bundle_dir, bundle_name)
+    concepts = _bundle_to_concepts(bundle, bundle_name=bundle_name)
+    write_bundle(root, concepts)
+    return concepts
+
+
+# ---------------------------------------------------------------------------
+# OKF conversion helpers
+# ---------------------------------------------------------------------------
+
+
+def _bundle_to_concepts(bundle: CompressionBundle, *, bundle_name: str) -> list[Concept]:
+    """Convert a :class:`CompressionBundle` into OKF concepts.
+
+    Produces:
+
+    * one ``leaf-{index}.md`` concept per leaf;
+    * one ``combined.md`` concept carrying the final aggregated
+      summary, except when there is only one leaf (the leaf is its
+      own summary);
+    * one :data:`RESERVED_INDEX` concept listing every output with
+      cross-links.
+
+    When the bundle has no leaves (the input already fit the budget),
+    only the index is written; the index body explains why.
+    """
+    concepts: list[Concept] = []
+
+    if bundle.leaves:
+        leaf_links: list[str] = []
+        for leaf in bundle.leaves:
+            path = f"leaf-{leaf.index}.md"
+            leaf_links.append(f"[{path}]({path})")
+            concepts.append(
+                Concept(
+                    frontmatter=Frontmatter(
+                        type=CENG_LEAF_SUMMARY,
+                        title=f"Leaf {leaf.index} summary",
+                        description=leaf.summary.splitlines()[0][:200] if leaf.summary else "",
+                        tags=(
+                            "ppa",
+                            f"leaf-{leaf.index}",
+                            "cache-hit" if leaf.cache_hit else "cache-miss",
+                        ),
+                        timestamp=now_iso(),
+                    ),
+                    body=_render_leaf_body(leaf, bundle_name),
+                    path=path,
+                )
+            )
+
+        if len(bundle.leaves) > 1:
+            combined_path = "combined.md"
+            concepts.append(
+                Concept(
+                    frontmatter=Frontmatter(
+                        type=CENG_COMBINED_SUMMARY,
+                        title=f"{bundle_name} combined summary",
+                        description=bundle.combined_summary.splitlines()[0][:200]
+                        if bundle.combined_summary
+                        else "",
+                        tags=("ppa", "combined"),
+                        timestamp=now_iso(),
+                    ),
+                    body=bundle.combined_summary
+                    + "\n\n## Cross-links\n\n"
+                    + "\n".join(f"- {link}" for link in leaf_links)
+                    + "\n",
+                    path=combined_path,
+                )
+            )
+            index_entries = ["- [Combined summary](combined.md)"] + [
+                f"- {link}" for link in leaf_links
+            ]
+        else:
+            index_entries = [f"- {link}" for link in leaf_links]
+
+        index_body = (
+            f"# {bundle_name}\n\n"
+            f"Bundle produced by `ceng.ppa_compress_to_okf`. "
+            f"{bundle.leaf_count} leaves, "
+            f"{bundle.cache_hits} cache hits, {bundle.cache_misses} misses.\n\n"
+            f"## Sections\n\n"
+            + "\n".join(index_entries)
+            + "\n"
+        )
+        concepts.append(
+            Concept(
+                frontmatter=Frontmatter(
+                    type=CENG_BUNDLE_INDEX,
+                    title=f"{bundle_name} index",
+                    description="Top-level OKF index generated by ceng",
+                    tags=("ppa", "bundle-index"),
+                    timestamp=now_iso(),
+                ),
+                body=index_body,
+                path=RESERVED_INDEX,
+            )
+        )
+    else:
+        # no compression happened — still emit an index so consumers
+        # know the bundle is intentionally small.
+        concepts.append(
+            Concept(
+                frontmatter=Frontmatter(
+                    type=CENG_BUNDLE_INDEX,
+                    title=f"{bundle_name} index",
+                    description="No compression was needed; original already fits the budget.",
+                    tags=("ppa", "bundle-index", "noop"),
+                    timestamp=now_iso(),
+                ),
+                body=(
+                    f"# {bundle_name}\n\n"
+                    f"Original message was {bundle.original_tokens} tokens, "
+                    f"under the budget of compressed output. No leaves generated.\n"
+                ),
+                path=RESERVED_INDEX,
+            )
+        )
+    return concepts
+
+
+def _render_leaf_body(leaf: LeafArtifact, bundle_name: str) -> str:
+    """Build the markdown body for a leaf concept."""
+    return (
+        f"## Summary\n\n"
+        f"{leaf.summary}\n\n"
+        f"## Original chunk\n\n"
+        f"```\n{leaf.text}\n```\n"
+    )
+
+
+def _safe_join(root: str, child: str) -> str:
+    """Join ``root`` and ``child`` and verify the result resolves inside ``root``."""
+    from pathlib import Path
+
+    base = Path(root).resolve()
+    full = (base / child).resolve()
+    if not str(full).startswith(str(base)):
+        raise ValueError(f"bundle path {full} escapes root {base}")
+    return str(full)
+
+
+# ---------------------------------------------------------------------------
+# Private LLM call helpers
+# ---------------------------------------------------------------------------
 
 
 @dataclass
@@ -394,26 +731,6 @@ def _wrap_compressed(summary: str, original: str) -> str:
     header = "[PPA-compressed summary of the following context. Original below for reference.]\n\n"
     footer = "\n\n[Original]\n" + original
     return header + summary + footer
-
-
-def _no_op_result(
-    messages: list[dict],
-    target_text: str,
-    original_tokens: int,
-    backend: Backend,
-    model: str,
-) -> CompressResult:
-    """Return a no-op result when partitioning yields zero leaves."""
-    return CompressResult(
-        messages=[dict(m) for m in messages],
-        original_tokens=original_tokens,
-        compressed_tokens=original_tokens,
-        leaf_count=0,
-        cache_hits=0,
-        cache_misses=0,
-        backend=backend,
-        model=model,
-    )
 
 
 class _NullCache:
