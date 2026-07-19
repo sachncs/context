@@ -47,7 +47,7 @@ from ceng.compress.prompts import (
     build_summarize_prompt,
 )
 from ceng.okf import Concept, write_bundle
-from ceng.partition import Partition, partition_text
+from ceng.partition import partition_text
 from ceng.tokens import count_tokens
 
 

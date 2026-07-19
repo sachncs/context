@@ -8,8 +8,6 @@ pipeline so each piece is independently testable.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from ceng.okf import (
     CENG_BUNDLE_INDEX,
     CENG_COMBINED_SUMMARY,
@@ -19,7 +17,6 @@ from ceng.okf import (
     Frontmatter,
     now_iso,
 )
-from ceng.tokens import count_tokens
 
 # Import here to avoid a circular dependency: compress/__init__.py
 # exports CompressionBundle; bundle.py imports it lazily.

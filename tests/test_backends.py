@@ -317,13 +317,6 @@ def test_openai_backend_lazily_constructs_client(monkeypatch):
     """Constructing OpenAIBackend() must not import openai or read env vars."""
     from ceng.backends import OpenAIBackend
 
-    sentinel = object()
-
-    def fail_import(name, *args, **kwargs):
-        if name == "openai":
-            raise ImportError("openai must not be imported at construction time")
-        return __import__(name, *args, **kwargs)
-
     # Remove a preloaded openai if any
     monkeypatch.delitem(sys.modules, "openai", raising=False)
     # Block fresh openai imports
