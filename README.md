@@ -1,11 +1,13 @@
 # ceng
 
-Context engineering for LLMs via **Partition, Prompt, Aggregate** (Wolf et al., 2026).
+Context engineering for LLMs via **Partition, Prompt, Aggregate** (Wolf et al., 2026),
+now with portable local persistence via the **Open Knowledge Format** (Google Cloud, 2026).
 
-Two utilities, one cache, three pluggable backends:
+Three utilities, one cache, three pluggable backends, one persistent knowledge format:
 
 - **`ppa_compress`** — replace a bloated message with a compressed, higher-fidelity one by aggregating leaf summaries instead of doing one lossy whole-document pass.
 - **`ppa_check`** — run the paper's binary-tree self-consistency probe on any population-level question and detect the *macro fallacy*.
+- **`ppa_compress_to_okf`** — same compression flow, but the leaves + the combined summary are persisted to disk as an OKF bundle so the work survives, can be browsed, and is portable across agents.
 
 Works with vLLM (OpenAI-compatible server or in-process), OpenAI, Anthropic, and any other provider that `litellm` speaks.
 
@@ -129,6 +131,50 @@ All LLM calls are memoised on disk in a sqlite database at `cache_dir`
 Re-running is free. Different `cache_dir` per project keeps things tidy.
 Pass `cache_dir=""` to disable caching for a single call.
 
+## Open Knowledge Format (OKF) bundles
+
+`ppa_compress_to_okf` persists each compression run as an **OKF v0.1**
+bundle — a directory of markdown files with YAML frontmatter that
+documents the work, including every leaf's original chunk and
+cross-links to the aggregated summary. Bundle layout:
+
+```
+my-context/
+├── index.md                  # type: ceng/bundle-index, lists everything
+├── combined.md               # type: ceng/combined-summary (multi-leaf only)
+├── leaf-0.md                 # type: ceng/leaf-summary, original chunk + summary
+├── leaf-1.md
+└── ...
+```
+
+Every concept carries structured frontmatter (`type`, `title`,
+`description`, `tags`, `timestamp`) so other agents — and humans — can
+query and re-use the work without parsing free text.
+
+```python
+import ceng
+
+concepts = ceng.ppa_compress_to_okf(
+    messages,
+    bundle_dir="ctx-out",
+    bundle_name="my-context",
+    budget_tokens=2000,
+    llm="gpt-4o-mini",
+    cache_dir=".ceng_cache",
+)
+# concepts is the same set written to disk under ctx-out/my-context/
+
+# Read it back later (or share it with another agent):
+loaded = ceng.read_bundle("ctx-out/my-context")
+for concept in loaded:
+    print(concept.path, concept.frontmatter.title)
+```
+
+The OKF primitives (`Concept`, `Frontmatter`, `render_concept`,
+`parse_concept`, `read_bundle`, `write_bundle`, `find_concept`,
+`cross_links`) are also exported at the top level for hand-writing
+your own bundles.
+
 ## Development
 
 ```bash
@@ -144,15 +190,18 @@ src/ceng/
     backends.py    # litellm / vllm / openai adapters
     tokens.py      # tiktoken + heuristic token counters
     partition.py   # content-aware recursive chunker
-    compress.py    # ppa_compress
+    compress.py    # ppa_compress + ppa_compress_to_okf
     check.py       # ppa_check
+    okf.py         # Open Knowledge Format reader/writer
 tests/
     test_cache.py
     test_backends.py
     test_tokens.py
     test_partition.py
     test_compress.py
+    test_compress_okf.py
     test_check.py
+    test_okf.py
     test_package.py
 ```
 
@@ -165,3 +214,11 @@ Apache-2.0.
 Wolf, P., Kleine Buening, T., Krause, A., & Mendler-Dünner, C. (2026).
 *Partition, Prompt, Aggregate: Statistical Self-Consistency in Language Models.*
 arXiv:2607.15277.
+
+Hua, Q., Ye, L., Fu, D., Xiao, Y., Cai, X., Wu, Y., Lin, J., Wang, J., & Liu, P. (2025).
+*Context Engineering 2.0: The Context of Context Engineering.*
+arXiv:2510.26493.
+
+McVeety, S., & Hormati, A. (2026).
+*How the Open Knowledge Format can improve data sharing.*
+Google Cloud Blog.
