@@ -22,8 +22,31 @@ EXPECTED_EXPORTS = {
     "LeafEstimate",
     "ppa_check",
     "CompressResult",
+    "CompressionBundle",
+    "LeafArtifact",
     "compress_with_stats",
+    "compress_to_bundle",
     "ppa_compress",
+    "ppa_compress_to_okf",
+    "Concept",
+    "Frontmatter",
+    "now_iso",
+    "parse_concept",
+    "parse_frontmatter",
+    "render_concept",
+    "render_frontmatter",
+    "read_bundle",
+    "read_concept_file",
+    "write_bundle",
+    "write_concept_file",
+    "cross_links",
+    "find_concept",
+    "OKF_VERSION",
+    "RESERVED_INDEX",
+    "RESERVED_LOG",
+    "CENG_BUNDLE_INDEX",
+    "CENG_COMBINED_SUMMARY",
+    "CENG_LEAF_SUMMARY",
     "Partition",
     "partition_text",
     "count_tokens",
@@ -31,7 +54,7 @@ EXPECTED_EXPORTS = {
 }
 
 
-def test_version_is_string():
+def test_version_is_semver_string():
     assert isinstance(ceng.__version__, str)
     parts = ceng.__version__.split(".")
     assert len(parts) == 3 and all(p.isdigit() for p in parts)
@@ -59,8 +82,6 @@ def test_partition_is_dataclass_like():
 
 
 def test_verdict_is_dataclass_like():
-    from ceng.check import LeafEstimate
-
     v = ceng.Verdict(
         question="q",
         population="pop",
@@ -69,7 +90,11 @@ def test_verdict_is_dataclass_like():
         self_consistent=True,
         delta=0.1,
         tolerance=0.2,
-        leaves=(LeafEstimate(description="A", prior=1.0, estimate=0.4, cache_hit=False),),
+        leaves=(
+            ceng.LeafEstimate(
+                description="A", prior=1.0, estimate=0.4, cache_hit=False
+            ),
+        ),
         cache_hits=0,
         cache_misses=1,
     )
@@ -81,3 +106,19 @@ def test_default_backend_is_litellm_after_reset():
     ceng.reset_backend()
     backend = ceng.get_backend()
     assert backend.name == "litellm"
+
+
+def test_concept_default_path_is_none():
+    c = ceng.Concept(frontmatter=ceng.Frontmatter(type="x"))
+    assert c.path is None
+    assert c.body == ""
+
+
+def test_now_iso_returns_string():
+    out = ceng.now_iso()
+    assert isinstance(out, str)
+    assert "T" in out
+
+
+def test_okf_version_constant_is_set():
+    assert ceng.OKF_VERSION == "0.1"
