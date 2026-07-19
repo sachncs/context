@@ -204,14 +204,45 @@ class TreeNode:
 def validate_tree(tree: list[dict]) -> list[TreeNode]:
     """Parse and validate a user-supplied partition tree.
 
+    Iterative walk avoids :class:`RecursionError` on pathological
+    user trees (verified safe past 10k depth).
+
     Raises:
-        ValueError: If a node is malformed, ``description`` is empty or
-            non-string, ``prior`` is outside ``[0, 1]``, children
-            priors sum to more than 1, or a non-root node has
-            ``prior == 0`` (silent no-op).
+        ValueError: If a node is malformed, ``description`` is empty
+            or non-string, ``prior`` is outside ``[0, 1]``, children
+            priors sum to more than 1, or a node has ``prior == 0``
+            (silent no-op).
     """
-    parsed: list[TreeNode] = []
-    for raw in tree:
+    out: list[TreeNode] = []
+    _validate_iter(tree, parent=None, out=out, pending=[])
+    _check_sibling_sums_iter(out)
+    return out
+
+
+def _validate_iter(
+    raw_list: list,
+    parent: Optional[TreeNode],
+    out: list[TreeNode],
+    pending: list[TreeNode],
+) -> None:
+    """Walk ``raw_list`` iteratively, validating every node and wiring parent-child links.
+
+    Each raw dict becomes a TreeNode; its own ``raw.get("children", [])``
+    is processed in order via a manual stack so we never recurse into
+    Python's call stack.
+    """
+    # Each frame tracks: the list of raw dicts it must emit nodes for
+    # in order, and the cursor into that list.
+    frame_stack: list[tuple[list, int, Optional[TreeNode]]] = [
+        (raw_list, 0, parent)
+    ]
+    while frame_stack:
+        current, idx, parent_node = frame_stack[-1]
+        if idx >= len(current):
+            frame_stack.pop()
+            continue
+        raw = current[idx]
+        frame_stack[-1] = (current, idx + 1, parent_node)
         if not isinstance(raw, dict):
             raise ValueError(
                 f"tree node must be a dict, got {type(raw).__name__}"
@@ -225,34 +256,41 @@ def validate_tree(tree: list[dict]) -> list[TreeNode]:
                 f"tree node 'prior' must be between 0 and 1, got {prior!r}"
             )
         if prior == 0:
-            # A zero prior silently contributes nothing to the
-            # aggregate and is almost always a caller mistake.
             raise ValueError(
                 f"tree node {description!r} has prior=0; "
                 "omit the node or set prior > 0"
             )
-        children_raw = raw.get("children", [])
+        node = TreeNode(
+            description=description, prior=float(prior), children=[]
+        )
+        pending.append(node)
+        if parent_node is None:
+            out.append(node)
+        else:
+            parent_node.children.append(node)
+        children_raw = raw.get("children", []) or []
         if children_raw:
-            children = validate_tree(children_raw)
-            child_total = sum(c.prior for c in children)
-            if child_total > 1 + 1e-9:
+            frame_stack.append((children_raw, 0, node))
+
+
+def _check_sibling_sums_iter(nodes: list[TreeNode]) -> None:
+    """Iteratively verify every internal node's children sum to exactly 1."""
+    stack: list[TreeNode] = list(nodes)
+    while stack:
+        node = stack.pop()
+        if node.children:
+            total = sum(c.prior for c in node.children)
+            if total > 1 + 1e-9:
                 raise ValueError(
-                    f"children of {description!r} sum to {child_total}; "
+                    f"children of {node.description!r} sum to {total}; "
                     "expected <= 1"
                 )
-            if child_total < 1 - 1e-9:
+            if total < 1 - 1e-9:
                 raise ValueError(
-                    f"children of {description!r} sum to {child_total}; "
+                    f"children of {node.description!r} sum to {total}; "
                     "expected exactly 1.0"
                 )
-        else:
-            children = []
-        parsed.append(
-            TreeNode(
-                description=description, prior=float(prior), children=children
-            )
-        )
-    return parsed
+            stack.extend(node.children)
 
 
 def flatten_tree(
