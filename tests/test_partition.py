@@ -71,10 +71,29 @@ def test_recursion_splits_at_paragraph_before_word_greedy():
         assert needle in joined
 
 
-def test_oversized_single_word_emitted_verbatim():
+def test_oversized_single_word_is_capped_not_unbounded():
+    """Words over WORD_MAX_BYTES (4096) are capped, never emitted whole.
+
+    Prevents a single whitespace-free blob from producing one giant
+    chunk that violates ``max_tokens``.
+    """
+    from ceng.partition import WORD_MAX_BYTES
     text = "x" * 5000  # one giant "word"
     out = partition_text(text, max_tokens=10)
-    assert any(p.text == "x" * 5000 for p in out)
+    assert any(len(p.text) == WORD_MAX_BYTES for p in out)
+    # No leaf can exceed the cap.
+    for p in out:
+        assert len(p.text) <= WORD_MAX_BYTES
+
+
+def test_oversized_word_under_cap_emitted_whole():
+    """Single word under WORD_MAX_BYTES whose token count meets the budget
+    is still emitted verbatim — never silently dropped."""
+    text = "pneumonoultramicroscopicsilicovolcanoconiosis " * 5
+    out = partition_text(text, max_tokens=2)
+    # The whole word is present, somewhere, complete.
+    rebuilt = " ".join(p.text for p in out)
+    assert "pneumonoultramicroscopicsilicovolcanoconiosis" in rebuilt
 
 
 def test_partition_can_recover_full_text_in_order():
