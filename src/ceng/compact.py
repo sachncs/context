@@ -110,13 +110,31 @@ def compact_messages(
     tail = list(messages[len(messages) - preserve_last:]) if preserve_last else []
     middle = messages[preserve_first:len(messages) - preserve_last] if preserve_first + preserve_last < len(messages) else []
 
+    # System-role messages are sacred. They cannot be summarised or
+    # dropped. If any system message falls outside the preserved head
+    # (or, if preserve_last >= 1, the preserved tail would include a
+    # system message as the very last entry — unusual but defensible) we
+    # refuse with a clear message rather than silently dropping the
+    # instructions.
+    head_indices = set(range(len(head)))
+    tail_indices = set(range(len(messages) - len(tail), len(messages))) if tail else set()
+    preserved_indices = head_indices | tail_indices
+
+    body_roles = [m.get("role") for m in messages]
+    for idx, role in enumerate(body_roles):
+        if role == "system" and idx not in preserved_indices:
+            role_name = messages[idx].get("role")
+            raise ValueError(
+                f"system-role message at index {idx} (role={role_name!r}) is "
+                f"outside the preserved head/tail; bump preserve_first "
+                f"to include it or move the system message to position 0"
+            )
+
     if middle and any(m.get("role") == "system" for m in middle):
-        # A system message has no business being inside the middle strip.
-        # Caller passed preserve_first too low; we refuse rather than
-        # summarise instructions.
+        # Defensive: the loop above already raised. This branch is
+        # unreachable but kept as a safety net.
         raise ValueError(
-            "system-role message ended up in the middle strip — bump "
-            "preserve_first so it lands in the preserved head"
+            "system-role message in the middle strip"
         )
 
     if not summarise_middle:
