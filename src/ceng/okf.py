@@ -1,29 +1,27 @@
-"""Open Knowledge Format (OKF) v0.1 — read, write, and bundle knowledge.
+"""Open Knowledge Format (OKF) v0.1 reader and writer.
 
-An OKF bundle is a directory of markdown files with YAML frontmatter.
-Each file represents one *concept* — a unit of knowledge such as a
-table, metric, runbook, or dataset. The file path inside the bundle
-is the concept's identity, so cross-references are normal markdown
-links like ``[orders](tables/orders.md)``.
+The format: a directory of markdown files with YAML frontmatter. One
+concept = one file. The file path inside the bundle is the concept's
+identity; cross-references are normal ``[text](path/to/concept.md)``
+markdown links.
+
+OKF v0.1 mandates only the ``type`` frontmatter field. ``title``,
+``description``, ``resource``, ``tags``, and ``timestamp`` are
+conventional. Anything else flows into ``Frontmatter.extra`` and must
+itself be OKF-acceptable (scalars and lists of scalars); nested
+mappings belong in the body.
 
 This module provides:
 
-* :class:`Frontmatter` — the small set of structured fields
-  (``type``, ``title``, ``description``, ``resource``, ``tags``,
-  ``timestamp``) that every OKF producer should know about.
-* :class:`Concept` — a frontmatter + body pair, optionally paired
-  with its path inside a bundle.
-* :func:`render_concept` / :func:`parse_concept` — markdown
-  serialisation with a hand-rolled YAML subset parser so the module
-  stays dependency-free.
-* :func:`read_concept_file` / :func:`write_concept_file` /
-  :func:`read_bundle` / :func:`write_bundle` — file-level I/O for
-  one concept or an entire directory at once.
-
-Reserved filenames per the OKF v0.1 spec: ``index.md`` (progressive
-disclosure of a subtree) and ``log.md`` (chronological history of
-changes). Both are normal :class:`Concept` instances with their own
-``type`` field; this module treats them as ordinary concept files.
+* :class:`Frontmatter` and :class:`Concept`
+* :func:`render_frontmatter` / :func:`parse_frontmatter`
+  (delegated to PyYAML)
+* :func:`render_concept` / :func:`parse_concept`
+* :func:`read_concept_file` / :func:`write_concept_file`
+* :func:`read_bundle` / :func:`write_bundle`
+* :func:`find_concept` / :func:`cross_links`
+* :func:`now_iso` for timestamp defaults
+* Module-level constants for type names and reserved filenames
 
 References:
 
@@ -39,10 +37,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Optional
 
+import yaml
+
 
 OKF_VERSION = "0.1"
-FRONTMATTER_OPEN = "---"
-FRONTMATTER_CLOSE = "---"
 RESERVED_INDEX = "index.md"
 RESERVED_LOG = "log.md"
 
@@ -51,26 +49,42 @@ CENG_COMBINED_SUMMARY = "ceng/combined-summary"
 CENG_BUNDLE_INDEX = "ceng/bundle-index"
 
 
+def now_iso() -> str:
+    """Return the current UTC time as an ISO 8601 string."""
+    return datetime.now(timezone.utc).isoformat()
+
+
+def is_okf_scalar(value: Any) -> bool:
+    """Return whether ``value`` is acceptable as an OKF frontmatter scalar.
+
+    Scalars are ``str``, ``int``, ``float``, ``bool``, ``None``, or a
+    list whose every element is itself a scalar. Anything else (nested
+    mappings, sets, dates, dataclasses, ...) is rejected.
+    """
+    if value is None or isinstance(value, (str, int, float, bool)):
+        return True
+    if isinstance(value, list):
+        return all(is_okf_scalar(item) for item in value)
+    return False
+
+
+def coerce_str(value: Any, field: str) -> str:
+    """Coerce ``value`` to ``str`` or raise :class:`ValueError`."""
+    if isinstance(value, str):
+        return value
+    raise ValueError(
+        f"frontmatter field {field!r} must be a string, got {type(value).__name__}"
+    )
+
+
 @dataclass(frozen=True)
 class Frontmatter:
     """YAML frontmatter for an OKF concept.
 
-    The OKF v0.1 spec mandates only ``type``. The other fields are
-    conventional rather than required; :meth:`to_dict` omits empty
-    values so a producer can pick and choose.
-
-    Attributes:
-        type: Required concept type, e.g. ``"BigQuery Table"`` or
-            :data:`CENG_LEAF_SUMMARY`.
-        title: Short, human-readable name.
-        description: One- or two-sentence summary.
-        resource: URL or IRI pointing at the underlying source.
-        tags: Free-form list of categorisation strings.
-        timestamp: ISO 8601 datetime string. Use
-            :meth:`Frontmatter.now` to fill with the current UTC time.
-        extra: Producer-defined additional fields. Stored as a tuple
-            of ``(key, value)`` pairs so the dataclass stays
-            hashable.
+    OKF v0.1 mandates only ``type``. The remaining fields are
+    conventional. ``extra`` holds producer-defined scalar fields and
+    is rejected at construction time for any non-OKF-scalar value
+    (see :func:`is_okf_scalar`).
     """
 
     type: str
@@ -105,27 +119,36 @@ class Frontmatter:
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "Frontmatter":
-        """Construct a :class:`Frontmatter` from a dict.
+        """Build a :class:`Frontmatter` from a dict.
 
-        Unknown keys flow into ``extra`` so producers can carry
-        domain-specific fields without this module growing.
+        Unknown keys flow into ``extra`` and must be OKF-acceptable
+        scalars or lists of scalars; raises :class:`ValueError`
+        otherwise.
         """
+        known = {"type", "title", "description", "resource", "tags", "timestamp"}
         kwargs: dict[str, Any] = {}
         extras: list[tuple[str, Any]] = []
         for key, value in d.items():
             if key == "type":
-                kwargs["type"] = _coerce_str(value, key)
+                kwargs["type"] = coerce_str(value, key)
             elif key == "title":
-                kwargs["title"] = _coerce_str(value, key)
+                kwargs["title"] = coerce_str(value, key)
             elif key == "description":
-                kwargs["description"] = _coerce_str(value, key)
+                kwargs["description"] = coerce_str(value, key)
             elif key == "resource":
-                kwargs["resource"] = _coerce_str(value, key)
+                kwargs["resource"] = coerce_str(value, key)
             elif key == "tags":
-                kwargs["tags"] = tuple(_coerce_str(v, "tags[]") for v in value)
+                kwargs["tags"] = tuple(coerce_str(v, "tags[]") for v in value)
             elif key == "timestamp":
-                kwargs["timestamp"] = _coerce_str(value, key)
+                kwargs["timestamp"] = coerce_str(value, key)
+            elif key in known:
+                pass
             else:
+                if not is_okf_scalar(value):
+                    raise ValueError(
+                        f"frontmatter field {key!r} must be a scalar or list of "
+                        f"scalars, got {type(value).__name__}"
+                    )
                 extras.append((key, value))
         if "type" not in kwargs:
             raise ValueError("frontmatter is missing required 'type' field")
@@ -133,27 +156,15 @@ class Frontmatter:
         return cls(**kwargs)
 
 
-def now_iso() -> str:
-    """Return the current UTC time as an ISO 8601 string.
-
-    A small convenience exported at module level so callers that
-    build concepts incrementally don't have to construct a
-    full :class:`Frontmatter` just for the timestamp.
-    """
-    return datetime.now(timezone.utc).isoformat()
-
-
 @dataclass
 class Concept:
     """A single OKF concept: frontmatter, body, and (optional) bundle path.
 
-    Attributes:
-        frontmatter: The :class:`Frontmatter` describing the concept.
-        body: Markdown body of the concept (after the frontmatter).
-        path: Bundle-relative file path, e.g.
-            ``"tables/orders.md"``. Optional until written. Strings
-            and :class:`Path` objects are both accepted; the value
-            is normalised to :class:`Path` on construction.
+    ``path`` is normalised to :class:`Path` at construction time. When
+    a concept is added to a bundle (:func:`write_bundle`) the path is
+    validated as bundle-relative; bare construction accepts any path
+    because round-tripping :func:`read_concept_file` puts the
+    absolute on-disk path there too.
     """
 
     frontmatter: Frontmatter
@@ -161,346 +172,135 @@ class Concept:
     path: Optional[Path] = None
 
     def __post_init__(self) -> None:
-        if self.path is not None:
+        if self.path is not None and not isinstance(self.path, Path):
             self.path = Path(self.path)
 
     def with_path(self, path: str | Path) -> "Concept":
         """Return a copy of this concept with ``path`` set."""
-        copy = Concept(self.frontmatter, self.body, self.path)
-        copy.path = Path(path)
-        return copy
+        return Concept(self.frontmatter, self.body, Path(path))
 
 
-# ---------------------------------------------------------------------------
-# YAML subset for OKF frontmatter
-# ---------------------------------------------------------------------------
+def validate_bundle_path(rel: Path) -> Path:
+    """Validate a bundle-relative concept path: no escape, must end in ``.md``.
+
+    Raises:
+        ValueError: If ``rel`` is absolute, escapes the bundle root,
+            or has the wrong suffix.
+    """
+    if rel.is_absolute():
+        raise ValueError(f"concept path must be bundle-relative, got {rel}")
+    if any(part in {"..", ""} for part in rel.parts):
+        raise ValueError(f"concept path escapes bundle root: {rel}")
+    if rel.suffix != ".md":
+        raise ValueError(f"concept path must end in .md, got {rel}")
+    return rel
 
 
 def render_frontmatter(d: dict[str, Any]) -> str:
-    """Serialise ``d`` as a YAML block using the OKF subset grammar.
-
-    Supported: scalars (str/int/float/bool/None), inline lists
-    (``[a, b, c]``), nested mappings (one-key per line), block lists
-    using ``-`` for entries. OKF v0.1 only requires scalars and inline
-    lists, but supporting nested structures costs little.
-
-    Args:
-        d: Plain dict whose values are JSON-ish.
-
-    Returns:
-        YAML text (no surrounding ``---`` markers).
-    """
-    return _render_yaml(d, indent=0)
+    """Serialise ``d`` as YAML text (no surrounding ``---`` markers)."""
+    return yaml.safe_dump(
+        d, sort_keys=False, allow_unicode=True, default_flow_style=False
+    ).rstrip("\n")
 
 
 def parse_frontmatter(text: str) -> dict[str, Any]:
-    """Parse a YAML block produced by :func:`render_frontmatter`.
+    """Parse a YAML block. Raises :class:`ValueError` on any parse error.
 
-    Args:
-        text: YAML text (no surrounding ``---`` markers).
-
-    Returns:
-        Parsed dict.
-
-    Raises:
-        ValueError: If the text can't be parsed.
+    Returns ``{}`` for an empty / whitespace-only block.
     """
-    return _parse_yaml(text)
-
-
-def _render_yaml(value: Any, indent: int) -> str:
-    """Recursive YAML renderer for the OKF subset."""
-    pad = "  " * indent
-    if isinstance(value, dict):
-        if not value:
-            return "{}"
-        lines: list[str] = []
-        for key, v in value.items():
-            rendered = _render_yaml(v, indent + 1)
-            if "\n" in rendered:
-                lines.append(f"{pad}{key}:\n{rendered}")
-            else:
-                lines.append(f"{pad}{key}: {rendered}")
-        return "\n".join(lines)
-    if isinstance(value, (list, tuple)):
-        if not value:
-            return "[]"
-        if all(isinstance(v, (str, int, float, bool)) or v is None for v in value):
-            return "[" + ", ".join(_render_yaml(v, indent) for v in value) + "]"
-        out: list[str] = []
-        for v in value:
-            rendered = _render_yaml(v, indent + 1)
-            head, _, rest = rendered.partition("\n")
-            out.append(f"{pad}- {head}")
-            if rest:
-                out.append(rest)
-        return "\n".join(out)
-    if value is None:
-        return "null"
-    if isinstance(value, bool):
-        return "true" if value else "false"
-    if isinstance(value, (int, float)):
-        return str(value)
-    return _quote_scalar(str(value))
-
-
-def _quote_scalar(text: str) -> str:
-    """Wrap a scalar in quotes if it would otherwise be ambiguous."""
-    if text in {"", "null", "true", "false"} or text[0] in {"[", "]", "{", "}", "#", "&", "*", "!", "|", ">", "'", '"', "%", "@", "`"}:
-        return '"' + text.replace("\\", "\\\\").replace('"', '\\"') + '"'
-    if re.match(r"^[-+]?\d", text):
-        return '"' + text + '"'
-    return text
-
-
-def _parse_yaml(text: str) -> dict[str, Any]:
-    """Flat YAML parser for the OKF frontmatter subset.
-
-    Supports ``key: scalar`` and ``key: [a, b, c]`` lines. Nested
-    mappings are not part of the OKF v0.1 spec; this parser is
-    deliberately minimal so it remains easy to audit.
-    """
-    out: dict[str, Any] = {}
-    for raw in text.splitlines():
-        line = raw.rstrip()
-        if not line.strip() or line.lstrip().startswith("#"):
-            continue
-        if line.lstrip() != line:
-            # OKF v0.1 frontmatter is flat; reject indented lines.
-            raise ValueError(
-                f"indented lines are not allowed in OKF frontmatter: {line!r}"
-            )
-        key, sep, value = line.partition(":")
-        if sep == "":
-            raise ValueError(f"not a key:value pair: {line!r}")
-        out[key.strip()] = _parse_value(value.strip())
-    return out
-
-
-def _parse_value(text: str) -> Any:
-    """Parse a YAML scalar or inline list."""
-    if text.startswith("[") and text.endswith("]"):
-        return _parse_inline_list(text)
-    return _parse_scalar(text)
-
-
-def _parse_inline_list(text: str) -> list[Any]:
-    """Parse ``[a, b, c]``, respecting nested brackets and quoted strings."""
-    inner = text[1:-1].strip()
-    if not inner:
-        return []
-    return [_parse_scalar(part.strip()) for part in _split_top_level(inner, ",")]
-
-
-def _split_top_level(text: str, sep: str) -> list[str]:
-    """Split ``text`` by ``sep`` ignoring nested brackets and quotes."""
-    parts: list[str] = []
-    depth = 0
-    quote: Optional[str] = None
-    buf: list[str] = []
-    for char in text:
-        if quote is not None:
-            buf.append(char)
-            if char == quote:
-                quote = None
-            continue
-        if char in {'"', "'"}:
-            quote = char
-            buf.append(char)
-            continue
-        if char in "[{(":
-            depth += 1
-        elif char in "]})":
-            depth -= 1
-        if char == sep and depth == 0:
-            parts.append("".join(buf))
-            buf = []
-            continue
-        buf.append(char)
-    if buf:
-        parts.append("".join(buf))
-    return parts
-
-
-def _parse_scalar(text: str) -> Any:
-    """Parse a YAML scalar; returns int/float/bool/str/None."""
-    if text == "" or text == "~" or text.lower() == "null":
-        return None
-    if text.startswith('"') and text.endswith('"'):
-        return text[1:-1].encode("utf-8").decode("unicode_escape")
-    if text.startswith("'") and text.endswith("'"):
-        return text[1:-1]
-    if text == "true":
-        return True
-    if text == "false":
-        return False
-    try:
-        return int(text)
-    except ValueError:
-        pass
-    try:
-        return float(text)
-    except ValueError:
-        pass
-    return text
-
-
-def _coerce_str(value: Any, field: str) -> str:
-    if isinstance(value, str):
-        return value
-    raise ValueError(f"frontmatter field {field!r} must be a string, got {type(value).__name__}")
-
-
-# ---------------------------------------------------------------------------
-# Concept markdown serialisation
-# ---------------------------------------------------------------------------
+    loaded = yaml.safe_load(text)
+    if loaded is None:
+        return {}
+    if not isinstance(loaded, dict):
+        raise ValueError(
+            f"frontmatter must be a mapping, got {type(loaded).__name__}"
+        )
+    return loaded
 
 
 def render_concept(concept: Concept) -> str:
-    """Render a :class:`Concept` as OKF markdown text.
-
-    Args:
-        concept: Concept to serialise.
-
-    Returns:
-        UTF-8 markdown text starting with the ``---`` frontmatter
-        delimiter block, then a blank line, then the body.
-    """
-    d = concept.frontmatter.to_dict()
-    yaml_block = render_frontmatter(d)
+    """Render a :class:`Concept` as OKF markdown text."""
+    yaml_block = render_frontmatter(concept.frontmatter.to_dict())
     body = concept.body or ""
     if body and not body.endswith("\n"):
         body = body + "\n"
-    return f"{FRONTMATTER_OPEN}\n{yaml_block}\n{FRONTMATTER_CLOSE}\n\n{body}"
+    return f"---\n{yaml_block}\n---\n\n{body}"
 
 
 def parse_concept(text: str, path: Optional[Path] = None) -> Concept:
-    """Parse OKF markdown into a :class:`Concept`.
-
-    Args:
-        text: Full markdown text including frontmatter.
-        path: Optional bundle-relative path to record on the result
-            (string or :class:`Path`).
-
-    Returns:
-        The parsed :class:`Concept`. ``path`` is always normalised
-        to :class:`Path`. Leading and trailing newlines around the
-        body are stripped so the round-trip is idempotent.
-
-    Raises:
-        ValueError: If the text doesn't start with a YAML frontmatter
-            block delimited by ``---``.
-    """
-    if not text.startswith(f"{FRONTMATTER_OPEN}\n"):
+    """Parse OKF markdown into a :class:`Concept`."""
+    if not text.startswith("---\n"):
         raise ValueError(
             "OKF concept text must begin with '---\\n' followed by YAML frontmatter"
         )
-    after_open = text[len(FRONTMATTER_OPEN) + 1 :]
-    close_idx = after_open.find(f"\n{FRONTMATTER_CLOSE}\n")
+    after_open = text[4:]
+    close_idx = after_open.find("\n---\n")
     if close_idx == -1:
         raise ValueError("frontmatter is not terminated by '---' on its own line")
     yaml_text = after_open[:close_idx]
-    body = after_open[close_idx + len(FRONTMATTER_CLOSE) + 2 :]
-    frontmatter_dict = parse_frontmatter(yaml_text)
-    frontmatter = Frontmatter.from_dict(frontmatter_dict)
-    normalised_path = Path(path) if path is not None else None
-    stripped_body = body.strip("\n")
+    body = after_open[close_idx + 5 :].strip("\n")
     return Concept(
-        frontmatter=frontmatter,
-        body=stripped_body,
-        path=normalised_path,
+        frontmatter=Frontmatter.from_dict(parse_frontmatter(yaml_text)),
+        body=body or "",
+        path=path,
     )
 
 
-# ---------------------------------------------------------------------------
-# File-level I/O
-# ---------------------------------------------------------------------------
-
-
 def read_concept_file(path: str | Path) -> Concept:
-    """Read one OKF concept from disk.
-
-    Args:
-        path: Path to a ``.md`` file.
-
-    Returns:
-        The parsed :class:`Concept` with ``path`` set.
-    """
+    """Read one OKF concept from disk."""
     p = Path(path)
     text = p.read_text(encoding="utf-8")
-    parsed = parse_concept(text, path=p)
-    return parsed
+    return parse_concept(text, path=p)
 
 
 def write_concept_file(path: str | Path, concept: Concept) -> None:
-    """Write one OKF concept to disk, creating parent directories.
-
-    Args:
-        path: Destination file. Should end in ``.md``.
-        concept: The :class:`Concept` to write.
-    """
+    """Write one OKF concept to disk, creating parent directories."""
     p = Path(path)
     p.parent.mkdir(parents=True, exist_ok=True)
     p.write_text(render_concept(concept), encoding="utf-8")
 
 
-def write_bundle(
-    directory: str | Path, concepts: Iterable[Concept]
-) -> list[Path]:
-    """Write an OKF bundle: each concept as one ``.md`` file.
+def write_bundle(directory: str | Path, concepts: Iterable[Concept]) -> list[Path]:
+    """Write an OKF bundle to ``directory``. One ``.md`` per concept.
 
     Args:
         directory: Destination directory. Created on demand.
-        concepts: Iterable of :class:`Concept` instances. Every
-            concept must have a ``path`` set; the path is interpreted
-            relative to ``directory``.
+        concepts: Iterable of :class:`Concept`. Every concept must
+            have a ``path`` set; duplicate paths raise.
 
     Returns:
-        The list of file paths written, sorted.
+        The list of written file paths, sorted.
 
     Raises:
-        ValueError: If any concept has no ``path`` set, or its path
-            would escape the bundle root, or the file is not a
-            ``.md`` file.
+        ValueError: If a concept has no ``path``, or its path is
+            unsafe (absolute, escapes the bundle, wrong suffix, or
+            duplicated).
     """
     root = Path(directory).resolve()
     root.mkdir(parents=True, exist_ok=True)
     written: list[Path] = []
+    seen: set[Path] = set()
     for concept in concepts:
         if concept.path is None:
             raise ValueError("every concept in a bundle must have a path set")
-        rel = Path(concept.path)
-        if rel.is_absolute():
-            raise ValueError(f"concept path must be bundle-relative, got {rel}")
-        parts = rel.parts
-        if any(part in {"..", ""} for part in parts):
-            raise ValueError(f"concept path escapes bundle root: {rel}")
-        if rel.suffix != ".md":
-            raise ValueError(f"concept path must end in .md, got {rel}")
+        rel = validate_bundle_path(concept.path)
         target = (root / rel).resolve()
-        if not str(target).startswith(str(root)):
+        if not target.is_relative_to(root):
             raise ValueError(f"concept path escapes bundle root: {rel}")
+        if target in seen:
+            raise ValueError(f"duplicate concept path: {rel}")
+        seen.add(target)
         write_concept_file(target, concept)
         written.append(target)
     return sorted(written)
 
 
 def read_bundle(directory: str | Path) -> list[Concept]:
-    """Read every ``.md`` file under ``directory`` as an OKF concept.
+    """Read every ``.md`` under ``directory`` as an OKF concept.
 
-    The directory is walked recursively. Non-markdown files are
-    skipped silently; malformed frontmatter raises
-    :class:`ValueError`.
-
-    Args:
-        directory: Bundle directory.
-
-    Returns:
-        A list of :class:`Concept` instances sorted by their bundle-
-        relative path.
-
-    Raises:
-        ValueError: If a ``.md`` file has malformed frontmatter.
+    Each returned :class:`Concept` carries its bundle-relative
+    ``path`` (forward-slash form), so :func:`find_concept` and
+    cross-link lookups behave the same way as for hand-built bundles.
     """
     root = Path(directory)
     if not root.exists():
@@ -518,18 +318,9 @@ def read_bundle(directory: str | Path) -> list[Concept]:
 
 
 def find_concept(
-    bundle: list[Concept], path: str | Path
+    bundle: Iterable[Concept], path: str | Path
 ) -> Optional[Concept]:
-    """Find a concept by bundle-relative path within ``bundle``.
-
-    Args:
-        bundle: Iterable of :class:`Concept` (e.g. from
-            :func:`read_bundle`).
-        path: Bundle-relative path (forward-slash or os-native).
-
-    Returns:
-        The matching :class:`Concept` or ``None``.
-    """
+    """Find a concept by bundle-relative path."""
     needle = Path(path).as_posix()
     for concept in bundle:
         if concept.path is None:
@@ -539,16 +330,9 @@ def find_concept(
     return None
 
 
+_MD_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+\.md)\)")
+
+
 def cross_links(body: str) -> list[str]:
-    """Extract OKF cross-link targets from a markdown body.
-
-    A cross-link is a markdown link whose target ends in ``.md``.
-    Returns bundle-relative paths.
-
-    Args:
-        body: Markdown body text.
-
-    Returns:
-        List of bundle-relative path strings, in document order.
-    """
-    return [match.group(1) for match in re.finditer(r"\[[^\]]*\]\(([^)]+\.md)\)", body)]
+    """Return bundle-relative ``.md`` cross-link targets in document order."""
+    return [match.group(1) for match in _MD_LINK_RE.finditer(body)]
