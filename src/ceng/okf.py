@@ -34,7 +34,7 @@ References:
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable, Optional
@@ -84,7 +84,7 @@ class Frontmatter:
     @classmethod
     def now(cls, **kw: Any) -> "Frontmatter":
         """Return a :class:`Frontmatter` with ``timestamp`` set to UTC now."""
-        return cls(timestamp=datetime.now(timezone.utc).isoformat(), **kw)
+        return cls(timestamp=now_iso(), **kw)
 
     def to_dict(self) -> dict[str, Any]:
         """Render the frontmatter as a plain dict, omitting empty fields."""
@@ -110,7 +110,6 @@ class Frontmatter:
         Unknown keys flow into ``extra`` so producers can carry
         domain-specific fields without this module growing.
         """
-        known = {"type", "title", "description", "resource", "tags", "timestamp"}
         kwargs: dict[str, Any] = {}
         extras: list[tuple[str, Any]] = []
         for key, value in d.items():
@@ -134,6 +133,16 @@ class Frontmatter:
         return cls(**kwargs)
 
 
+def now_iso() -> str:
+    """Return the current UTC time as an ISO 8601 string.
+
+    A small convenience exported at module level so callers that
+    build concepts incrementally don't have to construct a
+    full :class:`Frontmatter` just for the timestamp.
+    """
+    return datetime.now(timezone.utc).isoformat()
+
+
 @dataclass
 class Concept:
     """A single OKF concept: frontmatter, body, and (optional) bundle path.
@@ -142,12 +151,18 @@ class Concept:
         frontmatter: The :class:`Frontmatter` describing the concept.
         body: Markdown body of the concept (after the frontmatter).
         path: Bundle-relative file path, e.g.
-            ``"tables/orders.md"``. Optional until written.
+            ``"tables/orders.md"``. Optional until written. Strings
+            and :class:`Path` objects are both accepted; the value
+            is normalised to :class:`Path` on construction.
     """
 
     frontmatter: Frontmatter
     body: str = ""
     path: Optional[Path] = None
+
+    def __post_init__(self) -> None:
+        if self.path is not None:
+            self.path = Path(self.path)
 
     def with_path(self, path: str | Path) -> "Concept":
         """Return a copy of this concept with ``path`` set."""
@@ -454,7 +469,7 @@ def write_bundle(
     for concept in concepts:
         if concept.path is None:
             raise ValueError("every concept in a bundle must have a path set")
-        rel = concept.path
+        rel = Path(concept.path)
         if rel.is_absolute():
             raise ValueError(f"concept path must be bundle-relative, got {rel}")
         parts = rel.parts
