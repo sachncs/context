@@ -228,7 +228,15 @@ def render_concept(concept: Concept) -> str:
 
 
 def parse_concept(text: str, path: Optional[Path] = None) -> Concept:
-    """Parse OKF markdown into a :class:`Concept`."""
+    """Parse OKF markdown into a :class:`Concept`.
+
+    Normalises line endings (CRLF and bare CR collapse to LF) and
+    strips a leading UTF-8 BOM so the frontmatter lookup works on
+    files authored on Windows or with editors that emit BOMs.
+    """
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    if text.startswith("\ufeff"):
+        text = text[1:]
     if not text.startswith("---\n"):
         raise ValueError(
             "OKF concept text must begin with '---\\n' followed by YAML frontmatter"
@@ -249,7 +257,7 @@ def parse_concept(text: str, path: Optional[Path] = None) -> Concept:
 def read_concept_file(path: str | Path) -> Concept:
     """Read one OKF concept from disk."""
     p = Path(path)
-    text = p.read_text(encoding="utf-8")
+    text = p.read_text(encoding="utf-8-sig")
     return parse_concept(text, path=p)
 
 

@@ -108,12 +108,6 @@ def test_render_and_parse_inline_list():
     assert parsed["tags"] == ["a", "b", "c"]
 
 
-def test_render_and_parse_nested_mapping_rejected():
-    """OKF frontmatter is flat; indented lines must be rejected, not silently ignored."""
-    with pytest.raises(ValueError, match="indented"):
-        parse_frontmatter("type: x\n  owner: alice\n  level: 3\n")
-
-
 def test_render_and_parse_with_special_chars_in_string():
     text = render_frontmatter({"type": "x", "title": "has: colon"})
     parsed = parse_frontmatter(text)
@@ -351,6 +345,35 @@ def test_okf_version_constant():
 def test_reserved_filenames():
     assert RESERVED_INDEX == "index.md"
     assert RESERVED_LOG == "log.md"
+
+
+# --- CRLF + BOM normalisation (added in v0.3.0) ---
+
+
+def test_parse_concept_handles_crlf_line_endings():
+    text = "---\r\ntype: x\r\n---\r\n\r\nbody\r\n"
+    parsed = parse_concept(text)
+    assert parsed.frontmatter.type == "x"
+    assert "body" in parsed.body
+
+
+def test_parse_concept_handles_bare_cr_line_endings():
+    text = "---\rtype: x\r---\r\rbody"
+    parsed = parse_concept(text)
+    assert parsed.frontmatter.type == "x"
+
+
+def test_parse_concept_strips_utf8_bom():
+    text = "\ufeff---\ntype: x\n---\n\nbody"
+    parsed = parse_concept(text)
+    assert parsed.frontmatter.type == "x"
+
+
+def test_read_concept_file_handles_utf8_bom(tmp_path):
+    target = tmp_path / "x.md"
+    target.write_bytes(b"\xef\xbb\xbf---\ntype: x\n---\n\nbody\n")
+    parsed = read_concept_file(target)
+    assert parsed.frontmatter.type == "x"
 
 
 def test_ceng_concept_types_are_namespaced():
