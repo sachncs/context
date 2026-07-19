@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from ceng.notes import Note, NotesManager, now_iso
+from ceng.notes import NotesManager, now_iso
 
 
 @pytest.fixture()

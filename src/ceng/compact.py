@@ -19,7 +19,7 @@ Compaction keeps structure; compression rephrases content.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Optional
+
 
 
 @dataclass(frozen=True)
@@ -188,7 +188,6 @@ def _summarise_middle(
     """
     from ceng.backends import get_backend
     from ceng.cache import Cache, make_key, NAMESPACE_SUMMARIZE
-    from ceng.tokens import count_tokens
 
     if not middle:
         return ""

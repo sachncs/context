@@ -19,7 +19,6 @@ This isn't a database. It's a directory of markdown you can read with
 from __future__ import annotations
 
 import re
-import tempfile
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
