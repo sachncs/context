@@ -416,6 +416,52 @@ def find_concept(
     return None
 
 
+def find_concepts_by_tag(
+    bundle: Iterable[Concept], tag: str
+) -> list[Concept]:
+    """Return every concept that has ``tag`` in its frontmatter ``tags``.
+
+    Progressive-disclosure primitive: an agent can load only the
+    concepts tagged ``medical``, ``finance``, ``playbook``, etc.
+    Order is preserved from the input iteration.
+    """
+    needle = str(tag)
+    return [
+        concept for concept in bundle
+        if needle in concept.frontmatter.tags
+    ]
+
+
+def find_concepts_by_type(
+    bundle: Iterable[Concept], type_: str
+) -> list[Concept]:
+    """Return every concept whose frontmatter ``type`` matches ``type_``."""
+    return [
+        concept for concept in bundle
+        if concept.frontmatter.type == type_
+    ]
+
+
+def find_concepts_with_priority_at_least(
+    bundle: Iterable[Concept], min_priority: int
+) -> list[Concept]:
+    """Return concepts with ``frontmatter.priority >= min_priority``.
+
+    Sorted descending by priority then by ``helpful_count``.
+    Used by progressive-disclosure: keep only the high-priority
+    leaves in the visible window.
+    """
+    selected = [
+        concept for concept in bundle
+        if concept.frontmatter.priority >= min_priority
+    ]
+    selected.sort(
+        key=lambda c: (c.frontmatter.priority, c.frontmatter.helpful_count),
+        reverse=True,
+    )
+    return selected
+
+
 _MD_LINK_RE = re.compile(
     r"(?<!!)\[[^\]]*\]\(([^)\s]+?\.md)(?:\s+\"[^\"]*\")?\)"
 )
