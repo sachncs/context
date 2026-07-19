@@ -93,6 +93,10 @@ class Frontmatter:
     resource: str = ""
     tags: tuple[str, ...] = ()
     timestamp: str = ""
+    priority: int = 0
+    expires_at: str = ""
+    helpful_count: int = 0
+    harmful_count: int = 0
     extra: tuple[tuple[str, Any], ...] = ()
 
     @classmethod
@@ -113,6 +117,14 @@ class Frontmatter:
             out["tags"] = list(self.tags)
         if self.timestamp:
             out["timestamp"] = self.timestamp
+        if self.priority:
+            out["priority"] = self.priority
+        if self.expires_at:
+            out["expires_at"] = self.expires_at
+        if self.helpful_count:
+            out["helpful_count"] = self.helpful_count
+        if self.harmful_count:
+            out["harmful_count"] = self.harmful_count
         for key, value in self.extra:
             out[key] = value
         return out
@@ -125,7 +137,10 @@ class Frontmatter:
         scalars or lists of scalars; raises :class:`ValueError`
         otherwise.
         """
-        known = {"type", "title", "description", "resource", "tags", "timestamp"}
+        known = {
+            "type", "title", "description", "resource", "tags", "timestamp",
+            "priority", "expires_at", "helpful_count", "harmful_count",
+        }
         kwargs: dict[str, Any] = {}
         extras: list[tuple[str, Any]] = []
         for key, value in d.items():
@@ -141,6 +156,28 @@ class Frontmatter:
                 kwargs["tags"] = tuple(coerce_str(v, "tags[]") for v in value)
             elif key == "timestamp":
                 kwargs["timestamp"] = coerce_str(value, key)
+            elif key == "priority":
+                if not isinstance(value, int):
+                    raise ValueError(
+                        f"frontmatter 'priority' must be an integer, got {type(value).__name__}"
+                    )
+                kwargs["priority"] = value
+            elif key == "expires_at":
+                kwargs["expires_at"] = coerce_str(value, key)
+            elif key == "helpful_count":
+                if not isinstance(value, int):
+                    raise ValueError(
+                        f"frontmatter 'helpful_count' must be an integer, "
+                        f"got {type(value).__name__}"
+                    )
+                kwargs["helpful_count"] = value
+            elif key == "harmful_count":
+                if not isinstance(value, int):
+                    raise ValueError(
+                        f"frontmatter 'harmful_count' must be an integer, "
+                        f"got {type(value).__name__}"
+                    )
+                kwargs["harmful_count"] = value
             elif key in known:
                 pass
             else:
