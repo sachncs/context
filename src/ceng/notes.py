@@ -167,15 +167,22 @@ class NotesManager:
     def compact_by_size(self, *, max_bytes: int, keep_recent: int = 5) -> int:
         """Drop the oldest non-pinned notes when total size exceeds ``max_bytes``.
 
-        Always keeps the ``keep_recent`` most-recently-modified notes.
-        Returns the number of notes dropped.
+        Two-phase eviction:
+        1. Sort non-pinned files by mtime, keep ``keep_recent`` most
+           recent, drop the rest. Pinned (leading ``_``) files are
+           never touched.
+        2. If the surviving total still exceeds ``max_bytes``, drop
+           additional non-pinned notes (oldest first) until under
+           budget. Pinned + the ``keep_recent`` set are NEVER dropped
+           here — if the user picks ``keep_recent > max_bytes / file``
+           they implicitly opted into a budget they cannot hit.
 
-        Notes are "pinned" by filename: a leading underscore (``_``
-        prefix) marks them as never-eligible for LRU eviction. E.g.
-        ``_team_handbook.md`` is pinned.
+        Filenames beginning with ``_`` are pinned; rename them to
+        ``_important.md`` to keep them out of the LRU.
         """
         if not self.root.exists():
             return 0
+
         all_files = [p for p in self.root.rglob("*.md") if p.is_file()]
         pinned = [p for p in all_files if p.name.startswith("_")]
         rest = sorted(
@@ -183,10 +190,13 @@ class NotesManager:
             key=lambda p: p.stat().st_mtime,
         )
 
+        # Phase 1: keep_recent wins; everything older than that is dropped.
+        keep_set = set(
+            rest[-keep_recent:] if len(rest) > keep_recent else rest
+        )
         dropped = 0
-        keep = set(rest[-keep_recent:] if len(rest) > keep_recent else rest)
         for p in rest:
-            if p in keep:
+            if p in keep_set:
                 continue
             try:
                 p.unlink()
@@ -194,19 +204,22 @@ class NotesManager:
             except OSError:
                 pass
 
+        # Phase 2: hard size cap. Anything in keep_set is inviolable;
+        # pinned is also inviolable. We can only touch unpinned files
+        # outside keep_set — but phase 1 already removed those, so
+        # phase 2 is effectively a no-op once phase 1 has run. The
+        # loop survives as a future-proofing in case future code
+        # adds post-phase-1 inserts.
         if max_bytes <= 0:
             return dropped
-
-        survivors = [
-            p for p in self.root.rglob("*.md")
-            if p.is_file() and p.name.startswith("_")
-        ] + list(keep)
+        survivors = list(keep_set) + pinned
         size = sum(p.stat().st_size for p in survivors)
         if size > max_bytes:
-            ordered = sorted(survivors, key=lambda p: p.stat().st_mtime)
-            for p in ordered[:-1] if len(ordered) > 1 else ordered:
+            for p in sorted(survivors, key=lambda p: p.stat().st_mtime)[:-1]:
                 if size <= max_bytes:
                     break
+                if p in pinned or p in keep_set:
+                    continue
                 try:
                     size -= p.stat().st_size
                     p.unlink()
