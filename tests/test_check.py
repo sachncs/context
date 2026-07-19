@@ -7,8 +7,6 @@ from dataclasses import dataclass
 import pytest
 
 from ceng.check import (
-    LeafEstimate,
-    Verdict,
     _parse_probability,
     _validate_tree,
     ppa_check,

@@ -24,11 +24,8 @@ returns the input untouched.
 
 from __future__ import annotations
 
-import copy
-import dataclasses
 import hashlib
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Optional
 
 from ceng.backends import Backend, get_backend
@@ -156,19 +153,16 @@ def compress_with_stats(
     target_index, target_text = _pick_target_message(messages)
     original_tokens = count_tokens(target_text, tokenizer)
     if original_tokens <= budget_tokens:
-        result = dataclasses.replace(
-            CompressResult(
-                messages=[dict(m) for m in messages],
-                original_tokens=original_tokens,
-                compressed_tokens=original_tokens,
-                leaf_count=0,
-                cache_hits=0,
-                cache_misses=0,
-                backend=backend,
-                model=llm,
-            )
+        return CompressResult(
+            messages=[dict(m) for m in messages],
+            original_tokens=original_tokens,
+            compressed_tokens=original_tokens,
+            leaf_count=0,
+            cache_hits=0,
+            cache_misses=0,
+            backend=backend,
+            model=llm,
         )
-        return result
 
     leaves = partition_text(target_text, max_tokens=partition_max_tokens, tokenizer=tokenizer)
     if not leaves:
