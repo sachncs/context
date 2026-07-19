@@ -18,6 +18,9 @@ from ceng.okf import (
     Frontmatter,
     cross_links,
     find_concept,
+    find_concepts_by_tag,
+    find_concepts_by_type,
+    find_concepts_with_priority_at_least,
     parse_concept,
     parse_frontmatter,
     read_bundle,
@@ -489,6 +492,81 @@ def test_read_concept_file_raises_with_path_on_bad_encoding(tmp_path):
     bad.write_bytes(b"not utf-8: \xff\xff\n")
     with pytest.raises(ValueError, match="not valid UTF-8"):
         read_concept_file(bad)
+
+
+def test_frontmatter_priority_roundtrips():
+    original = Frontmatter(type="x", priority=7)
+    parsed = Frontmatter.from_dict(original.to_dict())
+    assert parsed.priority == 7
+
+
+def test_frontmatter_expires_at_roundtrips():
+    original = Frontmatter(type="x", expires_at="2027-01-01T00:00:00+00:00")
+    parsed = Frontmatter.from_dict(original.to_dict())
+    assert parsed.expires_at == "2027-01-01T00:00:00+00:00"
+
+
+def test_frontmatter_helpful_harmful_counts_roundtrip():
+    original = Frontmatter(type="x", helpful_count=5, harmful_count=1)
+    parsed = Frontmatter.from_dict(original.to_dict())
+    assert parsed.helpful_count == 5
+    assert parsed.harmful_count == 1
+
+
+def test_frontmatter_rejects_non_integer_priority():
+    with pytest.raises(ValueError, match="priority"):
+        Frontmatter.from_dict({"type": "x", "priority": "high"})
+
+
+def test_frontmatter_rejects_non_integer_helpful_count():
+    with pytest.raises(ValueError, match="helpful_count"):
+        Frontmatter.from_dict({"type": "x", "helpful_count": "five"})
+
+
+def test_frontmatter_omits_zero_counts_in_to_dict():
+    fm = Frontmatter(type="x")
+    d = fm.to_dict()
+    assert "priority" not in d
+    assert "helpful_count" not in d
+    assert "harmful_count" not in d
+    assert "expires_at" not in d
+
+
+# --- progressive-disclosure filters ---
+
+
+def test_find_concepts_by_tag_returns_matching():
+    bundle = [
+        Concept(frontmatter=Frontmatter(type="x", tags=("medical", "urgent")), path="a.md"),
+        Concept(frontmatter=Frontmatter(type="x", tags=("finance",)), path="b.md"),
+        Concept(frontmatter=Frontmatter(type="x", tags=("medical", "drug")), path="c.md"),
+    ]
+    medical = find_concepts_by_tag(bundle, "medical")
+    paths = sorted(c.path.as_posix() for c in medical)
+    assert paths == ["a.md", "c.md"]
+
+
+def test_find_concepts_by_type_returns_matching():
+    bundle = [
+        Concept(frontmatter=Frontmatter(type="ceng/leaf-summary"), path="a.md"),
+        Concept(frontmatter=Frontmatter(type="ceng/combined-summary"), path="b.md"),
+        Concept(frontmatter=Frontmatter(type="ceng/leaf-summary"), path="c.md"),
+    ]
+    leaves = find_concepts_by_type(bundle, "ceng/leaf-summary")
+    assert [c.path.as_posix() for c in leaves] == ["a.md", "c.md"]
+
+
+def test_find_concepts_with_priority_returns_sorted_and_filtered():
+    bundle = [
+        Concept(frontmatter=Frontmatter(type="x", priority=1, helpful_count=10), path="a.md"),
+        Concept(frontmatter=Frontmatter(type="x", priority=5, helpful_count=0), path="b.md"),
+        Concept(frontmatter=Frontmatter(type="x", priority=3, helpful_count=100), path="c.md"),
+        Concept(frontmatter=Frontmatter(type="x", priority=5, helpful_count=50), path="d.md"),
+    ]
+    top = find_concepts_with_priority_at_least(bundle, min_priority=3)
+    # b,d first (priority=5), then c (priority=3). b before d by helpful_count.
+    paths = [c.path.as_posix() for c in top]
+    assert paths == ["d.md", "b.md", "c.md"]  # d (helpful=50) before b (helpful=0)
 
 
 # --- atomic bundle writes ---
