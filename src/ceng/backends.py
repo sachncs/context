@@ -17,112 +17,113 @@ Three adapters ship in this module:
   who don't want ``litellm`` as a runtime dependency.
 
 Heavy third-party imports (``litellm``, ``vllm``, ``openai``) are
-performed lazily inside :meth:`complete` so the package stays importable
-even when an extra isn't installed.
+performed lazily inside :meth:`complete` so the package stays
+importable even when an extra isn't installed.
 """
 
 from __future__ import annotations
 
 import os
 import threading
-from dataclasses import dataclass
-from typing import Any, Optional, Protocol, runtime_checkable
+from dataclasses import dataclass, field
+from typing import Any, Optional
 
 
 ENV_BACKEND = "CENG_BACKEND"
 DEFAULT_BACKEND = "litellm"
+DEFAULT_TIMEOUT_SECONDS = 60.0
 
 
-@runtime_checkable
-class Backend(Protocol):
-    """Callable interface every adapter implements."""
+class Backend:
+    """Callable interface every adapter implements.
 
-    name: str
+    Subclasses set ``name`` and override :meth:`complete`.
+    """
+
+    name: str = ""
 
     def complete(self, messages: list[dict], model: str, **kw: Any) -> str:
         """Return the assistant's text for ``messages`` using ``model``."""
-        ...
+        raise NotImplementedError
 
 
 @dataclass
-class LiteLLMBackend:
+class LiteLLMBackend(Backend):
     """Routes completions through ``litellm.completion``."""
 
     name: str = "litellm"
+    timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
 
     def complete(self, messages: list[dict], model: str, **kw: Any) -> str:
-        """Send ``messages`` to ``model`` via ``litellm`` and return text.
-
-        Args:
-            messages: OpenAI-style chat messages list.
-            model: Any model id ``litellm`` understands (e.g.
-                ``"gpt-4o-mini"`` for OpenAI,
-                ``"hosted_vllm/llama-3-8b"`` for a vLLM HTTP server
-                with ``OPENAI_API_BASE`` set, etc.).
-            **kw: Forwarded to ``litellm.completion``. The common keys
-                are ``temperature``, ``max_tokens``, ``stop``, ``top_p``.
-
-        Returns:
-            The assistant's text content.
-        """
+        """Send ``messages`` to ``model`` via ``litellm`` and return text."""
         import litellm
 
+        if "timeout" not in kw:
+            kw["timeout"] = self.timeout_seconds
         response = litellm.completion(model=model, messages=messages, **kw)
-        return _extract_content(response)
+        return extract_content(response)
 
 
 @dataclass
-class VLLMBackend:
+class VLLMBackend(Backend):
     """In-process vLLM backend.
 
-    The :class:`vllm.LLM` engine is constructed lazily on first use per
-    ``model`` id and cached; vLLM model loading is slow (GPU weight
-    load), so re-using the engine across calls is the normal pattern.
+    The :class:`vllm.LLM` engine is constructed lazily on first use
+    per ``model`` id and cached; vLLM model loading is slow (GPU
+    weight load), so re-using the engine across calls is the normal
+    pattern.
+
+    Construction is serialised under ``engine_lock`` so two threads
+    sharing one backend call for a new model only spawn a single
+    ``vllm.LLM`` instance.
 
     Note:
-        Requires the ``vllm`` package (``pip install ceng[vllm]``) and a
-        CUDA-capable machine.
+        Requires the ``vllm`` package (``pip install ceng[vllm]``)
+        and a CUDA-capable machine.
     """
 
     name: str = "vllm"
-    # ponytail: one engine per model; vllm.LLM build is expensive (loads GPU weights)
-    engines: dict[str, Any] = None
-
-    def __post_init__(self) -> None:
-        if self.engines is None:
-            self.engines = {}
+    engines: dict[str, Any] = field(default_factory=dict)
+    engine_lock: threading.Lock = field(default_factory=threading.Lock)
 
     def complete(self, messages: list[dict], model: str, **kw: Any) -> str:
         """Send ``messages`` to a local :class:`vllm.LLM` and return text."""
         import vllm
-
         from vllm import SamplingParams
 
         engine = self.engines.get(model)
         if engine is None:
-            engine = vllm.LLM(model=model)
-            self.engines[model] = engine
-        prompt = _messages_to_prompt(messages)
-        params = SamplingParams(**_sampling_kwargs(kw))
+            with self.engine_lock:
+                engine = self.engines.get(model)
+                if engine is None:
+                    engine = vllm.LLM(model=model)
+                    self.engines[model] = engine
+        prompt = messages_to_prompt(messages)
+        params = SamplingParams(**sampling_kwargs(kw))
         outputs = engine.generate([prompt], params)
         return outputs[0].outputs[0].text
 
 
 @dataclass
-class OpenAIBackend:
+class OpenAIBackend(Backend):
     """Raw ``openai.OpenAI`` client backend."""
 
     name: str = "openai"
-    client: Any = None
+    timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
+    client: Any = field(default=None, init=False)
 
-    def __post_init__(self) -> None:
+    def complete(self, messages: list[dict], model: str, **kw: Any) -> str:
+        """Call ``client.chat.completions.create`` and return text.
+
+        The ``openai.OpenAI`` client is constructed lazily on first
+        use so importing :mod:`ceng.backends` never touches the
+        ``openai`` package or its credentials.
+        """
         if self.client is None:
             from openai import OpenAI
 
             self.client = OpenAI()
-
-    def complete(self, messages: list[dict], model: str, **kw: Any) -> str:
-        """Call ``client.chat.completions.create`` and return text."""
+        kw.setdefault("timeout", self.timeout_seconds)
         response = self.client.chat.completions.create(
             model=model,
             messages=messages,
@@ -154,7 +155,7 @@ def get_backend() -> Backend:
     global _active_backend
     with _active_lock:
         if _active_backend is None:
-            _active_backend = _resolve_backend(None)
+            _active_backend = resolve_backend(None)
         return _active_backend
 
 
@@ -175,7 +176,7 @@ def set_backend(name: str, **init_kw: Any) -> Backend:
     global _active_backend
     chosen = name or os.environ.get(ENV_BACKEND) or DEFAULT_BACKEND
     with _active_lock:
-        backend = _resolve_backend(chosen, **init_kw)
+        backend = resolve_backend(chosen, **init_kw)
         _active_backend = backend
         return backend
 
@@ -187,7 +188,7 @@ def reset_backend() -> None:
         _active_backend = None
 
 
-def _resolve_backend(name: Optional[str], **init_kw: Any) -> Backend:
+def resolve_backend(name: Optional[str], **init_kw: Any) -> Backend:
     """Construct a backend by name; ``None`` means default."""
     chosen = name or os.environ.get(ENV_BACKEND) or DEFAULT_BACKEND
     if chosen not in _BACKEND_REGISTRY:
@@ -197,24 +198,19 @@ def _resolve_backend(name: Optional[str], **init_kw: Any) -> Backend:
     return _BACKEND_REGISTRY[chosen](**init_kw)
 
 
-def _extract_content(response: Any) -> str:
+def extract_content(response: Any) -> str:
     """Pull ``choices[0].message.content`` out of an OpenAI-shaped response."""
     try:
         return response.choices[0].message.content
     except (AttributeError, IndexError, KeyError) as exc:
+        # Truncate so user PII in a response body can't leak into logs.
         raise RuntimeError(
-            f"could not extract text from LLM response: {response!r}"
+            f"could not extract text from LLM response: {str(response)[:200]!r}"
         ) from exc
 
 
-def _messages_to_prompt(messages: list[dict]) -> str:
-    """Render a messages list to a single string for chat-tuned vLLM models.
-
-    vLLM's ``LLM.chat`` API exists, but the synchronous ``LLM.generate``
-    path is the most widely used across versions; this helper formats
-    messages in a conservative templateless way that works for any
-    base model.
-    """
+def messages_to_prompt(messages: list[dict]) -> str:
+    """Render a messages list to a single string for chat-tuned vLLM models."""
     parts = []
     for m in messages:
         role = m.get("role", "user")
@@ -228,11 +224,10 @@ def _messages_to_prompt(messages: list[dict]) -> str:
     return "\n".join(parts)
 
 
-def _sampling_kwargs(kw: dict[str, Any]) -> dict[str, Any]:
-    """Translate OpenAI-style kwargs to vLLM :class:`SamplingParams` fields."""
-    mapping = {"temperature": "temperature", "max_tokens": "max_tokens", "top_p": "top_p", "stop": "stop"}
+def sampling_kwargs(kw: dict[str, Any]) -> dict[str, Any]:
+    """Translate OpenAI-style kwargs to vLLM SamplingParams fields."""
     out: dict[str, Any] = {}
-    for src, dst in mapping.items():
-        if src in kw:
-            out[dst] = kw[src]
+    for key in ("temperature", "max_tokens", "top_p", "stop"):
+        if key in kw:
+            out[key] = kw[key]
     return out

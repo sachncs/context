@@ -213,7 +213,7 @@ def test_vllm_messages_to_prompt_renders_roles():
         {"role": "system", "content": "be brief"},
         {"role": "user", "content": "hi"},
     ]
-    prompt = __import__("ceng.backends", fromlist=["_messages_to_prompt"])._messages_to_prompt(msgs)
+    prompt = __import__("ceng.backends", fromlist=["messages_to_prompt"]).messages_to_prompt(msgs)
     assert prompt.startswith("system: be brief")
     assert "user: hi" in prompt
     assert prompt.endswith("assistant:")
@@ -221,8 +221,138 @@ def test_vllm_messages_to_prompt_renders_roles():
 
 def test_vllm_messages_to_prompt_handles_content_list():
     msgs = [{"role": "user", "content": [{"text": "part1"}, {"text": "part2"}]}]
-    prompt = __import__("ceng.backends", fromlist=["_messages_to_prompt"])._messages_to_prompt(msgs)
+    prompt = __import__("ceng.backends", fromlist=["messages_to_prompt"]).messages_to_prompt(msgs)
     assert "part1part2" in prompt
+
+
+# --- v0.3.0 hardening additions ---
+
+
+def test_litellm_backend_sets_default_timeout(monkeypatch):
+    """A 60s timeout is added to every litellm call unless the caller passed one."""
+    captured = {}
+    from ceng.backends import LiteLLMBackend
+
+    fake = ModuleType("litellm")
+
+    def completion(**kwargs):
+        captured["kwargs"] = kwargs
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))])
+
+    fake.completion = completion
+    monkeypatch.setitem(sys.modules, "litellm", fake)
+
+    backend = LiteLLMBackend()
+    backend.complete(messages=[{"role": "user", "content": "hi"}], model="m")
+    assert captured["kwargs"]["timeout"] == 60.0
+
+
+def test_litellm_backend_respects_caller_timeout(monkeypatch):
+    captured = {}
+    from ceng.backends import LiteLLMBackend
+
+    fake = ModuleType("litellm")
+
+    def completion(**kwargs):
+        captured["kwargs"] = kwargs
+        return SimpleNamespace(choices=[SimpleNamespace(message=SimpleNamespace(content="ok"))])
+
+    fake.completion = completion
+    monkeypatch.setitem(sys.modules, "litellm", fake)
+
+    backend = LiteLLMBackend()
+    backend.complete(
+        messages=[{"role": "user", "content": "hi"}],
+        model="m",
+        timeout=12.5,
+    )
+    assert captured["kwargs"]["timeout"] == 12.5
+
+
+def test_vllm_backend_engine_creation_is_serialised(monkeypatch):
+    """Two threads calling complete() for the same fresh model must
+    only build one vllm.LLM."""
+    import threading
+    from ceng.backends import VLLMBackend
+
+    constructed = []
+    construction_started = threading.Event()
+    construction_release = threading.Event()
+
+    class FakeLLM:
+        def __init__(self, model):
+            constructed.append(model)
+            construction_started.set()
+            construction_release.wait(timeout=2)
+
+        def generate(self, prompts, params):
+            return [SimpleNamespace(outputs=[SimpleNamespace(text="ok")])]
+
+    class FakeSamplingParams:
+        def __init__(self, **kw):
+            pass
+
+    fake = ModuleType("vllm")
+    fake.LLM = FakeLLM
+    fake.SamplingParams = FakeSamplingParams
+    monkeypatch.setitem(sys.modules, "vllm", fake)
+
+    backend = VLLMBackend()
+
+    def worker():
+        backend.complete(messages=[{"role": "user", "content": "x"}], model="m")
+
+    t1 = threading.Thread(target=worker)
+    t1.start()
+    construction_started.wait(timeout=2)
+    t2 = threading.Thread(target=worker)
+    t2.start()
+    t2.join(timeout=2)
+    construction_release.set()
+    t1.join(timeout=2)
+    assert len(constructed) == 1
+
+
+def test_openai_backend_lazily_constructs_client(monkeypatch):
+    """Constructing OpenAIBackend() must not import openai or read env vars."""
+    from ceng.backends import OpenAIBackend
+
+    sentinel = object()
+
+    def fail_import(name, *args, **kwargs):
+        if name == "openai":
+            raise ImportError("openai must not be imported at construction time")
+        return __import__(name, *args, **kwargs)
+
+    # Remove a preloaded openai if any
+    monkeypatch.delitem(sys.modules, "openai", raising=False)
+    # Block fresh openai imports
+    class Blocker:
+        def find_module(self, name, path=None):
+            return self if name == "openai" else None
+
+        def load_module(self, name):
+            raise ImportError("openai blocked")
+
+    sys.meta_path.insert(0, Blocker())
+    try:
+        OpenAIBackend()  # must not raise
+    finally:
+        sys.meta_path.pop(0)
+
+
+def test_backends_module_does_not_import_litellm_at_import():
+    """Importing ceng.backends must not import litellm."""
+    import importlib
+    import ceng.backends  # noqa: F401
+
+    # If litellm were eagerly imported we'd find it in sys.modules.
+    # Confirm lazy: force-delete any preloaded module, reimport backends,
+    # check.
+    if "litellm" in sys.modules:
+        del sys.modules["litellm"]
+    importlib.reload(ceng.backends)
+    assert "litellm" not in sys.modules
 
 
 # --- OpenAIBackend ---
