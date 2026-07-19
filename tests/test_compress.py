@@ -7,7 +7,7 @@ from dataclasses import dataclass
 
 import pytest
 
-from ceng.compress import compress_with_stats, ppa_compress
+from ceng.compress import compress_to_bundle, ppa_compress
 
 
 @dataclass
@@ -136,7 +136,7 @@ def test_multi_leaf_emits_one_summary_per_leaf_plus_combine(tmp_cache):
     ).strip()
     backend = FakeBackend(combine_response="combined-final")
     messages = [{"role": "user", "content": long_text}]
-    stats = compress_with_stats(
+    stats = compress_to_bundle(
         messages,
         budget_tokens=20,
         llm="m",
@@ -153,7 +153,7 @@ def test_multi_leaf_emits_one_summary_per_leaf_plus_combine(tmp_cache):
 def test_multi_leaf_combine_call_is_the_last_call(tmp_cache):
     long_text = ("Alpha sentence. Beta sentence. Gamma sentence. " * 30).strip()
     backend = FakeBackend(combine_response="all-three")
-    compress_with_stats(
+    compress_to_bundle(
         [{"role": "user", "content": long_text}],
         budget_tokens=20,
         llm="m",
@@ -174,7 +174,7 @@ def test_repeated_call_hits_cache(tmp_cache):
     long_text = ("Repeatable sentence. " * 50).strip()
     backend = FakeBackend(combine_response="combined")
     messages = [{"role": "user", "content": long_text}]
-    compress_with_stats(
+    compress_to_bundle(
         messages,
         budget_tokens=20,
         llm="m",
@@ -185,7 +185,7 @@ def test_repeated_call_hits_cache(tmp_cache):
     )
     calls_first = len(backend.calls)
     backend.calls = []
-    stats = compress_with_stats(
+    stats = compress_to_bundle(
         messages,
         budget_tokens=20,
         llm="m",
@@ -201,7 +201,7 @@ def test_repeated_call_hits_cache(tmp_cache):
 def test_cache_misses_counted_correctly(tmp_cache):
     long_text = " ".join(f"Unique fact {i}." for i in range(200))
     backend = FakeBackend(combine_response="final")
-    stats = compress_with_stats(
+    stats = compress_to_bundle(
         [{"role": "user", "content": long_text}],
         budget_tokens=20,
         llm="m",
@@ -220,7 +220,7 @@ def test_cache_misses_counted_correctly(tmp_cache):
 def test_call_kw_are_forwarded(tmp_cache):
     long_text = ("Sentence. " * 100).strip()
     backend = FakeBackend(combine_response="x")
-    compress_with_stats(
+    compress_to_bundle(
         [{"role": "user", "content": long_text}],
         budget_tokens=20,
         llm="m",

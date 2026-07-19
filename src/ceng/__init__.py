@@ -38,11 +38,11 @@ from ceng.cache import (
 )
 from ceng.check import LeafEstimate, Verdict, ppa_check
 from ceng.compress import (
-    CompressResult,
+    CompressError,
     CompressionBundle,
     LeafArtifact,
+    MAX_LEAVES,
     compress_to_bundle,
-    compress_with_stats,
     ppa_compress,
     ppa_compress_to_okf,
 )
@@ -90,10 +90,10 @@ __all__ = [
     "LeafEstimate",
     "ppa_check",
     # compression
-    "CompressResult",
+    "CompressError",
     "CompressionBundle",
     "LeafArtifact",
-    "compress_with_stats",
+    "MAX_LEAVES",
     "compress_to_bundle",
     "ppa_compress",
     "ppa_compress_to_okf",
