@@ -255,9 +255,16 @@ def parse_concept(text: str, path: Optional[Path] = None) -> Concept:
 
 
 def read_concept_file(path: str | Path) -> Concept:
-    """Read one OKF concept from disk."""
+    """Read one OKF concept from disk.
+
+    Raises :class:`ValueError` with the offending file path if the
+    file is not valid UTF-8.
+    """
     p = Path(path)
-    text = p.read_text(encoding="utf-8-sig")
+    try:
+        text = p.read_text(encoding="utf-8-sig")
+    except UnicodeDecodeError as exc:
+        raise ValueError(f"{p}: not valid UTF-8 ({exc})") from exc
     return parse_concept(text, path=p)
 
 
@@ -309,18 +316,32 @@ def read_bundle(directory: str | Path) -> list[Concept]:
     Each returned :class:`Concept` carries its bundle-relative
     ``path`` (forward-slash form), so :func:`find_concept` and
     cross-link lookups behave the same way as for hand-built bundles.
+
+    Symlinks whose target resolves outside the bundle root are
+    refused with :class:`ValueError` so an attacker cannot read
+    arbitrary files by planting a symlink in the bundle.
     """
     root = Path(directory)
     if not root.exists():
         return []
+    abs_root = root.resolve()
     abs_paths = sorted(
         (p for p in root.rglob("*.md") if p.is_file()),
         key=lambda p: p.relative_to(root).as_posix(),
     )
     out: list[Concept] = []
     for abs_path in abs_paths:
+        try:
+            abs_path.resolve().relative_to(abs_root)
+        except ValueError as exc:
+            raise ValueError(
+                f"symlink target escapes bundle: {abs_path}"
+            ) from exc
         rel = abs_path.relative_to(root).as_posix()
-        text = abs_path.read_text(encoding="utf-8")
+        try:
+            text = abs_path.read_text(encoding="utf-8-sig")
+        except UnicodeDecodeError as exc:
+            raise ValueError(f"{abs_path}: not valid UTF-8 ({exc})") from exc
         out.append(parse_concept(text, path=Path(rel)))
     return out
 

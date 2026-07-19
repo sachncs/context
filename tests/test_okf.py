@@ -455,6 +455,42 @@ def test_cross_links_preserves_order_and_dedup_not_required():
     assert cross_links(body) == ["a.md", "a.md", "b.md"]  # dedup is caller's job
 
 
+# --- read_bundle safety + encoding errors ---
+
+
+def test_read_bundle_rejects_symlink_escaping_root(tmp_path):
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    (bundle / "good.md").write_text("---\ntype: x\n---\n\n", encoding="utf-8")
+    outside = tmp_path / "outside.md"
+    outside.write_text(
+        "---\ntype: x\n---\n\nSECRET\n", encoding="utf-8"
+    )
+    try:
+        (bundle / "bad.md").symlink_to(outside)
+    except (OSError, NotImplementedError):
+        pytest.skip("symlinks not supported on this platform")
+    with pytest.raises(ValueError, match="symlink target escapes"):
+        read_bundle(bundle)
+
+
+def test_read_bundle_raises_with_file_context_on_bad_encoding(tmp_path):
+    bundle = tmp_path / "bundle"
+    bundle.mkdir()
+    bad = bundle / "bad.md"
+    # Write Latin-1 bytes that aren't valid UTF-8.
+    bad.write_bytes(b"---\ntype: x\n---\n\n\xff\xfe\xfd\n")
+    with pytest.raises(ValueError, match="not valid UTF-8"):
+        read_bundle(bundle)
+
+
+def test_read_concept_file_raises_with_path_on_bad_encoding(tmp_path):
+    bad = tmp_path / "bad.md"
+    bad.write_bytes(b"not utf-8: \xff\xff\n")
+    with pytest.raises(ValueError, match="not valid UTF-8"):
+        read_concept_file(bad)
+
+
 def test_ceng_concept_types_are_namespaced():
     assert CENG_LEAF_SUMMARY.startswith("ceng/")
     assert CENG_COMBINED_SUMMARY.startswith("ceng/")
