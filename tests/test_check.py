@@ -7,8 +7,8 @@ from dataclasses import dataclass
 import pytest
 
 from ceng.check import (
-    _parse_probability,
-    _validate_tree,
+    parse_probability,
+    validate_tree,
     ppa_check,
 )
 
@@ -42,63 +42,63 @@ def tmp_cache(tmp_path):
 # --- probability parsing ---
 
 
-def test_parse_probability_extracts_decimal():
-    assert _parse_probability("0.42") == 0.42
+def testparse_probability_extracts_decimal():
+    assert parse_probability("0.42") == 0.42
 
 
-def test_parse_probability_extracts_integer_in_range():
-    assert _parse_probability("answer: 0") == 0.0
-    assert _parse_probability("answer: 1") == 1.0
+def testparse_probability_extracts_integer_in_range():
+    assert parse_probability("answer: 0") == 0.0
+    assert parse_probability("answer: 1") == 1.0
 
 
-def test_parse_probability_extracts_from_prose():
-    assert _parse_probability("I think the answer is around 0.73.") == 0.73
+def testparse_probability_extracts_from_prose():
+    assert parse_probability("I think the answer is around 0.73.") == 0.73
 
 
-def test_parse_probability_clamps_outside_range():
-    assert _parse_probability("1.5") == 1.0
-    assert _parse_probability("-0.2") == 0.0
+def testparse_probability_clamps_outside_range():
+    assert parse_probability("1.5") == 1.0
+    assert parse_probability("-0.2") == 0.0
 
 
-def test_parse_probability_raises_on_no_number():
+def testparse_probability_raises_on_no_number():
     with pytest.raises(ValueError, match="could not parse"):
-        _parse_probability("no number here")
+        parse_probability("no number here")
 
 
-def test_parse_probability_raises_on_none():
+def testparse_probability_raises_on_none():
     with pytest.raises(ValueError, match="no content"):
-        _parse_probability(None)
+        parse_probability(None)
 
 
 # --- tree validation ---
 
 
-def test_validate_tree_accepts_leaf():
-    parsed = _validate_tree([{"description": "all"}])
+def testvalidate_tree_accepts_leaf():
+    parsed = validate_tree([{"description": "all"}])
     assert len(parsed) == 1
     assert parsed[0].description == "all"
     assert parsed[0].prior == 1.0
     assert parsed[0].children == []
 
 
-def test_validate_tree_rejects_empty_description():
+def testvalidate_tree_rejects_empty_description():
     with pytest.raises(ValueError, match="description"):
-        _validate_tree([{"description": ""}])
+        validate_tree([{"description": ""}])
 
 
-def test_validate_tree_rejects_missing_description():
+def testvalidate_tree_rejects_missing_description():
     with pytest.raises(ValueError, match="description"):
-        _validate_tree([{}])
+        validate_tree([{}])
 
 
-def test_validate_tree_rejects_out_of_range_prior():
+def testvalidate_tree_rejects_out_of_range_prior():
     with pytest.raises(ValueError, match="prior"):
-        _validate_tree([{"description": "x", "prior": 1.5}])
+        validate_tree([{"description": "x", "prior": 1.5}])
 
 
-def test_validate_tree_rejects_children_summing_to_more_than_one():
+def testvalidate_tree_rejects_children_summing_to_more_than_one():
     with pytest.raises(ValueError, match="sum to"):
-        _validate_tree(
+        validate_tree(
             [
                 {
                     "description": "all",
@@ -111,8 +111,8 @@ def test_validate_tree_rejects_children_summing_to_more_than_one():
         )
 
 
-def test_validate_tree_accepts_nested():
-    parsed = _validate_tree(
+def testvalidate_tree_accepts_nested():
+    parsed = validate_tree(
         [
             {
                 "description": "root",
