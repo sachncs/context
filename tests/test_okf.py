@@ -491,6 +491,81 @@ def test_read_concept_file_raises_with_path_on_bad_encoding(tmp_path):
         read_concept_file(bad)
 
 
+# --- atomic bundle writes ---
+
+
+def test_write_bundle_is_atomic_no_partial_writes(tmp_path):
+    """If a concept fails to write, the destination is untouched."""
+    target = tmp_path / "existing-bundle"
+    target.mkdir()
+    (target / "kept.md").write_text("ORIGINAL", encoding="utf-8")
+
+    written_well = Concept(
+        frontmatter=Frontmatter(type="x", title="good"),
+        body="ok",
+        path="good.md",
+    )
+    bad = Concept(
+        frontmatter=Frontmatter(type="x"),
+        body="content",
+        path="has-zero-byte\x00in-name.md",  # NUL byte → os.remove rejects
+    )
+
+    with pytest.raises(ValueError):
+        write_bundle(target, [written_well, bad])
+
+    # Existing bundle content is intact.
+    assert (target / "kept.md").read_text(encoding="utf-8") == "ORIGINAL"
+    assert not (target / "good.md").exists()
+
+
+def test_write_bundle_creates_staging_and_swaps(tmp_path):
+    """A successful write atomically swaps a fresh staging dir."""
+    target = tmp_path / "new-bundle"
+    concepts = [
+        Concept(frontmatter=Frontmatter(type="x"), body="a", path="a.md"),
+        Concept(frontmatter=Frontmatter(type="x"), body="b", path="sub/b.md"),
+    ]
+    paths = write_bundle(target, concepts)
+    assert len(paths) == 2
+    assert all(p.exists() for p in paths)
+
+
+def test_write_bundle_cleans_staging_on_failure(tmp_path):
+    """Failed writes remove the staging directory so no .staging- dirs are left behind."""
+    target = tmp_path / "fail-bundle"
+    bad = Concept(
+        frontmatter=Frontmatter(type="x"),
+        path="bad\x00.md",  # NUL byte
+    )
+    with pytest.raises(ValueError):
+        write_bundle(target, [bad])
+    # No leftover staging dirs in the parent.
+    leftovers = [
+        p for p in tmp_path.iterdir() if ".staging-" in p.name
+    ]
+    assert leftovers == []
+
+
+def test_write_bundle_swaps_over_existing_dir(tmp_path):
+    """Writing into an existing bundle directory replaces its contents atomically."""
+    target = tmp_path / "swap-bundle"
+    target.mkdir()
+    (target / "old.md").write_text("OLD", encoding="utf-8")
+
+    new_concept = Concept(
+        frontmatter=Frontmatter(type="x"),
+        body="NEW",
+        path="new.md",
+    )
+    write_bundle(target, [new_concept])
+    assert not (target / "old.md").exists()
+    assert (target / "new.md").exists()
+    written = (target / "new.md").read_text(encoding="utf-8")
+    assert "type: x" in written
+    assert "NEW" in written
+
+
 def test_ceng_concept_types_are_namespaced():
     assert CENG_LEAF_SUMMARY.startswith("ceng/")
     assert CENG_COMBINED_SUMMARY.startswith("ceng/")

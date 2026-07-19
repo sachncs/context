@@ -278,6 +278,12 @@ def write_concept_file(path: str | Path, concept: Concept) -> None:
 def write_bundle(directory: str | Path, concepts: Iterable[Concept]) -> list[Path]:
     """Write an OKF bundle to ``directory``. One ``.md`` per concept.
 
+    Writes happen to a sibling staging directory first, then the
+    staging directory is renamed to ``directory`` so a crash mid-
+    write never leaves a partially-written bundle visible to
+    readers (POSIX rename is atomic; on Windows the operation is
+    best-effort).
+
     Args:
         directory: Destination directory. Created on demand.
         concepts: Iterable of :class:`Concept`. Every concept must
@@ -291,22 +297,36 @@ def write_bundle(directory: str | Path, concepts: Iterable[Concept]) -> list[Pat
             unsafe (absolute, escapes the bundle, wrong suffix, or
             duplicated).
     """
+    import shutil
+    import tempfile
+
     root = Path(directory).resolve()
     root.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=root.name + ".staging-", dir=str(root.parent)))
     written: list[Path] = []
     seen: set[Path] = set()
-    for concept in concepts:
-        if concept.path is None:
-            raise ValueError("every concept in a bundle must have a path set")
-        rel = validate_bundle_path(concept.path)
-        target = (root / rel).resolve()
-        if not target.is_relative_to(root):
-            raise ValueError(f"concept path escapes bundle root: {rel}")
-        if target in seen:
-            raise ValueError(f"duplicate concept path: {rel}")
-        seen.add(target)
-        write_concept_file(target, concept)
-        written.append(target)
+    try:
+        for concept in concepts:
+            if concept.path is None:
+                raise ValueError(
+                    "every concept in a bundle must have a path set"
+                )
+            rel = validate_bundle_path(concept.path)
+            target = (root / rel).resolve()
+            if not target.is_relative_to(root):
+                raise ValueError(f"concept path escapes bundle root: {rel}")
+            if target in seen:
+                raise ValueError(f"duplicate concept path: {rel}")
+            seen.add(target)
+            staging_target = staging / rel
+            write_concept_file(staging_target, concept)
+            written.append(target)
+        # All writes succeeded: atomic swap.
+        shutil.rmtree(root, ignore_errors=True)
+        staging.replace(root)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True)
+        raise
     return sorted(written)
 
 
