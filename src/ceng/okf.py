@@ -338,9 +338,20 @@ def find_concept(
     return None
 
 
-_MD_LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+\.md)\)")
+_MD_LINK_RE = re.compile(
+    r"(?<!!)\[[^\]]*\]\(([^)\s]+?\.md)(?:\s+\"[^\"]*\")?\)"
+)
 
 
 def cross_links(body: str) -> list[str]:
-    """Return bundle-relative ``.md`` cross-link targets in document order."""
-    return [match.group(1) for match in _MD_LINK_RE.finditer(body)]
+    """Return bundle-relative ``.md`` cross-link targets in document order.
+
+    External URLs and image syntax are filtered out.
+    """
+    out: list[str] = []
+    for match in _MD_LINK_RE.finditer(body):
+        target = match.group(1)
+        if "://" in target:
+            continue
+        out.append(target)
+    return out

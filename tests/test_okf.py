@@ -424,6 +424,37 @@ def test_keys_with_colons_rejected():
     assert d2["type"] == "x"
 
 
+# --- cross_links filters (added in v0.3.0) ---
+
+
+def test_cross_links_excludes_external_urls():
+    body = (
+        "See [internal](tables/orders.md) and "
+        "[external](https://example.com/foo.md)."
+    )
+    assert cross_links(body) == ["tables/orders.md"]
+
+
+def test_cross_links_excludes_image_markdown():
+    body = "![cover](images/cover.md)\n[doc](docs/index.md)"
+    assert cross_links(body) == ["docs/index.md"]
+
+
+def test_cross_links_strips_optional_title_attribute():
+    body = '[table](tables/orders.md "the orders table")'
+    assert cross_links(body) == ["tables/orders.md"]
+
+
+def test_cross_links_skips_anchor_only_targets():
+    body = "[self-link](#section) and [other](tables/x.md)"
+    assert cross_links(body) == ["tables/x.md"]
+
+
+def test_cross_links_preserves_order_and_dedup_not_required():
+    body = "[a](a.md) [a](a.md) [b](b.md)"
+    assert cross_links(body) == ["a.md", "a.md", "b.md"]  # dedup is caller's job
+
+
 def test_ceng_concept_types_are_namespaced():
     assert CENG_LEAF_SUMMARY.startswith("ceng/")
     assert CENG_COMBINED_SUMMARY.startswith("ceng/")
