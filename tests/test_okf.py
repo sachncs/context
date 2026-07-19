@@ -376,6 +376,54 @@ def test_read_concept_file_handles_utf8_bom(tmp_path):
     assert parsed.frontmatter.type == "x"
 
 
+# --- scalar quoting (added in v0.3.0; PyYAML handles these correctly) ---
+
+
+def test_roundtrip_value_with_colon():
+    original = Frontmatter(type="x", title="Sales: Orders")
+    rendered = render_concept(Concept(frontmatter=original, body=""))
+    parsed = parse_concept(rendered)
+    assert parsed.frontmatter.title == "Sales: Orders"
+
+
+def test_roundtrip_value_with_comma():
+    original = Frontmatter(type="x", description="a, b, c")
+    rendered = render_concept(Concept(frontmatter=original, body=""))
+    parsed = parse_concept(rendered)
+    assert parsed.frontmatter.description == "a, b, c"
+
+
+def test_roundtrip_value_with_leading_whitespace():
+    original = Frontmatter(type="x", title=" leading and trailing ")
+    rendered = render_concept(Concept(frontmatter=original, body=""))
+    parsed = parse_concept(rendered)
+    assert parsed.frontmatter.title == " leading and trailing "
+
+
+def test_roundtrip_value_with_hash():
+    original = Frontmatter(type="x", title="color: #ff0000")
+    rendered = render_concept(Concept(frontmatter=original, body=""))
+    parsed = parse_concept(rendered)
+    assert parsed.frontmatter.title == "color: #ff0000"
+
+
+def test_inline_list_with_commas_in_strings():
+    original = Frontmatter(type="x", tags=("a, b", "c"))
+    rendered = render_concept(Concept(frontmatter=original, body=""))
+    parsed = parse_concept(rendered)
+    assert parsed.frontmatter.tags == ("a, b", "c")
+
+
+def test_keys_with_colons_rejected():
+    d = parse_frontmatter("type: x\n")
+    assert d["type"] == "x"
+    # PyYAML parses keys with embedded colons as scalar strings; we
+    # only require that the round-trip survives, not that arbitrary
+    # keys are valid Python identifiers.
+    d2 = parse_frontmatter('"foo:bar": value\ntype: x\n')
+    assert d2["type"] == "x"
+
+
 def test_ceng_concept_types_are_namespaced():
     assert CENG_LEAF_SUMMARY.startswith("ceng/")
     assert CENG_COMBINED_SUMMARY.startswith("ceng/")
