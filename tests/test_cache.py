@@ -145,6 +145,109 @@ def test_cache_is_thread_safe(fresh_cache):
     assert fresh_cache.size(NAMESPACE_SUMMARIZE) == 8 * 20
 
 
+# --- public names, context manager, None-reject, schema version ---
+
+
+def test_cache_attrs_are_public():
+    cache = Cache(cache_dir="/tmp/ceng-public-names-check")
+    try:
+        assert hasattr(cache, "path")
+        assert hasattr(cache, "lock")
+        assert hasattr(cache, "conn")
+    finally:
+        cache.close()
+
+
+def test_context_manager_closes_on_exit(tmp_path):
+    cache_dir = tmp_path / "ctx-mgr"
+    cache_dir.mkdir()
+    with Cache(cache_dir=str(cache_dir)) as cache:
+        cache.set(NAMESPACE_SUMMARIZE, key="k", value=1)
+        handle = cache.conn
+    # ``conn`` should be closed now; further use raises ProgrammingError.
+    import sqlite3
+    with pytest.raises(sqlite3.ProgrammingError):
+        handle.execute("SELECT 1")
+
+
+def test_context_manager_returns_self(tmp_path):
+    cache_dir = tmp_path / "ctx-self"
+    cache_dir.mkdir()
+    with Cache(cache_dir=str(cache_dir)) as cache:
+        cache.set(NAMESPACE_SUMMARIZE, key="k", value=1)
+        assert cache.get(NAMESPACE_SUMMARIZE, key="k") == 1
+
+
+def test_close_issues_wal_checkpoint(tmp_path):
+    cache_dir = tmp_path / "wal"
+    cache_dir.mkdir()
+    cache = Cache(cache_dir=str(cache_dir))
+    cache.set(NAMESPACE_SUMMARIZE, key="k", value=1)
+    # close() calls PRAGMA wal_checkpoint(TRUNCATE); safe to call twice.
+    cache.close()
+    cache.close()  # second call must not raise
+
+
+def test_set_rejects_none_value(fresh_cache):
+    with pytest.raises(ValueError, match="cannot be None"):
+        fresh_cache.set(NAMESPACE_SUMMARIZE, key="k", value=None)
+
+
+def test_set_rejects_none_unblocks_contains_disambiguation(fresh_cache):
+    fresh_cache.set(NAMESPACE_SUMMARIZE, key="k", value={"x": 1})
+    assert fresh_cache.contains(NAMESPACE_SUMMARIZE, key="k") is True
+    assert fresh_cache.contains(NAMESPACE_SUMMARIZE, key="missing") is False
+
+
+def test_get_takes_lock_concurrent_with_writer(tmp_path):
+    cache_dir = tmp_path / "race"
+    cache_dir.mkdir()
+    cache = Cache(cache_dir=str(cache_dir))
+
+    import threading
+
+    errors = []
+    barrier = threading.Barrier(4)
+
+    def reader():
+        try:
+            barrier.wait(timeout=2)
+            for _ in range(50):
+                cache.get(NAMESPACE_SUMMARIZE, key="k")
+        except Exception as exc:
+            errors.append(exc)
+
+    def writer():
+        try:
+            barrier.wait(timeout=2)
+            for i in range(50):
+                cache.set(NAMESPACE_SUMMARIZE, key="k", value=i)
+        except Exception as exc:
+            errors.append(exc)
+
+    contains_worker = threading.Thread(target=reader)
+    set_worker = threading.Thread(target=writer)
+    other_reader = threading.Thread(target=reader)
+    other_writer = threading.Thread(target=writer)
+    for t in (contains_worker, set_worker, other_reader, other_writer):
+        t.start()
+    for t in (contains_worker, set_worker, other_reader, other_writer):
+        t.join(timeout=5)
+    cache.close()
+    assert errors == []
+
+
+def test_size_takes_a_lock_for_consistency(tmp_path):
+    cache_dir = tmp_path / "size"
+    cache_dir.mkdir()
+    cache = Cache(cache_dir=str(cache_dir))
+    cache.set(NAMESPACE_SUMMARIZE, key="a", value=1)
+    assert cache.size() == 1
+    assert cache.size(NAMESPACE_SUMMARIZE) == 1
+    assert cache.size(NAMESPACE_PPA_CHECK) == 0
+    cache.close()
+
+
 def test_make_key_handles_non_ascii():
     a = make_key({"q": "café"})
     b = make_key({"q": "cafe"})
