@@ -29,7 +29,6 @@ from ceng.playbook.prompts import (
     build_generator_messages,
     build_reflector_messages,
 )
-from ceng.tokens import count_tokens
 
 
 @dataclass
@@ -76,9 +75,9 @@ class Evolver:
 
     def __post_init__(self) -> None:
         if self.backend is None:
-            from ceng.backends import get_backend
+            from ceng.backends import get_backend as resolve_backend  # noqa: F401
 
-            self.backend = get_backend()
+            self.backend = resolve_backend()
 
     def run(
         self,
@@ -109,8 +108,6 @@ class Evolver:
             (evolved ``Playbook``, list of per-step stats). The
             ``stats[-1]`` element summarises the final iteration.
         """
-        from ceng.backends import get_backend
-
         pb = playbook if playbook is not None else empty_playbook()
         queries = list(queries)
         cache = Cache(cache_dir=self.cache_dir) if self.cache_dir else None
@@ -171,7 +168,6 @@ class Evolver:
             messages=generator_msgs,
             cache=cache,
         )
-        gen_cache_miss = not gen_cache_hit
         parsed_gen = _extract_json(gen_text, {"reasoning": "", "bullet_ids": [], "final_answer": ""})
         bullets_used_ids = parsed_gen.get("bullet_ids") or []
         answer = parsed_gen.get("final_answer", "") or ""
@@ -188,9 +184,14 @@ class Evolver:
 
         rounds_used = 0
         reflection_text = ""
-        if self.config.use_ground_truth and ground_truth is not None:
+        # Reflector runs only on FAILED samples — the paper finds
+        # reflection on successful answers contributes nothing useful
+        # because there is no error to introspect. We still update
+        # bullet counts (helpful++) if the Reflector tags a bullet the
+        # Generator used and the answer was correct.
+        if self.config.use_ground_truth and ground_truth is not None and answer != ground_truth:
             current_answer = answer
-            current_feedback = env_feedback
+            current_feedback = env_feedback or f"model answer was {answer!r}; expected {ground_truth!r}"
             for r in range(self.config.max_reflector_rounds):
                 rounds_used += 1
                 stats.backend_call_count += 1
@@ -272,48 +273,53 @@ class Evolver:
 
         stats.reflector_rounds_used = rounds_used
 
-        if reflection_text:
-            stats.backend_call_count += 1
-            curator_msgs = build_curator_messages(
-                token_budget=self.config.playbook_token_budget,
-                current_step=step,
-                total_samples=total_steps,
-                playbook_stats=_render_playbook_stats(pb),
-                recent_reflection=reflection_text,
-                current_playbook=render_playbook(pb),
-                question_context=context or question,
-                use_ground_truth=self.config.use_ground_truth,
-            )
-            cur_text, cur_hit = self._call_with_cache(
-                namespace=NAMESPACE_SUMMARIZE,
-                key=make_key(
-                    {
-                        "op": "playbook_curate",
-                        "model": self.llm,
-                        "iter": iteration,
-                        "step": step,
-                        "reflection_sha256": _sha256(reflection_text),
-                    }
-                ),
-                messages=curator_msgs,
-                cache=cache,
-            )
-            if cur_hit:
-                stats.cache_hits += 1
-            else:
-                stats.cache_misses += 1
-            parsed_cur = _extract_json(
-                cur_text, {"reasoning": "", "operations": []}
-            )
-            new_bullets = _bullets_from_curator_operations(parsed_cur.get("operations") or [])
-            stats.last_curated_excerpt = "; ".join(
-                f"{b.section}:{b.id}" for b in new_bullets[:3]
-            )
-            before = len(pb.bullets)
-            pb.merge(
-                new_bullets, dedup_threshold=self.config.dedup_threshold
-            )
-            bullets_added_this_step = len(pb.bullets) - before
+        # Curator runs every step (not gated on whether the model was
+        # wrong) per upstream ACE. On a correct sample we still pass
+        # the empty reflection and let the Curator emit nothing — its
+        # MERGE step still tidies the playbook. This matches the
+        # paper's ``curator_frequency=1`` default.
+        stats.backend_call_count += 1
+        curator_reflection = reflection_text or "(model produced correct answer; no error to reflect on)"
+        curator_msgs = build_curator_messages(
+            token_budget=self.config.playbook_token_budget,
+            current_step=step,
+            total_samples=total_steps,
+            playbook_stats=_render_playbook_stats(pb),
+            recent_reflection=curator_reflection,
+            current_playbook=render_playbook(pb),
+            question_context=context or question,
+            use_ground_truth=self.config.use_ground_truth,
+        )
+        cur_text, cur_hit = self._call_with_cache(
+            namespace=NAMESPACE_SUMMARIZE,
+            key=make_key(
+                {
+                    "op": "playbook_curate",
+                    "model": self.llm,
+                    "iter": iteration,
+                    "step": step,
+                    "reflection_sha256": _sha256(curator_reflection),
+                }
+            ),
+            messages=curator_msgs,
+            cache=cache,
+        )
+        if cur_hit:
+            stats.cache_hits += 1
+        else:
+            stats.cache_misses += 1
+        parsed_cur = _extract_json(
+            cur_text, {"reasoning": "", "operations": []}
+        )
+        new_bullets = _bullets_from_curator_operations(parsed_cur.get("operations") or [])
+        stats.last_curated_excerpt = "; ".join(
+            f"{b.section}:{b.id}" for b in new_bullets[:3]
+        )
+        before = len(pb.bullets)
+        pb.merge(
+            new_bullets, dedup_threshold=self.config.dedup_threshold
+        )
+        bullets_added_this_step = len(pb.bullets) - before
 
         stats.bullets_added = bullets_added_this_step
         stats.bullets_dropped = bullets_dropped

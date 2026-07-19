@@ -5,8 +5,8 @@ ACE codebase (Stanford/SambaNova/UC Berkeley, MIT license) under
 ``ace/prompts/{generator,reflector,curator}.py``. Each has a no-GT
 variant for online learning without ground truth.
 
-Constants are Python f-string templates — the same ``{}`` substitutions
-the upstream uses. Variables are filled in order; do not reorder.
+Constants are Python format-string templates — the same ``{}`` substitutions
+the upstream uses. The builders below fill them positionally.
 
 Citation:
   Qizheng Zhang, Changran Hu, Shubhangi Upasani, et al.
@@ -294,8 +294,14 @@ Output ONLY a valid JSON object with these exact fields:
 """
 
 
-def build_generator_messages(playbook_text: str, reflection: str, question: str, context: str = "") -> list[dict]:
-    """Format messages for the Generator using the ACE prompt template."""
+def build_generator_messages(
+    playbook_text: str, reflection: str, question: str, context: str = ""
+) -> list[dict]:
+    """Format messages for the Generator using the ACE prompt template.
+
+    Positional ``.format`` substitution matching the upstream ``{}``
+    placeholders in the order they appear in GENERATOR_PROMPT.
+    """
     user = GENERATOR_PROMPT.format(playbook_text, reflection, question, context)
     return [{"role": "user", "content": user}]
 
@@ -310,24 +316,16 @@ def build_reflector_messages(
     bullets_used: str,
     use_ground_truth: bool,
 ) -> list[dict]:
-    """Format messages for the Reflector; chooses the GT vs no-GT prompt."""
+    """Format messages for the Reflector; picks the GT vs no-GT prompt."""
     env_fb = environment_feedback or ""
     if use_ground_truth and ground_truth is not None:
         user = REFLECTOR_PROMPT.format(
-            question=question,
-            reasoning_trace=reasoning_trace,
-            predicted_answer=predicted_answer,
-            ground_truth=ground_truth,
-            environment_feedback=env_fb,
-            bullets_used=bullets_used,
+            question, reasoning_trace, predicted_answer, ground_truth,
+            env_fb, bullets_used,
         )
     else:
         user = REFLECTOR_PROMPT_NO_GT.format(
-            question=question,
-            reasoning_trace=reasoning_trace,
-            predicted_answer=predicted_answer,
-            environment_feedback=env_fb,
-            bullets_used=bullets_used,
+            question, reasoning_trace, predicted_answer, env_fb, bullets_used,
         )
     return [{"role": "user", "content": user}]
 
@@ -343,25 +341,24 @@ def build_curator_messages(
     question_context: str,
     use_ground_truth: bool,
 ) -> list[dict]:
-    """Format messages for the Curator; chooses the GT vs no-GT prompt."""
+    """Format messages for the Curator; picks the GT vs no-GT prompt."""
+    """Format messages for the Curator; picks the GT vs no-GT prompt.
+
+    The Curator template uses named ``{token_budget}``,
+    ``{current_step}`` etc. placeholders (matches upstream ACE),
+    so ``.format(**kwargs)`` is used.
+    """
+    kwargs = {
+        "token_budget": token_budget,
+        "current_step": current_step,
+        "total_samples": total_samples,
+        "playbook_stats": playbook_stats,
+        "recent_reflection": recent_reflection,
+        "current_playbook": current_playbook,
+        "question_context": question_context,
+    }
     if use_ground_truth:
-        user = CURATOR_PROMPT.format(
-            token_budget=token_budget,
-            current_step=current_step,
-            total_samples=total_samples,
-            playbook_stats=playbook_stats,
-            recent_reflection=recent_reflection,
-            current_playbook=current_playbook,
-            question_context=question_context,
-        )
+        user = CURATOR_PROMPT.format(**kwargs)
     else:
-        user = CURATOR_PROMPT_NO_GT.format(
-            token_budget=token_budget,
-            current_step=current_step,
-            total_samples=total_samples,
-            playbook_stats=playbook_stats,
-            recent_reflection=recent_reflection,
-            current_playbook=current_playbook,
-            question_context=question_context,
-        )
+        user = CURATOR_PROMPT_NO_GT.format(**kwargs)
     return [{"role": "user", "content": user}]
