@@ -61,7 +61,7 @@ def test_short_circuit_writes_only_index(tmp_cache, tmp_path):
         llm="m",
         cache_dir=tmp_cache,
         backend=backend,
-    )
+    index_only=False, )
     assert len(backend.calls) == 0
     # exactly one concept, the index
     assert len(concepts) == 1
@@ -86,7 +86,7 @@ def test_single_leaf_path_writes_leaf_and_index(tmp_cache, tmp_path):
         backend=backend,
         summary_max_tokens=10,
         partition_max_tokens=500,
-    )
+    index_only=False, )
     paths = {c.path.as_posix() for c in concepts}
     # single leaf + index
     assert paths == {"leaf-0.md", RESERVED_INDEX}
@@ -110,7 +110,7 @@ def test_multi_leaf_writes_leaves_combined_and_index(tmp_cache, tmp_path):
         backend=backend,
         summary_max_tokens=10,
         partition_max_tokens=20,
-    )
+    index_only=False, )
     types = [c.frontmatter.type for c in concepts]
     leaf_count = sum(t == CENG_LEAF_SUMMARY for t in types)
     assert leaf_count >= 2
@@ -136,7 +136,7 @@ def test_okf_index_links_every_leaf(tmp_cache, tmp_path):
         backend=backend,
         summary_max_tokens=10,
         partition_max_tokens=20,
-    )
+    index_only=False, )
     bundle_root = bundle_root / "ppa-context"
     loaded = read_bundle(bundle_root)
     index = find_concept(loaded, RESERVED_INDEX)
@@ -160,7 +160,7 @@ def test_okf_leaves_have_dense_indices(tmp_cache, tmp_path):
         backend=backend,
         summary_max_tokens=10,
         partition_max_tokens=20,
-    )
+    index_only=False, )
     leaf_concepts = [
         c for c in concepts if c.frontmatter.type == CENG_LEAF_SUMMARY
     ]
@@ -187,7 +187,7 @@ def test_okf_bundle_written_files_round_trip(tmp_cache, tmp_path):
         backend=backend,
         summary_max_tokens=10,
         partition_max_tokens=20,
-    )
+    index_only=False, )
     # the function writes to bundle_dir/bundle_name; bundle_name subdir
     # must exist with the written files
     target = bundle_root / "mybundle"
@@ -217,7 +217,7 @@ def test_rejects_empty_bundle_name(tmp_cache, tmp_path):
             llm="m",
             cache_dir=tmp_cache,
             backend=backend,
-        )
+        index_only=False, )
 
 
 def test_rejects_path_separator_in_bundle_name(tmp_cache, tmp_path):
@@ -231,7 +231,7 @@ def test_rejects_path_separator_in_bundle_name(tmp_cache, tmp_path):
             llm="m",
             cache_dir=tmp_cache,
             backend=backend,
-        )
+        index_only=False, )
 
 
 def test_rejects_budget_tokens_zero(tmp_cache, tmp_path):
@@ -244,7 +244,7 @@ def test_rejects_budget_tokens_zero(tmp_cache, tmp_path):
             llm="m",
             cache_dir=tmp_cache,
             backend=backend,
-        )
+        index_only=False, )
 
 
 # --- leaf content reflects original chunk ---
@@ -263,7 +263,7 @@ def test_leaf_body_includes_original_chunk_text(tmp_cache, tmp_path):
         backend=backend,
         summary_max_tokens=10,
         partition_max_tokens=20,
-    )
+    index_only=False, )
     leaves = [c for c in concepts if c.frontmatter.type == CENG_LEAF_SUMMARY]
     # at least one leaf body should contain an "Original" heading
     assert any("Original" in c.body for c in leaves)
@@ -287,7 +287,7 @@ def test_cache_hit_marked_in_tags(tmp_cache, tmp_path):
         backend=backend,
         summary_max_tokens=10,
         partition_max_tokens=20,
-    )
+    index_only=False, )
     # second run — every leaf should now be a cache hit
     backend.calls = []
     backend.combine_response = "combined-final"
@@ -300,7 +300,7 @@ def test_cache_hit_marked_in_tags(tmp_cache, tmp_path):
         backend=backend,
         summary_max_tokens=10,
         partition_max_tokens=20,
-    )
+    index_only=False, )
     leaf_tags = [
         c.frontmatter.tags
         for c in concepts
@@ -327,6 +327,6 @@ def test_call_kw_are_forwarded_through_okf(tmp_cache, tmp_path):
         summary_max_tokens=10,
         partition_max_tokens=20,
         temperature=0.4,
-    )
+    index_only=False, )
     for call in backend.calls:
         assert call["kw"].get("temperature") == 0.4

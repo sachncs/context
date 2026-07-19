@@ -307,6 +307,7 @@ def ppa_compress_to_okf(
     tokenizer: Any = None,
     summary_max_tokens: Optional[int] = None,
     partition_max_tokens: Optional[int] = None,
+    index_only: bool = True,
     **call_kw: Any,
 ) -> list[Concept]:
     """Compress ``messages`` and persist the result as an OKF bundle.
@@ -316,9 +317,16 @@ def ppa_compress_to_okf(
     concept of type :data:`ceng.okf.CENG_COMBINED_SUMMARY`, and a
     top-level ``index.md`` of type
     :data:`ceng.okf.CENG_BUNDLE_INDEX` lists them all with
-    cross-links. When the input already fits the budget the call
-    short-circuits and writes only the bundle index pointing at the
-    original message.
+    cross-links.
+
+    When the input already fits the budget the call short-circuits
+    and writes only the bundle index pointing at the original message.
+
+    ``index_only=True`` (the default in v0.4.0+; Anthropic
+    just-in-time pattern) writes only the ``index.md`` and the
+    combined summary file. Per-leaf files are NOT materialised on
+    disk; consumers that want them use ``ceng.okf.read_concept_file``
+    after asking for one.
 
     Args:
         messages: OpenAI-style chat messages list.
@@ -333,6 +341,9 @@ def ppa_compress_to_okf(
         tokenizer: Optional ``tiktoken`` encoding.
         summary_max_tokens: Per-leaf summary target.
         partition_max_tokens: Per-leaf partition ceiling.
+        index_only: If True, only write ``index.md`` + ``combined.md``.
+            Set to False for the v0.3.0 behaviour where every leaf
+            is materialised.
         **call_kw: Forwarded to ``backend.complete`` for every call.
 
     Returns:
@@ -356,10 +367,13 @@ def ppa_compress_to_okf(
         **call_kw,
     )
     root = Path(bundle_dir) / bundle_name
-    concepts = build_bundle_concepts(bundle, bundle_name, tokenizer)
+    concepts = build_bundle_concepts(
+        bundle, bundle_name, tokenizer, index_only=index_only
+    )
     write_bundle(root, concepts)
     logger.info(
-        "wrote OKF bundle with %d concepts to %s", len(concepts), root
+        "wrote OKF bundle with %d concepts to %s (index_only=%s)",
+        len(concepts), root, index_only,
     )
     return concepts
 

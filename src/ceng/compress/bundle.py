@@ -27,7 +27,10 @@ if TYPE_CHECKING:
 
 
 def build_bundle_concepts(
-    bundle: "CompressionBundle", bundle_name: str, tokenizer=None
+    bundle: "CompressionBundle",
+    bundle_name: str,
+    tokenizer=None,
+    index_only: bool = False,
 ) -> list[Concept]:
     """Convert a :class:`CompressionBundle` into OKF concepts.
 
@@ -36,6 +39,12 @@ def build_bundle_concepts(
     combined summary concept (only when there's more than one
     leaf — a single-leaf bundle's leaf IS the combined summary so
     emitting a copy would be wasted bytes).
+
+    When ``index_only=True``, only the index plus the combined
+    summary are emitted; the per-leaf concepts are *not*
+    materialised. Callers that want them can use
+    :func:`ceng.playbook.evolver.run` (or any future rendering
+    pipeline) to render them on demand.
     """
     concepts: list[Concept] = []
 
@@ -44,6 +53,8 @@ def build_bundle_concepts(
         for leaf in bundle.leaves:
             path = f"leaf-{leaf.index}.md"
             leaf_links.append(f"[{path}]({path})")
+            if index_only:
+                continue
             concepts.append(
                 Concept(
                     frontmatter=Frontmatter(
