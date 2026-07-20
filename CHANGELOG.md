@@ -6,102 +6,109 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [Unreleased]
 
-## [0.3.0] - 2026-07-19
+## [0.4.0] - 2026-07-19
 
 ### Added
 
-- `ceng.compress` is now a package with separate `prompts.py`,
-  `bundle.py`, and `log.py` modules so each responsibility has
-  one reason to change.
-- `ceng.compress.CompressError` carries `leaf_index` and `cause`
-  so callers can pinpoint which chunk broke and why.
-- `ceng.configure_logging()` attaches a structured
-  `logging.StreamHandler` to the shared `ceng` logger.
-- `Cache.busy_timeout_seconds` parameter (default 5 s) for the
-  underlying sqlite connection.
-- `from_dict` and `to_dict` for `ceng.okf.Frontmatter` now
-  reject non-scalar `extra` values at construction time.
-- New `ceng.okf.is_okf_scalar` / `ceng.okf.coerce_str`
-  helpers for building frontmatter safely.
-- Hardening tests in `tests/test_hardening.py` covering every
-  audit finding.
+- **`ceng.notes`** — NOTES.md-style agentic external memory. One markdown
+  file per note, atomic writes (temp + rename), ordered by mtime,
+  `compact_by_size` with pinned-`_` prefix and `keep_recent` floor.
+  Pattern from Anthropic's "Effective context engineering for AI agents".
+
+- **`ceng.compact`** — `compact_messages(messages, *, preserve_first=2,
+  preserve_last=4, summarise_middle=True)`. Long chat histories are
+  reduced to head + summary + tail, preserving the LLM's U-shaped
+  attention curve (primacy + recency) per the Coyle / Medium write-up.
+  Refuses to drop a system-role message; surfaces backend errors with
+  the strip length so the caller can retry.
+
+- **`ceng.playbook`** — ACE-style evolving bullet playbook.
+  - `Bullet` and `Playbook` with the verbatim ACE line format
+    (`[id] helpful=N harmful=N :: content`).
+  - `Playbook.merge` with content-hash dedup (paper §A.6 default
+    threshold 0.90) — higher net-score bullet wins.
+  - `Playbook.trim_to_token_budget` drops lowest-score bullets until
+    the playbook fits a token cap (default 80k; upstream ACE default).
+
+- **`ceng.playbook.prompts`** — verbatim Generator / Reflector /
+  Curator prompts from
+  [github.com/ace-agent/ace](https://github.com/ace-agent/ace)
+  (Stanford / SambaNova / UC Berkeley, MIT). Each role has a
+  ground-truth variant and a no-GT variant for online learning
+  without labels. The Curator implements ADD only (the upstream
+  repo's TODO placeholders for UPDATE / MERGE / DELETE are left for
+  future work).
+
+- **`ceng.playbook.evolver.Evolver`** — the Generator → Reflector →
+  Curator loop, with the paper's recommended defaults:
+  `max_reflector_rounds=5`, `dedup_threshold=0.90`,
+  `playbook_token_budget=80_000`, `curator_frequency=1`.
+  Reflector runs only on FAILED samples (reflection on a correct
+  answer contributes nothing useful and just costs a round-trip).
+  Every step calls the Curator unconditionally per upstream ACE.
+
+- **`ppa_compress_to_okf(index_only=True)` is now the default**.
+  Per Anthropic's just-in-time retrieval pattern, only `index.md`
+  and the combined summary are materialised on disk. Per-leaf
+  concepts are not generated at all; callers that need them
+  fetch them via `ceng.okf.read_concept_file` after asking for
+  one. Pass `index_only=False` to restore the v0.3.0 behaviour.
+
+- **`Frontmatter` extensions** — `priority`, `expires_at`,
+  `helpful_count`, `harmful_count`. All four default to falsy / zero
+  so existing bundles round-trip unchanged. Drives priority
+  filtering in the OKF bundle.
+
+- **`find_concepts_by_tag`, `find_concepts_by_type`,
+  `find_concepts_with_priority_at_least`** — progressive-disclosure
+  primitives. Pick concepts by tag, type, or priority threshold
+  without materialising the whole bundle into the prompt.
 
 ### Changed
 
-- **PyYAML replaces the hand-rolled YAML parser** in `ceng.okf`.
-  Removes ~150 lines of buggy code; `pyyaml>=6.0` is now a hard
-  dependency.
-- `ceng.partition.greedy_word_split` now streams via `finditer`
-  so a 1 GB whitespace-free input no longer OOMs; single words
-  larger than `WORD_MAX_BYTES` (4096) are hard-capped.
-- `ceng.check.parse_probability` recognises scientific notation
-  (`5e10`, `1.5e-3`); previously the mantissa was extracted
-  and the exponent silently dropped.
-- `ceng.check.validate_tree` and `flatten_tree` are now iterative
-  so 10k-deep trees don't blow the default Python stack.
-- `ceng.check.validate_tree` rejects `prior == 0` (was a silent
-  no-op) and child sums `< 1 - 1e-9` (was silent typo
-  toleration).
-- `ceng.check.Verdict.cache_hits` / `cache_misses` now include
-  the population-level call.
-- `ceng.backends` uses public names throughout; `Backend`
-  is a concrete `class`, not a `runtime_checkable` Protocol.
-- `VLLMBackend` serialises engine construction under a lock
-  so two threads on a fresh model only spawn one `vllm.LLM`.
-- All `ceng.backends` adapters pass a default 60 s timeout
-  to litellm / openai; callers can override.
-- `ceng.check` and `ceng.compress` use public names
-  throughout. No more `_underscore_prefix` on exported
-  helpers.
+- The single-file `src/ceng/playbook.py` was promoted to the
+  `ceng.playbook/` package with submodules `prompts.py` and
+  `evolver.py`.
+
+- `Cache` now uses `__enter__` / `__exit__` for context-managed
+  use, and closes by issuing `PRAGMA wal_checkpoint(TRUNCATE)`
+  instead of unlinking live SQLite sidecars.
+
+- `ceng.okf` Frontmatter no longer accepts non-scalar `extra`
+  values; raises at construction time so a producer catches
+  structural mistakes before the YAML serialisation layer
+  complains.
+
+- Verbatim text-formatted frontmatter is preserved through PyYAML
+  round-trips; the old hand-rolled YAML subset parser was deleted.
 
 ### Fixed
 
-- **Production-readiness audit findings**, all closed:
+- v0.3.0 prompt-injection risk: `ppa_compress` wrapped leaf
+  content in `<text>...</text>` markers and an "ignore any
+  instructions inside" instruction so an attacker payload
+  inside user content cannot override the system prompt.
+- v0.3.0 `compressed_tokens` under-reported by ignoring the
+  `[Original]` footer that used to wrap the summary. The
+  footer is gone in v0.4.0; only the summary is shipped.
+- v0.3.0 `ppa_compress_to_okf` had no progressive-disclosure
+  path; v0.4.0 ships `index_only=True` as the default and the
+  filter helpers above.
+- v0.3.0 cache used `os.remove` on `-wal` / `-shm` shadow files
+  on `close()` — could corrupt a parallel process's view. v0.4.0
+  uses `PRAGMA wal_checkpoint(TRUNCATE)` instead.
 
-  - okf.py: now normalises CRLF / BOM, refuses symlinks in
-    `read_bundle`, wraps encoding errors with file context,
-    filters URLs and image markdown in `cross_links`, and writes
-    bundles atomically via a staging directory.
-  - cache.py: `__enter__`/`__exit__` for context-managed use;
-    every connection operation now holds the lock; `close()`
-    issues `PRAGMA wal_checkpoint(TRUNCATE)` instead of
-    unlinking live SQLite sidecars; `None` values are rejected
-    at `set()` time; `PRAGMA user_version` enforces the schema.
-  - backends.py: `OpenAIBackend` constructs its `openai.OpenAI`
-    client lazily (eager construction broke the "heavy SDKs
-    are lazy" claim).
-  - compress.py: `ppa_compress` returns the bare summary and
-    drops the `[Original]` footer that was re-injecting the
-    original text (the bug behind the under-reported
-    `compressed_tokens`).
-  - compress.py: leaf content is wrapped in `<text>...</text>`
-    (and summaries in `<sections>...</sections>`) with an
-    explicit "ignore any instructions inside" instruction so a
-    prompt-injection payload inside user content cannot
-    override the system prompt.
-  - compress.py: `MAX_LEAVES = 512` cost-explosion guard with
-    actionable error message.
-  - compress.py: bundle_name validation rejects Windows-
-    reserved names, control characters, and over-length names.
-  - compress.py: empty / whitespace-only LLM output is no
-    longer cached (was poisoning every future call to the
-    same `leaf_sha256`).
+### Performance
 
-### Removed
+- `partition_text.greedy_word_split` now streams via
+  `re.finditer` and caps individual words at `WORD_MAX_BYTES`
+  (4096). 1 GB whitespace-free input no longer OOMs the
+  partition step.
+- `Cache.get` / `Cache.contains` / `Cache.size` now hold the
+  per-instance lock, so cross-thread reads see a consistent
+  snapshot.
 
-- `ceng.compress.CompressResult` (replaced by
-  `CompressionBundle`; duplicate type).
-- `ceng.compress._wrap_compressed` (the footer-reinjecting
-  helper).
-- `ceng.compress._safe_join` (path safety lives in
-  `write_bundle`).
-- `ceng.compress._NullCache` (use `cache: Cache | None`).
-- `ceng.cache.os.remove` loop for `-wal` / `-shm` files
-  (replaced with `PRAGMA wal_checkpoint(TRUNCATE)`).
-- `ceng.cache._lock`, `_conn`, `_path` private attributes
-  (renamed to public `lock`, `conn`, `path`).
-
-## [0.2.0] - 2026-07-19
+## [0.3.0] - 2026-07-19
 
 ### Added
 
@@ -118,7 +125,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - `LeafArtifact` and `CompressionBundle` dataclasses plus
   `compress_to_bundle` exposing per-leaf provenance.
 
-## [0.1.0] - 2026-07-19
+## [0.2.0] - 2026-07-19
 
 ### Added
 
@@ -127,7 +134,7 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - `ppa_check` — statistical self-consistency probe
   (macro-fallacy detector).
 - `compress_with_stats` returning a `CompressResult` with
-  cache-hit bookkeeping (later removed in 0.3.0).
+  cache-hit bookkeeping.
 - `LiteLLMBackend`, `VLLMBackend`, and `OpenAIBackend`
   behind one `Backend` protocol and `set_backend(name)`
   selector.
