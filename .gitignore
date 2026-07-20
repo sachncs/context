@@ -13,6 +13,6 @@ venv/
 htmlcov/
 .ceng_cache/
 *.db
-*.sqlite
 *.sqlite3
+bench/results/
 .DS_Store
