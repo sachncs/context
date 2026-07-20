@@ -56,7 +56,10 @@ EXPECTED_EXPORTS = {
 
 def test_version_is_semver_string():
     assert isinstance(ceng.__version__, str)
-    parts = ceng.__version__.split(".")
+    # 0.4.0-SOTA is the current label: three numeric components
+    # separated by dots, with an optional -suffix. The numeric
+    # components must all be digits; the suffix is free-form.
+    parts = ceng.__version__.split("-")[0].split(".")
     assert len(parts) == 3 and all(p.isdigit() for p in parts)
 
 
