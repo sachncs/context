@@ -1,0 +1,20 @@
+{"id": "ddx-test-0", "question": "A 35-year-old woman with sudden severe headache, neck stiffness, and fever.", "options": ["Migraine", "Meningitis", "Tension headache", "Cluster headache"], "answer": "1"}
+{"id": "ddx-test-1", "question": "A 60-year-old man with chest pain radiating to the left arm, sweating, and shortness of breath.", "options": ["Heartburn", "Myocardial infarction", "Anxiety attack", "Pneumonia"], "answer": "1"}
+{"id": "ddx-test-2", "question": "A 25-year-old with sudden severe abdominal pain, rigid abdomen, and fever.", "options": ["Gastritis", "Appendicitis", "Food poisoning", "IBS"], "answer": "1"}
+{"id": "ddx-test-3", "question": "An elderly patient with sudden one-sided weakness, slurred speech, and facial droop.", "options": ["Bell's palsy", "Stroke", "Migraine", "Seizure"], "answer": "1"}
+{"id": "ddx-test-4", "question": "A 40-year-old with sudden shortness of breath, sharp chest pain, and history of recent flight.", "options": ["Heart attack", "Pulmonary embolism", "Pneumonia", "Asthma"], "answer": "1"}
+{"id": "ddx-test-5", "question": "A 30-year-old with severe abdominal pain on the right side, fever, and nausea.", "options": ["Gastritis", "Appendicitis", "Kidney stones", "Food poisoning"], "answer": "1"}
+{"id": "ddx-test-6", "question": "A child with sore throat, fever, and swollen lymph nodes in the neck.", "options": ["Common cold", "Strep throat", "Allergies", "Flu"], "answer": "1"}
+{"id": "ddx-test-7", "question": "An adult with sudden severe headache, sensitivity to light, and nausea.", "options": ["Tension headache", "Migraine", "Cluster headache", "Meningitis"], "answer": "1"}
+{"id": "ddx-test-8", "question": "A 50-year-old with progressive memory loss, confusion, and difficulty with daily tasks.", "options": ["Depression", "Alzheimer's", "Stress", "Vitamin deficiency"], "answer": "1"}
+{"id": "ddx-test-9", "question": "A patient with rapid heartbeat, weight loss, heat intolerance, and anxiety.", "options": ["Anxiety", "Hyperthyroidism", "Diabetes", "PMS"], "answer": "1"}
+{"id": "ddx-test-10", "question": "An elderly with shaking hands, slow movements, and balance problems.", "options": ["Stroke", "Parkinson's disease", "Alzheimer's", "Arthritis"], "answer": "1"}
+{"id": "ddx-test-11", "question": "A 20-year-old with severe sore throat, fever, and difficulty swallowing.", "options": ["Common cold", "Tonsillitis", "Allergies", "Flu"], "answer": "1"}
+{"id": "ddx-test-12", "question": "A patient with sudden high fever, severe headache, and purple rash.", "options": ["Common cold", "Meningococcal meningitis", "Flu", "Allergies"], "answer": "1"}
+{"id": "ddx-test-13", "question": "A child with barking cough, hoarseness, and difficulty breathing at night.", "options": ["Common cold", "Croup", "Asthma", "Bronchiolitis"], "answer": "1"}
+{"id": "ddx-test-14", "question": "A pregnant woman with high blood pressure, swelling, and protein in urine.", "options": ["Normal pregnancy", "Preeclampsia", "Gestational diabetes", "Anemia"], "answer": "1"}
+{"id": "ddx-test-15", "question": "An adult with sudden severe headache, jaw pain, and visual disturbances.", "options": ["Migraine", "Temporal arteritis", "Cluster headache", "Tension headache"], "answer": "1"}
+{"id": "ddx-test-16", "question": "A child with high fever, rash that blanches with pressure, and strawberry tongue.", "options": ["Measles", "Scarlet fever", "Chickenpox", "Rubella"], "answer": "1"}
+{"id": "ddx-test-17", "question": "A patient with severe abdominal pain in the upper right, fever, and jaundice.", "options": ["Gastritis", "Cholecystitis", "Hepatitis", "Pancreatitis"], "answer": "1"}
+{"id": "ddx-test-18", "question": "An elderly with sudden severe back pain, hypotension, and a pulsating abdominal mass.", "options": ["Back strain", "Aortic aneurysm", "Kidney stones", "Pancreatitis"], "answer": "1"}
+{"id": "ddx-test-19", "question": "A patient with sudden facial droop on one side, inability to close eye, and loss of taste.", "options": ["Stroke", "Bell's palsy", "Migraine", "Trigeminal neuralgia"], "answer": "1"}

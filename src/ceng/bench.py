@@ -18,12 +18,9 @@ functions as ``ceng bench <benchmark> --model <name> --limit <n>``.
 from __future__ import annotations
 
 import argparse
-import datetime
-import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
 
 from ceng.backends import get_backend
 from ceng.eval import run_eval, write_report
@@ -66,14 +63,11 @@ def _check_credentials() -> bool:
 def _bench_path(benchmark: str, results_dir: Path = DEFAULT_RESULTS_DIR) -> Path:
     """Compute a unique per-run path under bench/results/."""
     results_dir.mkdir(parents=True, exist_ok=True)
-    ts = datetime.datetime.now(timezone_str()).strftime("%Y%m%d-%H%M%S")
+    from datetime import datetime as _dt
+    from datetime import timezone as _tz
+
+    ts = _dt.now(_tz.utc).strftime("%Y%m%d-%H%M%S")
     return results_dir / f"{benchmark}-{ts}"
-
-
-def timezone_str() -> str:
-    from datetime import timezone
-
-    return "%Y%m%d-%H%M%S%z"
 
 
 def _load_finer_samples(limit: int | None) -> list:
@@ -81,7 +75,9 @@ def _load_finer_samples(limit: int | None) -> list:
     import json as _json
     from ceng.eval.finer import FiNERProcessor
 
-    fixture_path = Path(__file__).parent / "fixtures" / "finer.jsonl"
+    fixture_path = (
+        Path(__file__).parent / "eval" / "fixtures" / "finer.jsonl"
+    )
     if fixture_path.exists():
         rows = [
             _json.loads(line)
@@ -91,7 +87,6 @@ def _load_finer_samples(limit: int | None) -> list:
         if limit is not None:
             rows = rows[:limit]
         return FiNERProcessor().process_task_data(rows)
-    # Fall back: build a tiny inline fixture.
     from ceng.eval import DataSample
     return [
         DataSample(
@@ -106,7 +101,9 @@ def _load_formula_samples(limit: int | None) -> list:
     import json as _json
     from ceng.eval.formula import FormulaProcessor
 
-    fixture_path = Path(__file__).parent / "fixtures" / "formula.jsonl"
+    fixture_path = (
+        Path(__file__).parent / "eval" / "fixtures" / "formula.jsonl"
+    )
     if fixture_path.exists():
         rows = [
             _json.loads(line)
@@ -130,7 +127,9 @@ def _load_ddxplus_samples(limit: int | None) -> list:
     import json as _json
     from ceng.eval.ddxplus import DDXPlusProcessor
 
-    fixture_path = Path(__file__).parent / "fixtures" / "ddxplus.jsonl"
+    fixture_path = (
+        Path(__file__).parent / "eval" / "fixtures" / "ddxplus.jsonl"
+    )
     if fixture_path.exists():
         rows = [
             _json.loads(line)
@@ -155,13 +154,8 @@ def finer(model: str, limit: int | None = 30, results_dir: Path = DEFAULT_RESULT
     if not _check_credentials():
         raise SystemExit(1)
     from ceng.eval.finer import FiNERProcessor
-    from ceng.playbooks import finer_seed
-    from ceng.presets import FinerOnline5Rounds
 
     samples = _load_finer_samples(limit)
-    # We don't run a real Evolver here — that's the playbook-growing
-    # test path. For a measurement, we report baseline accuracy only
-    # (the "ceng with seeded playbook" would require a longer run).
     backend = get_backend()
     result = run_eval(
         benchmark="finer",

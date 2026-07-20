@@ -30,8 +30,6 @@ either — they're required only when you actually call
 
 from __future__ import annotations
 
-import os
-
 from ceng.eval import DataSample
 
 
@@ -102,9 +100,10 @@ def require_appworld() -> bool:
     ``bench_appworld`` short-circuits when this returns False so the
     bench runner doesn't import appworld at module-load time.
     """
-    try:
-        import appworld  # noqa: F401
+    import importlib
 
+    try:
+        importlib.import_module("appworld")
         return True
     except ImportError:
         print(
