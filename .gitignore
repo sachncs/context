@@ -12,6 +12,7 @@ venv/
 .coverage
 htmlcov/
 .ceng_cache/
+.ceng_bench_cache/
 *.db
 *.sqlite3
 bench/results/*
