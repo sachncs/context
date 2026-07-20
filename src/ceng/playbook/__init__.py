@@ -239,8 +239,21 @@ def format_bullet(bullet: Bullet) -> str:
 
 
 def canon_section(name: str) -> str:
+    """Normalise a section header to its canonical slug.
+
+    Maps any flavour of header casing / separators onto the same
+    key. The seven canonical names are::
+
+        strategies_and_insights
+        formulas_and_calculations
+        code_snippets_and_templates
+        common_mistakes_to_avoid
+        problem_solving_heuristics
+        context_clues_and_indicators
+        others
+    """
     s = name.strip().lower()
-    return s.replace("&", "and").replace(" ", "_")
+    return s.replace("&", "and").replace(" ", "_").replace("-", "_")
 
 
 def content_canonical(content: str) -> str:

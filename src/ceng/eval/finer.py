@@ -21,9 +21,7 @@ empty Evolver.run start point is already non-empty.
 
 from __future__ import annotations
 
-from typing import Any, Iterable
-
-from ceng.eval import DataProcessor, DataSample
+from ceng.eval import DataSample
 
 
 # 139 entity types in FiNER (offline copy of the paper's list, just
