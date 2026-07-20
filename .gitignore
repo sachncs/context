@@ -14,5 +14,6 @@ htmlcov/
 .ceng_cache/
 *.db
 *.sqlite3
-bench/results/
+bench/results/*
+!bench/results/.gitkeep
 .DS_Store
