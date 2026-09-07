@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ceng"
+version = "0.3.0"
+description = "Partition-Prompt-Aggregate context engineering for LLMs."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+authors = [{ name = "Sachin" }]
+keywords = ["llm", "context-engineering", "compression", "vllm", "litellm"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "litellm>=1.40",
+    "pyyaml>=6.0",
+]
+
+[project.optional-dependencies]
+vllm = ["vllm>=0.5"]
+openai = ["openai>=1.0"]
+tokenize = ["tiktoken>=0.5"]
+dev = ["pytest>=8", "pytest-asyncio>=0.23"]
+all = ["vllm>=0.5", "openai>=1.0", "tiktoken>=0.5"]
+
+[project.urls]
+Homepage = "https://github.com/sachin/context"
+Issues = "https://github.com/sachin/context/issues"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra -q"
