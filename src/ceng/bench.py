@@ -231,18 +231,26 @@ def ddxplus(model: str, limit: int | None = 30, results_dir: Path = DEFAULT_RESU
 
 
 def appworld(model: str, limit: int | None = 30, results_dir: Path = DEFAULT_RESULTS_DIR) -> Path:
-    """Run an AppWorld eval. Requires the gated appworld package + ALFW_API_KEY."""
+    """Run an AppWorld eval. Requires the gated appworld package + ALFW_API_KEY.
+
+    A real implementation is gated on the AppWorld dataset
+    registration wall. Until it lands, calling this function raises
+    ``NotImplementedError`` so wrapper scripts that gate on exit
+    status correctly report failure rather than seeing a misleading
+    success.
+    """
     from ceng.eval.appworld import require_appworld
     if not require_appworld():
         raise SystemExit(1)
     if not _check_credentials():
         raise SystemExit(1)
-    # AppWorld requires its own dataset pull — we ship the stub here
-    # but the real dataset lives behind a registration wall.
-    print("appworld: real eval requires dataset access; see "
-          "https://appworld.dev for the API key. Use a fixture or "
-          "your own sample for now.")
-    raise SystemExit(0)
+    raise NotImplementedError(
+        "appworld eval: real implementation gated on the AppWorld "
+        "dataset registration wall; see https://appworld.dev for the "
+        "API key. ceng ships the data-processor stub and the curated "
+        "multi-turn-agent seed playbook; the eval runner itself is "
+        "not yet implemented."
+    )
 
 
 def smoke(model: str, results_dir: Path = DEFAULT_RESULTS_DIR) -> dict[str, Path]:
@@ -284,7 +292,11 @@ def main(argv: list[str] | None = None) -> int:
         "ddxplus": ddxplus,
         "appworld": appworld,
     }[args.benchmark]
-    fn(args.model, limit=args.limit, results_dir=args.results_dir)
+    try:
+        fn(args.model, limit=args.limit, results_dir=args.results_dir)
+    except NotImplementedError as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        return 1
     return 0
 
 
