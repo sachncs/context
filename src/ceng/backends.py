@@ -24,14 +24,80 @@ importable even when an extra isn't installed.
 from __future__ import annotations
 
 import os
+import random
 import threading
+import time
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 
 
 ENV_BACKEND = "CENG_BACKEND"
+ENV_RETRY = "CENG_RETRY"
+ENV_RETRY_BASE_MS = "CENG_RETRY_BASE_MS"
 DEFAULT_BACKEND = "litellm"
 DEFAULT_TIMEOUT_SECONDS = 60.0
+DEFAULT_RETRY_ATTEMPTS = 3
+DEFAULT_RETRY_BASE_MS = 250
+
+
+def _env_int(name: str, default: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+def retry_with_backoff(
+    fn: Callable[..., str],
+    *args: Any,
+    attempts: int = DEFAULT_RETRY_ATTEMPTS,
+    base_ms: int = DEFAULT_RETRY_BASE_MS,
+    sleep: Callable[[float], None] = time.sleep,
+    rng: random.Random | None = None,
+    retry_on: tuple[type[BaseException], ...] = (Exception,),
+    **kwargs: Any,
+) -> str:
+    """Call ``fn`` with exponential backoff + jitter on failure.
+
+    Args:
+        fn: Callable returning a string (the LLM response).
+        *args: Positional args forwarded to ``fn``.
+        attempts: Total tries including the first call. ``1`` means
+            no retry (just call once).
+        base_ms: Base backoff in milliseconds; the actual delay for
+            attempt ``n`` is ``base_ms * 2**(n-1)`` with full jitter
+            (uniform random in ``[0, base)``).
+        sleep: Overrideable sleep (tests inject a no-op).
+        rng: Overrideable random source (tests inject a seeded one).
+        retry_on: Exception types that trigger a retry; other
+            exceptions propagate immediately.
+        **kwargs: Keyword args forwarded to ``fn``.
+
+    Returns:
+        The string return value of the successful ``fn`` call.
+
+    Raises:
+        The last exception raised by ``fn`` if all attempts fail.
+    """
+    if attempts < 1:
+        raise ValueError("attempts must be >= 1")
+    rng = rng or random.Random()
+    last_exc: BaseException | None = None
+    for attempt in range(1, attempts + 1):
+        try:
+            return fn(*args, **kwargs)
+        except retry_on as exc:
+            last_exc = exc
+            if attempt >= attempts:
+                break
+            delay = (base_ms * (2 ** (attempt - 1))) / 1000.0
+            delay = rng.uniform(0, delay) if delay > 0 else 0
+            sleep(delay)
+    assert last_exc is not None
+    raise last_exc
 
 
 class Backend:
@@ -49,10 +115,19 @@ class Backend:
 
 @dataclass
 class LiteLLMBackend(Backend):
-    """Routes completions through ``litellm.completion``."""
+    """Routes completions through ``litellm.completion``.
+
+    Wraps :func:`retry_with_backoff` so a single transient 5xx,
+    rate-limit, or network blip doesn't abort a multi-leaf run.
+    Retry count and base delay are tunable via ``retry_attempts`` /
+    ``retry_base_ms`` or the ``CENG_RETRY`` / ``CENG_RETRY_BASE_MS``
+    environment variables.
+    """
 
     name: str = "litellm"
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
+    retry_attempts: int = DEFAULT_RETRY_ATTEMPTS
+    retry_base_ms: int = DEFAULT_RETRY_BASE_MS
 
     def complete(self, messages: list[dict], model: str, **kw: Any) -> str:
         """Send ``messages`` to ``model`` via ``litellm`` and return text."""
@@ -60,8 +135,22 @@ class LiteLLMBackend(Backend):
 
         if "timeout" not in kw:
             kw["timeout"] = self.timeout_seconds
-        response = litellm.completion(model=model, messages=messages, **kw)
-        return extract_content(response)
+        attempts = _env_int(ENV_RETRY, self.retry_attempts)
+        base_ms = _env_int(ENV_RETRY_BASE_MS, self.retry_base_ms)
+        return retry_with_backoff(
+            _litellm_call,
+            litellm,
+            model=model,
+            messages=messages,
+            attempts=attempts,
+            base_ms=base_ms,
+            **kw,
+        )
+
+
+def _litellm_call(litellm_mod: Any, *, model: str, messages: list[dict], **kw: Any) -> str:
+    response = litellm_mod.completion(model=model, messages=messages, **kw)
+    return extract_content(response)
 
 
 @dataclass
@@ -79,7 +168,9 @@ class VLLMBackend(Backend):
 
     Note:
         Requires the ``vllm`` package (``pip install ceng[vllm]``)
-        and a CUDA-capable machine.
+        and a CUDA-capable machine. No retry is applied: in-process
+        generation failures are usually programmer error, not
+        transient.
     """
 
     name: str = "vllm"
@@ -106,10 +197,17 @@ class VLLMBackend(Backend):
 
 @dataclass
 class OpenAIBackend(Backend):
-    """Raw ``openai.OpenAI`` client backend."""
+    """Raw ``openai.OpenAI`` client backend.
+
+    Wraps :func:`retry_with_backoff` for transient 5xx / network
+    blips. Tunable via ``retry_attempts`` / ``retry_base_ms`` or the
+    ``CENG_RETRY`` / ``CENG_RETRY_BASE_MS`` environment variables.
+    """
 
     name: str = "openai"
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS
+    retry_attempts: int = DEFAULT_RETRY_ATTEMPTS
+    retry_base_ms: int = DEFAULT_RETRY_BASE_MS
     client: Any = field(default=None, init=False)
 
     def complete(self, messages: list[dict], model: str, **kw: Any) -> str:
@@ -124,6 +222,18 @@ class OpenAIBackend(Backend):
 
             self.client = OpenAI()
         kw.setdefault("timeout", self.timeout_seconds)
+        attempts = _env_int(ENV_RETRY, self.retry_attempts)
+        base_ms = _env_int(ENV_RETRY_BASE_MS, self.retry_base_ms)
+        return retry_with_backoff(
+            self._openai_call,
+            model=model,
+            messages=messages,
+            attempts=attempts,
+            base_ms=base_ms,
+            **kw,
+        )
+
+    def _openai_call(self, *, model: str, messages: list[dict], **kw: Any) -> str:
         response = self.client.chat.completions.create(
             model=model,
             messages=messages,

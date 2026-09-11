@@ -382,3 +382,108 @@ def test_set_backend_can_switch_to_vllm_and_openai(monkeypatch):
     assert b.name == "openai"
     text = b.complete(messages=[{"role": "user", "content": "q"}], model="m")
     assert text == "o"
+
+
+# --- retry / backoff ---
+
+
+def test_retry_with_backoff_returns_first_success():
+    from ceng.backends import retry_with_backoff
+
+    calls = []
+
+    def fn():
+        calls.append(1)
+        return "ok"
+
+    assert retry_with_backoff(fn, attempts=3, sleep=lambda _: None) == "ok"
+    assert len(calls) == 1
+
+
+def test_retry_with_backoff_succeeds_after_transient_failures():
+    from ceng.backends import retry_with_backoff
+
+    calls = {"n": 0}
+
+    def fn():
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise ConnectionError("flaky")
+        return "recovered"
+
+    out = retry_with_backoff(
+        fn, attempts=5, base_ms=1, sleep=lambda _: None
+    )
+    assert out == "recovered"
+    assert calls["n"] == 3
+
+
+def test_retry_with_backoff_raises_after_exhaustion():
+    from ceng.backends import retry_with_backoff
+
+    calls = {"n": 0}
+
+    def fn():
+        calls["n"] += 1
+        raise RuntimeError(f"always fails {calls['n']}")
+
+    with pytest.raises(RuntimeError, match="always fails 3"):
+        retry_with_backoff(fn, attempts=3, base_ms=1, sleep=lambda _: None)
+    assert calls["n"] == 3
+
+
+def test_retry_with_backoff_does_not_retry_on_non_retryable():
+    from ceng.backends import retry_with_backoff
+
+    calls = {"n": 0}
+
+    def fn():
+        calls["n"] += 1
+        raise ValueError("programmer error")
+
+    with pytest.raises(ValueError):
+        retry_with_backoff(
+            fn, attempts=5, base_ms=1, sleep=lambda _: None,
+            retry_on=(ConnectionError,),
+        )
+    assert calls["n"] == 1
+
+
+def test_litellm_backend_retries_on_transient_failure(monkeypatch):
+    """Two 5xx-shaped errors, then a success → retry recovers."""
+    from ceng.backends import LiteLLMBackend
+
+    attempts = {"n": 0}
+
+    def completion(**kwargs):
+        attempts["n"] += 1
+        if attempts["n"] < 3:
+            raise ConnectionError("upstream 503")
+        return SimpleNamespace(
+            choices=[SimpleNamespace(message=SimpleNamespace(content="eventually"))]
+        )
+
+    fake = ModuleType("litellm")
+    fake.completion = completion
+    monkeypatch.setitem(sys.modules, "litellm", fake)
+
+    backend = LiteLLMBackend(retry_attempts=5, retry_base_ms=1)
+    out = backend.complete(messages=[{"role": "user", "content": "x"}], model="m")
+    assert out == "eventually"
+    assert attempts["n"] == 3
+
+
+def test_litellm_backend_raises_after_retry_exhausted(monkeypatch):
+    """Every attempt fails → the last exception propagates."""
+    from ceng.backends import LiteLLMBackend
+
+    def completion(**kwargs):
+        raise ConnectionError("persistent 503")
+
+    fake = ModuleType("litellm")
+    fake.completion = completion
+    monkeypatch.setitem(sys.modules, "litellm", fake)
+
+    backend = LiteLLMBackend(retry_attempts=2, retry_base_ms=1)
+    with pytest.raises(ConnectionError, match="persistent 503"):
+        backend.complete(messages=[{"role": "user", "content": "x"}], model="m")
