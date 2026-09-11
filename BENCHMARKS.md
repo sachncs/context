@@ -1,12 +1,12 @@
-# ceng 0.4.0-SOTA — Benchmarks
+# ceng 0.4.0 — Benchmarks
 
-This file records the benchmarks ceng 0.4.0-SOTA can reproduce out
+This file records the benchmarks ceng 0.4.0 can reproduce out
 of the box, and the **measured-by-ceng** numbers on the public
 fixtures shipped under `src/ceng/eval/fixtures/`.
 
 Two tables per benchmark. Per the user's hard-fail contract:
 
-- **Measured by ceng** is what ceng 0.4.0-SOTA actually produced
+- **Measured by ceng** is what ceng 0.4.0 actually produced
   on the configured model and N-sample fixture. **These are the
   real numbers, run on the build host, with no fudging.**
 - **Cited from ACE paper** is the published number from
