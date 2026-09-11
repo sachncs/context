@@ -341,7 +341,6 @@ def build_curator_messages(
     question_context: str,
     use_ground_truth: bool,
 ) -> list[dict]:
-    """Format messages for the Curator; picks the GT vs no-GT prompt."""
     """Format messages for the Curator; picks the GT vs no-GT prompt.
 
     The Curator template uses named ``{token_budget}``,
