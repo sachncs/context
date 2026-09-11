@@ -148,12 +148,17 @@ def run_eval(
         llm: model id.
         cache_dir: path to the on-disk cache.
         n_samples: optional truncation (helpful for smoke runs).
-        seed: reserved for future use.
+        seed: integer seed used to deterministically shuffle the
+            sample order before scoring. Two runs with the same
+            ``seed`` and the same input ``samples`` list produce the
+            same ``sample_correctness`` ordering and the same
+            ``to_json()`` payload.
 
     Returns:
         An :class:`EvalResult`. The ``sample_correctness`` list is
         one tuple per scored sample, in input order.
     """
+    import random
     import time
 
     from ceng.backends import get_backend
@@ -162,6 +167,10 @@ def run_eval(
     chosen = backend or get_backend()
     cache: Cache | None = Cache(cache_dir=cache_dir) if cache_dir else None
 
+    samples = list(samples)
+    if seed:
+        rng = random.Random(seed)
+        rng.shuffle(samples)
     if n_samples is not None:
         samples = samples[:n_samples]
 

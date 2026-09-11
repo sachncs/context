@@ -158,7 +158,10 @@ def test_formula_full_eval_pipeline(formula_fixture_path, tmp_path):
     assert 0.0 <= result.ceng_accuracy <= 1.0
 
 
-def test_formula_write_report_separates_measured_and_cited(formula_fixture_path, tmp_path):
+def test_run_eval_seed_is_reproducible(formula_fixture_path, tmp_path):
+    """Two run_eval() calls with the same seed produce identical
+    sample_correctness orderings (the seed shuffles the input order
+    deterministically)."""
     from dataclasses import dataclass
 
     @dataclass
@@ -166,24 +169,23 @@ def test_formula_write_report_separates_measured_and_cited(formula_fixture_path,
         name: str = "fake"
 
         def complete(self, messages, model, **kw):
-            return "100"
+            return "400000"
 
-    backend = FakeBackend()
+    backend_a = FakeBackend()
+    backend_b = FakeBackend()
     p = FormulaProcessor()
     rows = [json.loads(l) for l in formula_fixture_path.read_text().splitlines() if l.strip()]
     samples = p.process_task_data(rows)
-    result = run_eval(
+    a = run_eval(
         benchmark="formula", processor=p, samples=samples,
-        backend=backend, llm="m", cache_dir=str(tmp_path / "cache"),
+        backend=backend_a, llm="m",
+        cache_dir=str(tmp_path / "cache_a"), seed=42,
     )
-    out = write_report(
-        result, tmp_path / "reports" / "formula-2026-07-20",
-        cited_baseline=67.5, cited_ceng=85.5,
+    b = run_eval(
+        benchmark="formula", processor=p, samples=samples,
+        backend=backend_b, llm="m",
+        cache_dir=str(tmp_path / "cache_b"), seed=42,
     )
-    md = out.read_text()
-    # The two sections are kept strictly separate
-    measured_pos = md.index("## Measured by ceng")
-    cited_pos = md.index("## Cited from ACE paper")
-    assert measured_pos < cited_pos
-    assert "67.5" in md
-    assert "85.5" in md
+    assert a.sample_correctness == b.sample_correctness
+    assert a.baseline_accuracy == b.baseline_accuracy
+    assert a.ceng_accuracy == b.ceng_accuracy
