@@ -131,7 +131,7 @@ def run_eval(
     samples: list[DataSample],
     backend: "object | None" = None,
     llm: str,
-    cache_dir: str = ".ceng_eval_cache",
+    cache_dir: str = ".ceng/cache",
     n_samples: int | None = None,
     seed: int = 0,
 ) -> EvalResult:

@@ -27,7 +27,7 @@ from ceng.eval import run_eval, write_report
 
 
 DEFAULT_RESULTS_DIR = Path("bench/results")
-DEFAULT_CACHE_DIR = ".ceng_bench_cache"
+DEFAULT_CACHE_DIR = ".ceng/cache"
 
 
 def _check_credentials() -> bool:
