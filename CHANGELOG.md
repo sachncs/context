@@ -145,15 +145,15 @@ gated on the dataset and is shipped as a processor stub only.
 - Initial PPA paper reproduction: `ppa_compress` and `ppa_check`
   for the iwoszapar / 2026 PPA paper (arXiv:2607.15277)
 
-[Unreleased]: https://github.com/sachin/context/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/sachncs/context/compare/v0.4.0...HEAD
 
-[0.4.0-SOTA]: https://github.com/sachin/context/compare/v0.3.0...v0.4.0-SOTA
+[0.4.0]: https://github.com/sachncs/context/compare/v0.3.0...v0.4.0
 
-[0.3.0]: https://github.com/sachin/context/compare/v0.2.0...v0.3.0
+[0.3.0]: https://github.com/sachncs/context/compare/v0.2.0...v0.3.0
 
-[0.2.0]: https://github.com/sachin/context/compare/v0.1.0...v0.3.0
+[0.2.0]: https://github.com/sachncs/context/compare/v0.1.0...v0.3.0
 
-[0.1.0]: https://github.com/sachin/context/releases/tag/v0.1.0
+[0.1.0]: https://github.com/sachncs/context/releases/tag/v0.1.0
 
 
 ## [0.4.0] - 2026-07-19
