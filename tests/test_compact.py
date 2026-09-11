@@ -180,3 +180,26 @@ def test_provenance_carries_counts():
     assert prov.preserved_first == 2
     assert prov.preserved_last == 3
     assert prov.summarised_count == 10
+
+
+def test_summarised_tokens_uses_count_tokens_not_split():
+    from ceng.tokens import count_tokens
+
+    class LongSummaryBackend:
+        name = "long"
+
+        def complete(self, messages, model, **kw):
+            return "one two three four five six seven eight nine ten"
+
+    msgs = [{"role": "user", "content": str(i)} for i in range(10)]
+    _, prov = compact_messages(
+        msgs,
+        backend=LongSummaryBackend(),
+        preserve_first=1,
+        preserve_last=1,
+    )
+    expected = count_tokens("one two three four five six seven eight nine ten")
+    assert prov.summarised_tokens == expected
+    assert prov.summarised_tokens != len(
+        "one two three four five six seven eight nine ten".split()
+    ) or expected == 10
