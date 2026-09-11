@@ -202,7 +202,12 @@ def compress_to_bundle(
 
     target_index, target_text = pick_target_message(messages)
     original_tokens = count_tokens(target_text, tokenizer)
+    logger.info(
+        "ppa_compress start: budget=%d model=%s target_tokens=%d",
+        budget_tokens, llm, original_tokens,
+    )
     if original_tokens <= budget_tokens:
+        logger.info("ppa_compress short-circuit: input fits budget")
         return CompressionBundle(
             messages=[dict(m) for m in messages],
             original_text=target_text,
@@ -219,6 +224,7 @@ def compress_to_bundle(
     partitions = partition_text(
         target_text, max_tokens=partition_max_tokens, tokenizer=tokenizer
     )
+    logger.info("ppa_compress partitioned: %d leaves", len(partitions))
     if not partitions:
         return CompressionBundle(
             messages=[dict(m) for m in messages],
@@ -290,7 +296,7 @@ def compress_to_bundle(
             ) from exc
 
     new_messages = replace_message(messages, target_index, final_text)
-    return CompressionBundle(
+    bundle = CompressionBundle(
         messages=new_messages,
         original_text=target_text,
         original_tokens=original_tokens,
@@ -302,6 +308,13 @@ def compress_to_bundle(
         backend=backend,
         model=llm,
     )
+    logger.info(
+        "ppa_compress done: leaves=%d hits=%d misses=%d "
+        "compressed=%d->%d",
+        bundle.leaf_count, bundle.cache_hits, bundle.cache_misses,
+        original_tokens, bundle.compressed_tokens,
+    )
+    return bundle
 
 
 def ppa_compress_to_okf(

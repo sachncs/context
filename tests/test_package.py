@@ -18,6 +18,7 @@ EXPECTED_EXPORTS = {
     "make_key",
     "NAMESPACE_PPA_CHECK",
     "NAMESPACE_SUMMARIZE",
+    "configure_logging",
     "Verdict",
     "LeafEstimate",
     "ppa_check",
