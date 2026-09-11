@@ -36,6 +36,7 @@ from ceng.cache import (
     Cache,
     make_key,
 )
+from ceng.compress.log import configure_logging
 from ceng.check import LeafEstimate, Verdict, ppa_check
 from ceng.compress import (
     CompressError,
@@ -85,6 +86,7 @@ __all__ = [
     "make_key",
     "NAMESPACE_PPA_CHECK",
     "NAMESPACE_SUMMARIZE",
+    "configure_logging",
     # consistency probe
     "Verdict",
     "LeafEstimate",
