@@ -67,6 +67,7 @@ context-engineering papers of the last two years:
 
 - [Install](#install)
 - [Quick start](#quick-start)
+- [Examples](#examples)
 - [ACE playbook (evolving context)](#ace-playbook-evolving-context)
 - [OKF bundles (just-in-time retrieval)](#okf-bundles-just-in-time-retrieval)
 - [Long chat compaction](#long-chat-compaction)
@@ -76,6 +77,24 @@ context-engineering papers of the last two years:
 - [Layout](#layout)
 - [License](#license)
 - [References](#references)
+
+## Examples
+
+Runnable end-to-end scripts in [`examples/`](./examples):
+
+- [`examples/01_quickstart.py`](./examples/01_quickstart.py) —
+  `ppa_compress` over a sample document.
+- [`examples/02_okf_bundle.py`](./examples/02_okf_bundle.py) —
+  `ppa_compress_to_okf` writing a bundle on disk.
+- [`examples/03_compact_chat.py`](./examples/03_compact_chat.py) —
+  `compact_messages` on a synthetic long chat.
+- [`examples/04_evolver_smoke.py`](./examples/04_evolver_smoke.py) —
+  `Evolver.run` over three samples demonstrating the
+  Generator/Reflector/Curator loop.
+
+Each script falls back to a stub backend when no
+`OPENAI_API_KEY` is set, so the directory is runnable in any
+sandbox.
 
 ## Pipelines at a glance
 
