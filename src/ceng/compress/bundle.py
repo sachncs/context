@@ -93,7 +93,7 @@ def _combined_concept(bundle: "CompressionBundle", leaf_links: list[str]) -> Con
     return Concept(
         frontmatter=Frontmatter(
             type=CENG_COMBINED_SUMMARY,
-            title=f"{bundle.original_text[:0] or 'compressed'} bundle combined summary",
+            title="compressed bundle combined summary",
             description=_first_line(bundle.combined_summary, 200),
             tags=("ppa", "combined"),
             timestamp=now_iso(),
