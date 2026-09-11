@@ -186,20 +186,23 @@ class Playbook:
 
         Always keeps at least the empty-playbook skeleton (one per
         section) so the rendered text never goes invalid.
+
+        The active list is sorted once and then mutated in-place on
+        each iteration, avoiding the O(N log N) sort cost per
+        dropped bullet.
         """
         from ceng.tokens import count_tokens
 
         current_dropped = 0
-        while True:
+        active = self.get_active()
+        while active:
             text = self.render_for_context()
             if count_tokens(text, tokenizer) <= budget:
                 return current_dropped
-            active = self.get_active()
-            if not active:
-                return current_dropped
-            victim = active[-1]
+            victim = active.pop()
             del self.bullets[victim.id]
             current_dropped += 1
+        return current_dropped
 
     def render_for_context(self) -> str:
         """Render the playbook as ``## Section\\n[id] :: text\\n…`` text."""
