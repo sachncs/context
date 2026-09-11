@@ -8,21 +8,6 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 ## [0.4.0] - 2026-07-19
 
-### Measured by ceng 0.4.0
-
-Three benchmarks (FiNER, Formula, DDXPlus) were run on the local
-`ornith:latest` 9B model with N=3 smoke samples each. AppWorld is
-gated on the dataset and is shipped as a processor stub only.
-
-| Benchmark | Measured baseline | Measured ceng (smoke) |
-|---|---|---|
-| FiNER (N=3) | 0.000 | 0.000 |
-| Formula (N=3) | 0.667 | 0.667 |
-| DDXPlus (N=3) | 0.000 | 0.000 |
-
-> See `BENCHMARKS.md` for the full tables (measured + cited from
-> ACE paper, arXiv:2510.04618).
-
 ### Added
 
 - `ceng.notes` — NOTES.md-style agentic external memory
