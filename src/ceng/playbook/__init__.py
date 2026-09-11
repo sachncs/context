@@ -23,9 +23,8 @@ from __future__ import annotations
 
 import re
 from collections import OrderedDict
+from collections.abc import Iterable
 from dataclasses import dataclass, field
-from typing import Iterable
-
 
 DEFAULT_SECTIONS: tuple[str, ...] = (
     "strategies_and_insights",
@@ -95,7 +94,7 @@ class Playbook:
                 self.sections_in_order.append(section)
 
     @classmethod
-    def from_text(cls, text: str) -> "Playbook":
+    def from_text(cls, text: str) -> Playbook:
         """Parse an ACE-flavoured playbook (one ``## Section\\n[id] ::\\n`` per bullet).
 
         Unknown sections are appended after the default ones so the
@@ -267,7 +266,7 @@ def content_canonical(content: str) -> str:
 
 # Re-export Evolver from the sibling module so callers can do
 # ``from ceng.playbook import Evolver``.
-from ceng.playbook.evolver import Evolver, EvolverConfig, EvolverStepStats  # noqa: E402, F401
+from ceng.playbook.evolver import Evolver, EvolverConfig, EvolverStepStats  # noqa: E402
 
 __all__ = [
     "Bullet",

@@ -26,7 +26,7 @@ all share.
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, field, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol, runtime_checkable
@@ -127,9 +127,9 @@ class EvalResult:
 def run_eval(
     *,
     benchmark: str,
-    processor: "DataProcessor",
+    processor: DataProcessor,
     samples: list[DataSample],
-    backend: "object | None" = None,
+    backend: object | None = None,
     llm: str,
     cache_dir: str = ".ceng/cache",
     n_samples: int | None = None,
@@ -265,7 +265,7 @@ def render_report(result: EvalResult, *, cited_baseline: float | None = None,
     lines.append(f"| Baseline (no ACE) | {result.baseline_accuracy:.3f} |")
     lines.append(f"| ceng | {result.ceng_accuracy:.3f} |")
     lines.append(
-        f"| Δ (ceng − baseline) | {result.delta:+.3f} |"
+        f"| Δ (ceng - baseline) | {result.delta:+.3f} |"
     )
     lines.append("")
     if cited_baseline is not None or cited_ceng is not None:

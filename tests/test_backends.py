@@ -273,6 +273,7 @@ def test_vllm_backend_engine_creation_is_serialised(monkeypatch):
     """Two threads calling complete() for the same fresh model must
     only build one vllm.LLM."""
     import threading
+
     from ceng.backends import VLLMBackend
 
     constructed = []
@@ -337,7 +338,8 @@ def test_openai_backend_lazily_constructs_client(monkeypatch):
 def test_backends_module_does_not_import_litellm_at_import():
     """Importing ceng.backends must not import litellm."""
     import importlib
-    import ceng.backends  # noqa: F401
+
+    import ceng.backends
 
     # If litellm were eagerly imported we'd find it in sys.modules.
     # Confirm lazy: force-delete any preloaded module, reimport backends,

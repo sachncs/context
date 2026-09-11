@@ -21,7 +21,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
-
 @dataclass(frozen=True)
 class CompactionProvenance:
     """Provenance block describing what compaction did.
@@ -46,7 +45,7 @@ class CompactionProvenance:
 def compact_messages(
     messages: list[dict],
     *,
-    backend: "object | None" = None,
+    backend: object | None = None,
     llm: str = "gpt-4o-mini",
     preserve_first: int = 2,
     preserve_last: int = 4,
@@ -160,7 +159,7 @@ def compact_messages(
         "role": "assistant",
         "content": summary,
     }
-    compacted = head + [summary_message] + tail
+    compacted = [*head, summary_message, *tail]
     from ceng.tokens import count_tokens
     return compacted, CompactionProvenance(
         preserved_first=len(head),
@@ -175,7 +174,7 @@ def compact_messages(
 def _summarise_middle(
     *,
     middle: list[dict],
-    backend: "object | None",
+    backend: object | None,
     llm: str,
     summary_max_tokens: int,
     cache_dir: str,
@@ -188,7 +187,7 @@ def _summarise_middle(
     decide whether to retry or fall back to ``summarise_middle=False``.
     """
     from ceng.backends import get_backend
-    from ceng.cache import Cache, make_key, NAMESPACE_SUMMARIZE
+    from ceng.cache import NAMESPACE_SUMMARIZE, Cache, make_key
 
     if not middle:
         return ""

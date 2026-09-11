@@ -23,7 +23,6 @@ from __future__ import annotations
 
 from ceng.eval import DataSample
 
-
 # 139 entity types in FiNER (offline copy of the paper's list, just
 # the prefix categories so we can build a regex quickly).
 FINER_ENTITY_PREFIXES: tuple[str, ...] = (
@@ -129,7 +128,7 @@ def _normalise_tags(text: str) -> tuple[str, ...]:
     return tuple(rows)
 
 
-def seed_playbook() -> "str":  # type: ignore[name-defined]  # noqa
+def seed_playbook() -> str:
     """Return a curated XBRL-aware seed playbook for FiNER.
 
     Stored as a markdown string so it can be loaded via

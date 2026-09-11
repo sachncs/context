@@ -44,3 +44,29 @@ ceng = ["py.typed"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra -q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+extend-exclude = ["bench", ".ceng"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "RUF"]
+ignore = [
+    "E501",  # line length is governed by [tool.ruff] line-length
+    "B008",  # default-argument calls in dataclass fields are intentional
+    "B905",  # zip() without strict= is fine for our use
+    "E741",  # ambiguous variable names like `l` are noise in this codebase
+    "RUF012",  # mutable class attributes annotated with ClassVar are noisy
+    "RUF022",  # __all__ is grouped by section for readability, not sorted
+    "RUF043",  # pytest.raises(match=...) patterns are fine
+    "RUF059",  # unpacked-but-unused in tests is intentional
+]
+
+[tool.mypy]
+python_version = "3.10"
+strict_optional = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true

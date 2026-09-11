@@ -36,17 +36,17 @@ from ceng.cache import (
     Cache,
     make_key,
 )
-from ceng.compress.log import configure_logging
 from ceng.check import LeafEstimate, Verdict, ppa_check
 from ceng.compress import (
+    MAX_LEAVES,
     CompressError,
     CompressionBundle,
     LeafArtifact,
-    MAX_LEAVES,
     compress_to_bundle,
     ppa_compress,
     ppa_compress_to_okf,
 )
+from ceng.compress.log import configure_logging
 from ceng.okf import (
     CENG_BUNDLE_INDEX,
     CENG_COMBINED_SUMMARY,

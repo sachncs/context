@@ -31,7 +31,6 @@ from ceng.okf import (
     write_concept_file,
 )
 
-
 # --- Frontmatter ---
 
 

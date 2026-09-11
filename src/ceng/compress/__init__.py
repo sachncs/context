@@ -33,7 +33,7 @@ from __future__ import annotations
 import hashlib
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional  # noqa: F401
 
 from ceng.backends import Backend, get_backend
 from ceng.cache import NAMESPACE_SUMMARIZE, Cache, make_key
@@ -49,7 +49,6 @@ from ceng.compress.prompts import (
 from ceng.okf import Concept, write_bundle
 from ceng.partition import partition_text
 from ceng.tokens import count_tokens
-
 
 MAX_LEAVES = 512
 
@@ -72,8 +71,8 @@ class CompressError(RuntimeError):
         self,
         message: str,
         *,
-        leaf_index: Optional[int] = None,
-        cause: Optional[BaseException] = None,
+        leaf_index: int | None = None,
+        cause: BaseException | None = None,
     ) -> None:
         super().__init__(message)
         self.leaf_index = leaf_index
@@ -131,10 +130,10 @@ def ppa_compress(
     budget_tokens: int,
     llm: str = "gpt-4o-mini",
     cache_dir: str = ".ceng/cache",
-    backend: Optional[Backend] = None,
+    backend: Backend | None = None,
     tokenizer: Any = None,
-    summary_max_tokens: Optional[int] = None,
-    partition_max_tokens: Optional[int] = None,
+    summary_max_tokens: int | None = None,
+    partition_max_tokens: int | None = None,
     **call_kw: Any,
 ) -> list[dict]:
     """Compress the longest user message in ``messages``.
@@ -163,10 +162,10 @@ def compress_to_bundle(
     budget_tokens: int,
     llm: str = "gpt-4o-mini",
     cache_dir: str = ".ceng/cache",
-    backend: Optional[Backend] = None,
+    backend: Backend | None = None,
     tokenizer: Any = None,
-    summary_max_tokens: Optional[int] = None,
-    partition_max_tokens: Optional[int] = None,
+    summary_max_tokens: int | None = None,
+    partition_max_tokens: int | None = None,
     **call_kw: Any,
 ) -> CompressionBundle:
     """Compress ``messages`` and return a :class:`CompressionBundle`.
@@ -198,7 +197,7 @@ def compress_to_bundle(
     if partition_max_tokens is None:
         partition_max_tokens = max(summary_max_tokens, summary_max_tokens * 2)
     backend = backend or get_backend()
-    cache: Optional[Cache] = Cache(cache_dir=cache_dir) if cache_dir else None
+    cache: Cache | None = Cache(cache_dir=cache_dir) if cache_dir else None
 
     target_index, target_text = pick_target_message(messages)
     original_tokens = count_tokens(target_text, tokenizer)
@@ -325,10 +324,10 @@ def ppa_compress_to_okf(
     budget_tokens: int,
     llm: str = "gpt-4o-mini",
     cache_dir: str = ".ceng/cache",
-    backend: Optional[Backend] = None,
+    backend: Backend | None = None,
     tokenizer: Any = None,
-    summary_max_tokens: Optional[int] = None,
-    partition_max_tokens: Optional[int] = None,
+    summary_max_tokens: int | None = None,
+    partition_max_tokens: int | None = None,
     index_only: bool = True,
     **call_kw: Any,
 ) -> list[Concept]:
@@ -490,7 +489,7 @@ def summarise_leaf(
     model: str,
     leaf: str,
     target_tokens: int,
-    cache: Optional[Cache],
+    cache: Cache | None,
     tokenizer: Any,
     call_kw: dict,
 ) -> tuple[str, bool]:
@@ -533,7 +532,7 @@ def combine_summaries(
     model: str,
     summaries: list[str],
     target_tokens: int,
-    cache: Optional[Cache],
+    cache: Cache | None,
     call_kw: dict,
 ) -> str:
     """Combine a list of leaf summaries into one coherent summary."""
