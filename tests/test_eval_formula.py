@@ -158,6 +158,31 @@ def test_formula_full_eval_pipeline(formula_fixture_path, tmp_path):
     assert 0.0 <= result.ceng_accuracy <= 1.0
 
 
+def test_run_eval_counts_backend_errors(formula_fixture_path, tmp_path):
+    """A backend that throws on every call must surface backend_errors
+    on the EvalResult, not be silently counted as 0% accuracy."""
+    from dataclasses import dataclass
+
+    @dataclass
+    class AlwaysFailBackend:
+        name: str = "fail"
+
+        def complete(self, messages, model, **kw):
+            raise ConnectionError("upstream died")
+
+    backend = AlwaysFailBackend()
+    p = FormulaProcessor()
+    rows = [json.loads(l) for l in formula_fixture_path.read_text().splitlines() if l.strip()]
+    samples = p.process_task_data(rows)
+    result = run_eval(
+        benchmark="formula", processor=p, samples=samples,
+        backend=backend, llm="m", cache_dir=str(tmp_path / "cache"),
+    )
+    assert result.backend_errors == 2 * len(samples)
+    assert result.ceng_accuracy == 0.0
+    assert result.baseline_accuracy == 0.0
+
+
 def test_run_eval_seed_is_reproducible(formula_fixture_path, tmp_path):
     """Two run_eval() calls with the same seed produce identical
     sample_correctness orderings (the seed shuffles the input order
