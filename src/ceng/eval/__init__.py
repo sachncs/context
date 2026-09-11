@@ -102,6 +102,10 @@ class EvalResult:
         timestamp: ISO 8601 UTC
         sample_correctness: per-sample list of (baseline_correct,
             ceng_correct) booleans
+        backend_errors: count of samples where the backend call
+            raised (not "model got it wrong", but an actual
+            exception). Callers can use this to distinguish infra
+            failure from low accuracy.
     """
 
     benchmark: str
@@ -113,6 +117,7 @@ class EvalResult:
     runtime_seconds: float
     timestamp: str
     sample_correctness: list[tuple[bool, bool]]
+    backend_errors: int = 0
     notes: dict[str, Any] = field(default_factory=dict)
 
     def to_json(self) -> str:
@@ -178,6 +183,7 @@ def run_eval(
     baseline_correct = 0
     ceng_correct = 0
     per_sample: list[tuple[bool, bool]] = []
+    backend_errors = 0
 
     for sample in samples:
         # Baseline: empty playbook.
@@ -186,9 +192,11 @@ def run_eval(
             f"Context: {sample.context}\n"
             f"Answer with ONLY the final answer value, no explanation."
         )
-        base_response = _safe_complete(
+        base_response, base_errored = _safe_complete(
             chosen, base_prompt, llm, cache
         )
+        if base_errored:
+            backend_errors += 1
         base_ans = _strip_to_answer(base_response)
         base_ok = processor.answer_is_correct(base_ans, sample.target)
 
@@ -202,9 +210,11 @@ def run_eval(
             "comparison)\n"
             f"Answer with ONLY the final answer value, no explanation."
         )
-        ceng_response = _safe_complete(
+        ceng_response, ceng_errored = _safe_complete(
             chosen, ceng_prompt, llm, cache
         )
+        if ceng_errored:
+            backend_errors += 1
         ceng_ans = _strip_to_answer(ceng_response)
         ceng_ok = processor.answer_is_correct(ceng_ans, sample.target)
 
@@ -226,6 +236,7 @@ def run_eval(
         runtime_seconds=elapsed,
         timestamp=datetime.now(timezone.utc).isoformat(),
         sample_correctness=per_sample,
+        backend_errors=backend_errors,
         notes={},
     )
 
@@ -304,16 +315,23 @@ def write_report(result: EvalResult, path: str | Path, *,
 
 
 def _safe_complete(backend, prompt, model, cache):
-    """One backend call wrapped so a backend error doesn't poison the run."""
+    """One backend call. Returns ``(text, errored)``.
+
+    ``errored`` is True when the backend raised; the returned text
+    is the stringified exception. Callers count ``errored`` samples
+    in :attr:`EvalResult.backend_errors` instead of treating infra
+    failures as wrong predictions.
+    """
     try:
-        return backend.complete(
+        text = backend.complete(
             messages=[{"role": "user", "content": prompt}],
             model=model,
             temperature=0.0,
             max_tokens=128,
         )
+        return text, False
     except Exception as exc:
-        return f"<backend error: {exc!r}>"
+        return f"<backend error: {exc!r}>", True
 
 
 def _strip_to_answer(text: str) -> str:
