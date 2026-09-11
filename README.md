@@ -1,26 +1,16 @@
 # ceng
 
+> Partition-Prompt-Aggregate context engineering for LLMs. Apache-2.0.
+> Drop-in `ppa_compress`, `ppa_check`, ACE `Evolver`, and OKF writer/reader.
+
 > Package name: **`ceng`** — GitHub repo: **`sachncs/context`**.
 
-Context engineering for LLMs via **Partition, Prompt, Aggregate** (Wolf
-et al., 2026) plus the four patterns the surrounding research
-establishes as load-bearing:
+`ceng` is a small, dependency-light Python library that bundles four
+production-shaped context-engineering primitives: PPA compression,
+ACE-style evolving playbooks, OKF bundles, and U-shape chat
+compaction. One `pip install`, no framework lock-in.
 
-- **ACE** (Zhang et al., arXiv:2510.04618) — evolving itemized
-  playbooks updated by a Generator → Reflector → Curator loop, with
-  verbatim prompts and the paper's recommended defaults.
-- **Anthropic** — finite context as a precious resource; U-shape
-  preservation in compaction; NOTES.md-style external memory; just-
-  in-time retrieval via lightweight identifiers.
-- **Coyle / Medium** — U-shaped retention curve; primacy + recency;
-  LLM-supported structured note-taking.
-- **iwoszapar research roundup** — static AGENTS.md alone barely
-  moves the needle; dynamic context compounds. Build feedback
-  loops; treat memory as a first-class engineering concern.
-
-`ceng` is the implementation: a small, dependency-light library
-(only `litellm` is required at runtime; `pyyaml`, `tiktoken` are
-used) that ships:
+## What's in the box
 
 - **`ppa_compress`** — the original partition-prompt-aggregate
   compressor for the longest user message in a chat.
@@ -42,6 +32,36 @@ used) that ships:
 All entry points are synchronous; no streaming, no async, no
 sub-agent orchestration. The library aims to be a primitive, not a
 framework.
+
+## Why ceng?
+
+The four primitives above are stitched together from the strongest
+context-engineering papers of the last two years:
+
+- **PPA / Partition, Prompt, Aggregate** (Wolf et al.,
+  arXiv:2607.15277) — the macro-fallacy-resistant summarisation
+  path that partitions a long context, summarises each chunk in
+  isolation, then aggregates. Implemented by `ppa_compress`.
+- **ACE / Agentic Context Engineering** (Zhang et al.,
+  arXiv:2510.04618) — evolving itemised playbooks updated by a
+  Generator → Reflector → Curator loop. Implemented by
+  `ceng.playbook.Evolver` with the verbatim prompts from the
+  upstream repo and the paper's recommended defaults.
+- **Anthropic's "Effective context engineering for AI agents"** —
+  finite context as a precious resource; U-shape preservation in
+  compaction; NOTES.md-style external memory; just-in-time
+  retrieval via lightweight identifiers. Implemented by
+  `ceng.compact.compact_messages`, `ceng.notes.NotesManager`, and
+  `ceng.ppa_compress_to_okf(index_only=True)`.
+- **Coyle / Medium write-up** — U-shaped retention curve; primacy
+  + recency; LLM-supported structured note-taking. Drives the
+  compaction defaults.
+- **Context Engineering 2.0** (Hua et al., arXiv:2510.26493) —
+  the broader framework that motivates treating memory as a
+  first-class engineering concern.
+- **OKF / Open Knowledge Format** (Google Cloud, McVeety &
+  Hormati, 2026) — the on-disk bundle format used by
+  `ceng.ppa_compress_to_okf` and the OKF reader/writer.
 
 ## Contents
 
