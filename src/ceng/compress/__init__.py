@@ -97,6 +97,15 @@ class CompressionBundle:
     Use :func:`compress_to_bundle` to construct one, or
     :func:`ppa_compress_to_okf` to also persist it as an OKF
     bundle.
+
+    Attributes:
+        compressed_tokens: Token count of the produced summary.
+            ``0`` when the call short-circuited (the input already
+            fit the budget and no LLM call was made); equal to
+            ``original_tokens`` in that case is meaningless because
+            nothing was compressed. Callers should check
+            ``leaves == ()`` (and/or ``combined_summary == ""``)
+            to detect a skip.
     """
 
     messages: list[dict]
@@ -198,7 +207,7 @@ def compress_to_bundle(
             messages=[dict(m) for m in messages],
             original_text=target_text,
             original_tokens=original_tokens,
-            compressed_tokens=original_tokens,
+            compressed_tokens=0,
             leaves=(),
             combined_summary="",
             cache_hits=0,
@@ -215,7 +224,7 @@ def compress_to_bundle(
             messages=[dict(m) for m in messages],
             original_text=target_text,
             original_tokens=original_tokens,
-            compressed_tokens=original_tokens,
+            compressed_tokens=0,
             leaves=(),
             combined_summary="",
             cache_hits=0,

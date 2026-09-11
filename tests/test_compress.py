@@ -107,6 +107,23 @@ def test_short_circuit_when_already_small(fake_backend, tmp_cache):
     assert fake_backend.calls == []
 
 
+def test_short_circuit_compressed_tokens_is_zero(fake_backend, tmp_cache):
+    """Short-circuit path: compressed_tokens is 0 (not original_tokens)
+    so callers can tell a skip from a no-reduction compression."""
+    from ceng.compress import compress_to_bundle
+    bundle = compress_to_bundle(
+        [{"role": "user", "content": "hello"}],
+        budget_tokens=100,
+        llm="m",
+        cache_dir=tmp_cache,
+        backend=fake_backend,
+    )
+    assert bundle.compressed_tokens == 0
+    assert bundle.original_tokens > 0
+    assert bundle.leaves == ()
+    assert bundle.combined_summary == ""
+
+
 # --- single-leaf path ---
 
 
