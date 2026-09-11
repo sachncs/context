@@ -161,13 +161,14 @@ def compact_messages(
         "content": summary,
     }
     compacted = head + [summary_message] + tail
+    from ceng.tokens import count_tokens
     return compacted, CompactionProvenance(
         preserved_first=len(head),
         preserved_last=len(tail),
         summarised_count=len(middle),
         original_tokens=0,
         compacted_tokens=0,
-        summarised_tokens=len(summary.split()),
+        summarised_tokens=count_tokens(summary),
     )
 
 
