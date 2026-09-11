@@ -27,9 +27,9 @@ import os
 import random
 import threading
 import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Optional
-
+from typing import Any
 
 ENV_BACKEND = "CENG_BACKEND"
 ENV_RETRY = "CENG_RETRY"
@@ -248,7 +248,7 @@ _BACKEND_REGISTRY: dict[str, type[Backend]] = {
     "openai": OpenAIBackend,
 }
 
-_active_backend: Optional[Backend] = None
+_active_backend: Backend | None = None
 _active_lock = threading.Lock()
 
 
@@ -298,7 +298,7 @@ def reset_backend() -> None:
         _active_backend = None
 
 
-def resolve_backend(name: Optional[str], **init_kw: Any) -> Backend:
+def resolve_backend(name: str | None, **init_kw: Any) -> Backend:
     """Construct a backend by name; ``None`` means default."""
     chosen = name or os.environ.get(ENV_BACKEND) or DEFAULT_BACKEND
     if chosen not in _BACKEND_REGISTRY:

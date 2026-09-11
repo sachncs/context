@@ -8,8 +8,8 @@ import pytest
 
 from ceng.check import (
     parse_probability,
-    validate_tree,
     ppa_check,
+    validate_tree,
 )
 
 

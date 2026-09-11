@@ -2,19 +2,18 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 import json
+from dataclasses import dataclass
 
 from ceng.playbook import (
-    Bullet,
     DEFAULT_SECTIONS,
+    Bullet,
     canon_section,
     content_canonical,
     empty_playbook,
     parse_playbook,
     render_playbook,
 )
-
 
 # --- Bullet -----------------------------------------------------------------
 

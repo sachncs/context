@@ -25,7 +25,6 @@ from pathlib import Path
 from ceng.backends import get_backend
 from ceng.eval import run_eval, write_report
 
-
 DEFAULT_RESULTS_DIR = Path("bench/results")
 DEFAULT_CACHE_DIR = ".ceng/cache"
 
@@ -73,6 +72,7 @@ def _bench_path(benchmark: str, results_dir: Path = DEFAULT_RESULTS_DIR) -> Path
 def _load_finer_samples(limit: int | None) -> list:
     """Return a FiNER fixture sample list."""
     import json as _json
+
     from ceng.eval.finer import FiNERProcessor
 
     fixture_path = (
@@ -99,6 +99,7 @@ def _load_finer_samples(limit: int | None) -> list:
 
 def _load_formula_samples(limit: int | None) -> list:
     import json as _json
+
     from ceng.eval.formula import FormulaProcessor
 
     fixture_path = (
@@ -125,6 +126,7 @@ def _load_formula_samples(limit: int | None) -> list:
 
 def _load_ddxplus_samples(limit: int | None) -> list:
     import json as _json
+
     from ceng.eval.ddxplus import DDXPlusProcessor
 
     fixture_path = (

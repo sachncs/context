@@ -22,7 +22,6 @@ from __future__ import annotations
 
 from ceng.playbook.evolver import EvolverConfig
 
-
 FinerOffline5Rounds = EvolverConfig(
     max_reflector_rounds=5,
     dedup_threshold=0.90,

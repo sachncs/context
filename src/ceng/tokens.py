@@ -9,7 +9,6 @@ chunks and never make it into the prompt sent to the model.
 from __future__ import annotations
 
 import importlib.util
-from typing import Optional
 
 _TOKENIZER = None
 
@@ -28,7 +27,7 @@ def _get_tokenizer():
     return _TOKENIZER
 
 
-def count_tokens(text: str, tokenizer: Optional[object] = None) -> int:
+def count_tokens(text: str, tokenizer: object | None = None) -> int:
     """Return the number of tokens in ``text``.
 
     Args:
@@ -49,7 +48,7 @@ def count_tokens(text: str, tokenizer: Optional[object] = None) -> int:
 
 
 def token_budget_split(
-    text: str, max_tokens: int, tokenizer: Optional[object] = None
+    text: str, max_tokens: int, tokenizer: object | None = None
 ) -> list[str]:
     """Split ``text`` into chunks of at most ``max_tokens`` tokens.
 
@@ -103,7 +102,7 @@ def token_budget_split(
 
 
 def _greedy_word_split(
-    text: str, max_tokens: int, tokenizer: Optional[object]
+    text: str, max_tokens: int, tokenizer: object | None
 ) -> list[str]:
     """Greedy word-level split of a sentence that exceeds ``max_tokens``."""
     import re

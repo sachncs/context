@@ -27,8 +27,7 @@ import sqlite3
 import threading
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Optional
-
+from typing import Any
 
 SCHEMA_VERSION = "1"
 NAMESPACE_SUMMARIZE = "summarize"
@@ -97,7 +96,7 @@ class Cache:
             self._ensure_schema()
             self._enforce_schema_version()
 
-    def __enter__(self) -> "Cache":
+    def __enter__(self) -> Cache:
         """Return self for use in ``with`` statements."""
         return self
 
@@ -148,7 +147,7 @@ class Cache:
         if namespace not in VALID_NAMESPACES:
             raise ValueError(f"unknown namespace: {namespace!r}")
 
-    def get(self, namespace: str, key: str) -> Optional[Any]:
+    def get(self, namespace: str, key: str) -> Any | None:
         """Return the cached value for ``(namespace, key)`` or ``None``.
 
         Args:
@@ -242,7 +241,7 @@ class Cache:
             ).fetchone()
         return row is not None
 
-    def size(self, namespace: Optional[str] = None) -> int:
+    def size(self, namespace: str | None = None) -> int:
         """Count cached entries. If ``namespace`` is given, restrict to it."""
         if namespace is not None:
             self._check_namespace(namespace)

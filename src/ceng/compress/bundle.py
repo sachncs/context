@@ -8,6 +8,10 @@ pipeline so each piece is independently testable.
 
 from __future__ import annotations
 
+# Import here to avoid a circular dependency: compress/__init__.py
+# exports CompressionBundle; bundle.py imports it lazily.
+from typing import TYPE_CHECKING
+
 from ceng.okf import (
     CENG_BUNDLE_INDEX,
     CENG_COMBINED_SUMMARY,
@@ -18,16 +22,12 @@ from ceng.okf import (
     now_iso,
 )
 
-# Import here to avoid a circular dependency: compress/__init__.py
-# exports CompressionBundle; bundle.py imports it lazily.
-from typing import TYPE_CHECKING
-
 if TYPE_CHECKING:
     from ceng.compress import CompressionBundle
 
 
 def build_bundle_concepts(
-    bundle: "CompressionBundle",
+    bundle: CompressionBundle,
     bundle_name: str,
     tokenizer=None,
     index_only: bool = False,
@@ -89,7 +89,7 @@ def build_bundle_concepts(
     return concepts
 
 
-def _combined_concept(bundle: "CompressionBundle", leaf_links: list[str]) -> Concept:
+def _combined_concept(bundle: CompressionBundle, leaf_links: list[str]) -> Concept:
     return Concept(
         frontmatter=Frontmatter(
             type=CENG_COMBINED_SUMMARY,
@@ -107,7 +107,7 @@ def _combined_concept(bundle: "CompressionBundle", leaf_links: list[str]) -> Con
 
 
 def _index_concept(
-    bundle: "CompressionBundle", bundle_name: str, entries: list[str]
+    bundle: CompressionBundle, bundle_name: str, entries: list[str]
 ) -> Concept:
     body = (
         f"# {bundle_name}\n\n"
@@ -131,7 +131,7 @@ def _index_concept(
     )
 
 
-def _noop_index_concept(bundle: "CompressionBundle", bundle_name: str) -> Concept:
+def _noop_index_concept(bundle: CompressionBundle, bundle_name: str) -> Concept:
     return Concept(
         frontmatter=Frontmatter(
             type=CENG_BUNDLE_INDEX,
