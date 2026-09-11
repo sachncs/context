@@ -392,12 +392,19 @@ def ppa_compress_to_okf(
 # ---------------------------------------------------------------------------
 
 
-def pick_target_message(messages: list[dict]) -> tuple[int, str]:
-    """Pick the longest user-role message; fall back to the last message.
+def pick_target_message(
+    messages: list[dict], *, fallback_to_last: bool = False
+) -> tuple[int, str]:
+    """Pick the longest user-role message.
 
-    Returns ``(index, text)``. The fallback path also flattens
-    list-content (OpenAI-style list-of-parts) so a non-user final
-    message isn't silently dropped.
+    By default, raises ``ValueError`` when no user-role message is
+    found — silently compressing a system or assistant prompt would
+    override instructions the caller set on purpose. Pass
+    ``fallback_to_last=True`` to opt back into the legacy behaviour
+    where the last message (regardless of role) is used as a
+    fallback.
+
+    Returns ``(index, text)``.
     """
     user_indices = [i for i, m in enumerate(messages) if m.get("role") == "user"]
     best_index = -1
@@ -407,7 +414,11 @@ def pick_target_message(messages: list[dict]) -> tuple[int, str]:
         if text and len(text) > len(best_text):
             best_index = idx
             best_text = text
-    if best_index == -1 and messages:
+    if best_index == -1:
+        if not fallback_to_last or not messages:
+            raise ValueError(
+                "no user-role text found in messages to compress"
+            )
         last = messages[-1]
         best_index = len(messages) - 1
         best_text = _flatten_content(last.get("content"))
