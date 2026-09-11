@@ -312,15 +312,11 @@ class Evolver:
         parsed_cur = _extract_json(
             cur_text, {"reasoning": "", "operations": []}
         )
-        new_bullets = _bullets_from_curator_operations(parsed_cur.get("operations") or [])
-        stats.last_curated_excerpt = "; ".join(
-            f"{b.section}:{b.id}" for b in new_bullets[:3]
+        bullets_added_this_step, bullets_dropped_cur, excerpt = (
+            _apply_curator_operations(pb, parsed_cur.get("operations") or [])
         )
-        before = len(pb.bullets)
-        pb.merge(
-            new_bullets, dedup_threshold=self.config.dedup_threshold
-        )
-        bullets_added_this_step = len(pb.bullets) - before
+        stats.last_curated_excerpt = excerpt
+        bullets_dropped += bullets_dropped_cur
 
         stats.bullets_added = bullets_added_this_step
         stats.bullets_dropped = bullets_dropped
@@ -366,32 +362,99 @@ def _extract_json(text: str, fallback: dict[str, Any]) -> dict[str, Any]:
     return dict(fallback)
 
 
-def _bullets_from_curator_operations(ops: list[dict]) -> Iterable[Bullet]:
-    """Translate the Curator's ``operations`` JSON into Bullet instances.
+def _apply_curator_operations(
+    playbook: Playbook, ops: list[dict]
+) -> tuple[int, int, str]:
+    """Apply the Curator's ``operations`` list to ``playbook`` in place.
 
-    Today only ADD is supported, matching the upstream ACE repo.
+    Supports all four ACE operations:
+
+    * ``ADD``: add a new bullet (delegates to :meth:`Playbook.merge` so
+      dedup still applies).
+    * ``UPDATE``: mutate an existing bullet's content by id.
+    * ``MERGE``: collapse two near-duplicate bullets — the higher
+      ``net_score`` wins; the lower is deleted.
+    * ``DELETE``: remove a bullet by id (e.g. retract a harmful one).
+
+    Returns ``(added, dropped, excerpt)`` where ``excerpt`` is a
+    short ``; ``-joined summary of the first few operations for
+    stats display.
     """
-    out: list[Bullet] = []
+    added = 0
+    dropped = 0
+    excerpt_bits: list[str] = []
     now = _now_iso()
     for i, op in enumerate(ops):
         if not isinstance(op, dict):
             continue
-        if (op.get("type") or "").upper() != "ADD":
-            continue
-        section = (op.get("section") or "others").strip().lower()
-        content = (op.get("content") or "").strip()
-        if not content:
-            continue
-        out.append(
-            Bullet(
+        kind = (op.get("type") or "").upper()
+        if kind == "ADD":
+            section = (op.get("section") or "others").strip().lower()
+            content = (op.get("content") or "").strip()
+            if not content:
+                continue
+            bullet = Bullet(
                 id=f"cng-{i:05d}",
                 section=section,
                 content=content,
                 created_at=now,
                 updated_at=now,
             )
-        )
-    return out
+            before = len(playbook.bullets)
+            playbook.merge([bullet])
+            if len(playbook.bullets) > before:
+                added += 1
+            excerpt_bits.append(f"ADD:{section}:{bullet.id}")
+        elif kind == "UPDATE":
+            target_id = op.get("id") or op.get("bullet_id")
+            content = (op.get("content") or "").strip()
+            if not target_id or not content:
+                continue
+            existing = playbook.bullets.get(target_id)
+            if existing is None:
+                continue
+            playbook.bullets[target_id] = Bullet(
+                id=existing.id,
+                section=existing.section,
+                content=content,
+                helpful_count=existing.helpful_count,
+                harmful_count=existing.harmful_count,
+                created_at=existing.created_at,
+                updated_at=now,
+            )
+            excerpt_bits.append(f"UPDATE:{target_id}")
+        elif kind == "MERGE":
+            keep_id = op.get("keep_id") or op.get("id")
+            drop_id = op.get("drop_id") or op.get("other_id")
+            if not keep_id or not drop_id or keep_id == drop_id:
+                continue
+            keep = playbook.bullets.get(keep_id)
+            drop = playbook.bullets.get(drop_id)
+            if keep is None or drop is None:
+                continue
+            winner = keep if keep.net_score >= drop.net_score else drop
+            playbook.bullets[winner.id] = Bullet(
+                id=winner.id,
+                section=winner.section,
+                content=winner.content,
+                helpful_count=winner.helpful_count + drop.helpful_count,
+                harmful_count=winner.harmful_count + drop.harmful_count,
+                created_at=winner.created_at,
+                updated_at=now,
+            )
+            if drop.id != winner.id:
+                del playbook.bullets[drop.id]
+                dropped += 1
+            excerpt_bits.append(f"MERGE:{keep_id}<-{drop_id}")
+        elif kind == "DELETE":
+            target_id = op.get("id") or op.get("bullet_id")
+            if not target_id:
+                continue
+            if target_id in playbook.bullets:
+                del playbook.bullets[target_id]
+                dropped += 1
+                excerpt_bits.append(f"DELETE:{target_id}")
+    return added, dropped, "; ".join(excerpt_bits[:3])
 
 
 def _render_used_bullets(playbook: Playbook, bullet_ids: list[str]) -> str:

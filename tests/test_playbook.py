@@ -329,5 +329,104 @@ def test_evolver_cache_dir_shared_across_runs(tmp_path):
     assert backend_b.calls == []
 
 
+# --- Curator operations: ADD, UPDATE, MERGE, DELETE ---
+
+
+def test_curator_update_mutates_existing_bullet():
+    from ceng.playbook.evolver import _apply_curator_operations
+
+    pb = empty_playbook()
+    pb.add_bullet(
+        Bullet(id="str-001", section="strategies_and_insights", content="old text")
+    )
+    _apply_curator_operations(
+        pb,
+        [{"type": "UPDATE", "id": "str-001", "content": "new text"}],
+    )
+    assert pb.bullets["str-001"].content == "new text"
+
+
+def test_curator_update_unknown_id_is_noop():
+    from ceng.playbook.evolver import _apply_curator_operations
+
+    pb = empty_playbook()
+    pb.add_bullet(
+        Bullet(id="str-001", section="strategies_and_insights", content="x")
+    )
+    added, dropped, _ = _apply_curator_operations(
+        pb, [{"type": "UPDATE", "id": "str-999", "content": "y"}]
+    )
+    assert added == 0 and dropped == 0
+    assert pb.bullets["str-001"].content == "x"
+
+
+def test_curator_delete_removes_bullet():
+    from ceng.playbook.evolver import _apply_curator_operations
+
+    pb = empty_playbook()
+    pb.add_bullet(
+        Bullet(id="str-001", section="strategies_and_insights", content="x")
+    )
+    _apply_curator_operations(pb, [{"type": "DELETE", "id": "str-001"}])
+    assert "str-001" not in pb.bullets
+
+
+def test_curator_merge_keeps_higher_net_score():
+    from ceng.playbook.evolver import _apply_curator_operations
+
+    pb = empty_playbook()
+    pb.add_bullet(
+        Bullet(
+            id="keep-me",
+            section="strategies_and_insights",
+            content="keep",
+            helpful_count=5,
+            harmful_count=0,
+        )
+    )
+    pb.add_bullet(
+        Bullet(
+            id="drop-me",
+            section="strategies_and_insights",
+            content="drop",
+            helpful_count=0,
+            harmful_count=3,
+        )
+    )
+    added, dropped, _ = _apply_curator_operations(
+        pb, [{"type": "MERGE", "keep_id": "keep-me", "drop_id": "drop-me"}]
+    )
+    assert added == 0
+    assert dropped == 1
+    assert "keep-me" in pb.bullets
+    assert "drop-me" not in pb.bullets
+    # helpful counts summed onto winner
+    assert pb.bullets["keep-me"].helpful_count == 5
+
+
+def test_curator_add_returns_added_count():
+    from ceng.playbook.evolver import _apply_curator_operations
+
+    pb = empty_playbook()
+    added, dropped, _ = _apply_curator_operations(
+        pb,
+        [
+            {
+                "type": "ADD",
+                "section": "strategies_and_insights",
+                "content": "first",
+            },
+            {
+                "type": "ADD",
+                "section": "strategies_and_insights",
+                "content": "second",
+            },
+        ],
+    )
+    assert added == 2
+    assert dropped == 0
+    assert len(pb.bullets) == 2
+
+
 class _NoOp:
     pass
