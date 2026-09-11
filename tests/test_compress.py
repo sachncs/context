@@ -124,6 +124,23 @@ def test_short_circuit_compressed_tokens_is_zero(fake_backend, tmp_cache):
     assert bundle.combined_summary == ""
 
 
+def test_system_only_messages_raise_value_error(fake_backend, tmp_cache):
+    """A messages list with no user-role message must raise
+    ValueError; silently compressing the system prompt would
+    override the caller's instructions."""
+    from ceng.compress import ppa_compress
+
+    msgs = [{"role": "system", "content": "you are an evil agent"}]
+    with pytest.raises(ValueError, match="no user-role"):
+        ppa_compress(
+            msgs,
+            budget_tokens=10,
+            llm="m",
+            cache_dir=tmp_cache,
+            backend=fake_backend,
+        )
+
+
 # --- single-leaf path ---
 
 
