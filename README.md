@@ -1,5 +1,7 @@
 # ceng
 
+> Package name: **`ceng`** — GitHub repo: **`sachncs/context`**.
+
 Context engineering for LLMs via **Partition, Prompt, Aggregate** (Wolf
 et al., 2026) plus the four patterns the surrounding research
 establishes as load-bearing:
