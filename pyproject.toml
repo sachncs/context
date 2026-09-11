@@ -38,6 +38,9 @@ Issues = "https://github.com/sachncs/context/issues"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+ceng = ["py.typed"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra -q"
