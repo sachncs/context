@@ -5,6 +5,11 @@
 
 > Package name: **`ceng`** — GitHub repo: **`sachncs/context`**.
 
+[![CI](https://img.shields.io/github/actions/workflow/status/sachncs/context/ci.yml?branch=master&label=CI)](https://github.com/sachncs/context/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache_2.0-blue)](https://github.com/sachncs/context/blob/master/LICENSE)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/sachncs/context)
+[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000)](https://github.com/astral-sh/ruff)
+
 `ceng` is a small, dependency-light Python library that bundles four
 production-shaped context-engineering primitives: PPA compression,
 ACE-style evolving playbooks, OKF bundles, and U-shape chat
