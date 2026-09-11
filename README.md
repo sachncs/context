@@ -43,6 +43,57 @@ All entry points are synchronous; no streaming, no async, no
 sub-agent orchestration. The library aims to be a primitive, not a
 framework.
 
+## Contents
+
+- [Install](#install)
+- [Quick start](#quick-start)
+- [ACE playbook (evolving context)](#ace-playbook-evolving-context)
+- [OKF bundles (just-in-time retrieval)](#okf-bundles-just-in-time-retrieval)
+- [Long chat compaction](#long-chat-compaction)
+- [External NOTES](#external-notes)
+- [Backends](#backends)
+- [Architecture](#architecture)
+- [Layout](#layout)
+- [License](#license)
+- [References](#references)
+
+## Pipelines at a glance
+
+```text
+                ┌───────────────────────────┐
+                │  messages (chat history)  │
+                └─────────────┬─────────────┘
+                              ▼
+       ┌────────────────────────────────────────────┐
+       │ pick longest user message → target_text    │
+       └─────────────┬──────────────────────────────┘
+                     ▼
+            ┌──────────────────┐
+            │  partition_text  │  → leaves[]
+            └────────┬─────────┘
+                     ▼
+       ┌────────────────────────────┐
+       │  summarise_leaf (per leaf)  │ ← cache (ceng/cache)
+       └────────┬───────────────────┘
+                ▼
+       ┌──────────────────────────┐
+       │  combine_summaries       │  → final_text
+       └────────┬─────────────────┘
+                ▼
+       ┌──────────────────────────────┐
+       │  CompressionBundle / OKF     │
+       └──────────────────────────────┘
+```
+
+Three pipelines ship today:
+
+| Pipeline | Entry point | What it does |
+|---|---|---|
+| PPA compress | `ceng.ppa_compress` | Long message → short message via partition / summarise / combine. |
+| OKF bundle | `ceng.ppa_compress_to_okf` | Same as above, but writes an OKF bundle to disk for just-in-time retrieval. |
+| Long-chat compaction | `ceng.compact.compact_messages` | Drop middle, keep head + tail (U-shape). |
+| ACE Evolver | `ceng.playbook.Evolver` | Generator → Reflector → Curator loop, with ADD/UPDATE/MERGE/DELETE operations. |
+
 ## Install
 
 ```bash
@@ -187,7 +238,7 @@ Honoured env vars: `CENG_BACKEND`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
 ```
 src/ceng/
     __init__.py        # top-level exports
-    backends.py        # LiteLLM, vLLM, OpenAI adapters
+    backends.py        # LiteLLM, vLLM, OpenAI adapters + retry/backoff
     cache.py           # sqlite-backed cache with WAL checkpoint
     check.py           # ppa_check (macro-fallacy probe)
     compact/           # ceng.compress package
@@ -207,6 +258,12 @@ src/ceng/
     tokens.py          # tiktoken + heuristic token counter
 tests/                # 260+ tests, fixture-driven, no live LLMs
 ```
+
+## Architecture
+
+The full architecture document (module map, cache topology, backend
+trade-offs, extension points) lives in
+[`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
 ## License
 
