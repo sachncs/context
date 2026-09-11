@@ -70,7 +70,7 @@ small = ppa_compress(
     messages,
     budget_tokens=2000,
     llm="gpt-4o-mini",       # any litellm model id, incl. vllm-served
-    cache_dir=".ceng_cache",
+    cache_dir=".ceng/cache",
 )
 
 # --- Self-consistency check ----------------------------------------------------
@@ -105,7 +105,7 @@ from ceng.playbook import empty_playbook, Playbook
 from ceng.playbook.evolver import Evolver
 
 playbook = empty_playbook()
-ev = Evolver(llm="gpt-4o-mini", cache_dir=".ceng_cache")
+ev = Evolver(llm="gpt-4o-mini", cache_dir=".ceng/cache")
 playbook, stats = ev.run(
     playbook=playbook,
     queries=train_samples,                # [{"question": ..., "ground_truth": ...}, ...]
@@ -133,7 +133,7 @@ concepts = ppa_compress_to_okf(
     bundle_name="my-context",
     budget_tokens=2000,
     llm="gpt-4o-mini",
-    cache_dir=".ceng_cache",
+    cache_dir=".ceng/cache",
 )
 ```
 
@@ -149,7 +149,7 @@ small, prov = compact_messages(
     preserve_first=2,         # keep system + first user
     preserve_last=4,          # keep most recent assistant/user
     summarise_middle=True,    # one backend call to summarise the strip
-    cache_dir=".ceng_cache",
+    cache_dir=".ceng/cache",
 )
 # prov.preserved_first, prov.preserved_last, prov.summarised_count
 # all available for logging.

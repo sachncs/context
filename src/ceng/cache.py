@@ -36,6 +36,8 @@ NAMESPACE_PPA_CHECK = "ppa_check"
 
 VALID_NAMESPACES = frozenset({NAMESPACE_SUMMARIZE, NAMESPACE_PPA_CHECK})
 
+DEFAULT_CACHE_ROOT = ".ceng/cache"
+
 
 def make_key(parts: dict[str, Any]) -> str:
     """Return a stable SHA-256 hex digest for a dict of key parts.
@@ -74,7 +76,7 @@ class Cache:
         db_name: Filename of the sqlite database inside ``cache_dir``.
     """
 
-    cache_dir: str = ".ceng_cache"
+    cache_dir: str = DEFAULT_CACHE_ROOT
     db_name: str = "cache.sqlite"
     busy_timeout_seconds: float = 5.0
 

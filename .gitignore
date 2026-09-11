@@ -11,8 +11,12 @@ venv/
 .ruff_cache/
 .coverage
 htmlcov/
+.ceng/cache/
 .ceng_cache/
 .ceng_bench_cache/
+.ceng_compact_cache/
+.ceng_eval_cache/
+.ceng_playbook_cache/
 *.db
 *.sqlite3
 bench/results/*

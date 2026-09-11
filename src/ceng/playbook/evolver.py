@@ -70,7 +70,7 @@ class Evolver:
 
     backend: Any = None
     llm: str = "gpt-4o-mini"
-    cache_dir: str = ".ceng_playbook_cache"
+    cache_dir: str = ".ceng/cache"
     config: EvolverConfig = field(default_factory=EvolverConfig)
 
     def __post_init__(self) -> None:

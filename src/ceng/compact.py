@@ -52,7 +52,7 @@ def compact_messages(
     preserve_last: int = 4,
     summarise_middle: bool = True,
     summary_max_tokens: int = 500,
-    cache_dir: str = ".ceng_compact_cache",
+    cache_dir: str = ".ceng/cache",
     summariser_system: str = (
         "You are a precise summariser. Produce a faithful, compact summary "
         "of the conversation strip provided. Preserve every decision, "
