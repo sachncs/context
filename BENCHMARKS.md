@@ -1,5 +1,13 @@
 # ceng 0.4.0 — Benchmarks
 
+> **Headline numbers in this file are smoke runs, not benchmarks.**
+> The "Measured by ceng" rows are an N=3 smoke measurement on a
+> 9B local model (`ornith:latest`). They are **not** appropriate
+> to cite as benchmark numbers and should not be compared against
+> published SOTA results. They are an honest starting point that
+> the package produces out of the box on a consumer-grade GPU. The
+> real benchmark numbers come from the paper cited below.
+
 This file records the benchmarks ceng 0.4.0 can reproduce out
 of the box, and the **measured-by-ceng** numbers on the public
 fixtures shipped under `src/ceng/eval/fixtures/`.
@@ -39,7 +47,7 @@ under `bench/results/<benchmark>-<timestamp>.{json,md}`.
 
 | Variant | Accuracy | Source |
 |---|---|---|
-| **Measured by ceng** (ornith 9B, N=3, smoke) | **0.000** | `bench/results/finer-*.json` |
+| **Measured by ceng** (ornith 9B, N=3, smoke) | **N/A — smoke run, do not cite** | `bench/results/finer-*.json` |
 | Measured by ceng (DeepSeek-V3.1, full eval) | — | not run (out of scope of the smoke run) |
 | Cited baseline (paper) | 70.7 | Zhang et al., Table 2 |
 | Cited ACE (paper) | 78.3 | Zhang et al., Table 2 |
@@ -61,7 +69,7 @@ under `bench/results/<benchmark>-<timestamp>.{json,md}`.
 
 | Variant | Accuracy | Source |
 |---|---|---|
-| **Measured by ceng** (ornith 9B, N=3, smoke) | **0.667** | `bench/results/formula-*.json` |
+| **Measured by ceng** (ornith 9B, N=3, smoke) | **N/A — smoke run, do not cite** | `bench/results/formula-*.json` |
 | Cited baseline (paper) | 67.5 | Zhang et al., Table 2 |
 | Cited ACE (paper) | 85.5 | Zhang et al., Table 2 |
 
@@ -79,7 +87,7 @@ under `bench/results/<benchmark>-<timestamp>.{json,md}`.
 
 | Variant | Accuracy | Source |
 |---|---|---|
-| **Measured by ceng** (ornith 9B, N=3, smoke) | **0.000** | `bench/results/ddxplus-*.json` |
+| **Measured by ceng** (ornith 9B, N=3, smoke) | **N/A — smoke run, do not cite** | `bench/results/ddxplus-*.json` |
 | Cited baseline (paper) | 75.2 | Zhang et al., Table 2 |
 | Cited ACE (paper) | 90.2 | Zhang et al., Table 2 (the +15.0 ACE delta is the largest published in the paper) |
 
