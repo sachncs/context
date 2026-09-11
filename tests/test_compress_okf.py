@@ -167,7 +167,7 @@ def test_okf_leaves_have_dense_indices(tmp_cache, tmp_path):
     # dense 0..N-1 in document order (NOT lexical order, which puts
     # leaf-10.md before leaf-2.md)
     indices = [c.path.name for c in leaf_concepts]
-    assert indices == [f"leaf-{i}.md" for i in range(len(leaf_concepts))]                       # noqa
+    assert indices == [f"leaf-{i}.md" for i in range(len(leaf_concepts))]
 
 
 # --- bundle round-trip ---

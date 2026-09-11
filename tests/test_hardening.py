@@ -24,7 +24,6 @@ from ceng.compress import (
 )
 from ceng.okf import Concept, Frontmatter, validate_bundle_path
 
-
 # ---------------------------------------------------------------------------
 # Prompt-injection containment
 # ---------------------------------------------------------------------------

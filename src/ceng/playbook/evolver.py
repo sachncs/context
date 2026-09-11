@@ -19,10 +19,11 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Iterable
+from typing import Any
 
-from ceng.cache import Cache, make_key, NAMESPACE_SUMMARIZE
+from ceng.cache import NAMESPACE_SUMMARIZE, Cache, make_key
 from ceng.playbook import Bullet, Playbook, empty_playbook, render_playbook
 from ceng.playbook.prompts import (
     build_curator_messages,
@@ -75,7 +76,7 @@ class Evolver:
 
     def __post_init__(self) -> None:
         if self.backend is None:
-            from ceng.backends import get_backend as resolve_backend  # noqa: F401
+            from ceng.backends import get_backend as resolve_backend
 
             self.backend = resolve_backend()
 
@@ -101,7 +102,7 @@ class Evolver:
                 describing the gap. Used as Reflector's
                 ``environment_feedback``.
             max_iterations: number of ``for query in queries`` passes
-                over the dataset. Paper §A.6 finds 1–5 epochs are
+                over the dataset. Paper §A.6 finds 1-5 epochs are
                 sufficient.
 
         Returns:

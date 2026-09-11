@@ -10,7 +10,7 @@ from pathlib import Path
 
 import pytest
 
-from ceng.eval import DataProcessor, run_eval, write_report
+from ceng.eval import DataProcessor, run_eval
 from ceng.eval.formula import FormulaProcessor, seed_playbook
 
 

@@ -16,11 +16,10 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
-from typing import Any, Optional
+from typing import Any
 
 from ceng.backends import Backend, get_backend
 from ceng.cache import NAMESPACE_PPA_CHECK, Cache, make_key
-
 
 PROMPT_VERSION = "1"
 POPULATION_PROMPT_TEMPLATE = (
@@ -98,8 +97,8 @@ def ppa_check(
     *,
     llm: str = "gpt-4o-mini",
     tolerance: float = 0.05,
-    backend: Optional[Backend] = None,
-    cache: Optional[Cache] = None,
+    backend: Backend | None = None,
+    cache: Cache | None = None,
     cache_dir: str = "",
     **call_kw: Any,
 ) -> Verdict:
@@ -198,7 +197,7 @@ class TreeNode:
 
     description: str
     prior: float
-    children: list["TreeNode"] = field(default_factory=list)
+    children: list[TreeNode] = field(default_factory=list)
 
 
 def validate_tree(tree: list[dict]) -> list[TreeNode]:
@@ -221,7 +220,7 @@ def validate_tree(tree: list[dict]) -> list[TreeNode]:
 
 def _validate_iter(
     raw_list: list,
-    parent: Optional[TreeNode],
+    parent: TreeNode | None,
     out: list[TreeNode],
     pending: list[TreeNode],
 ) -> None:
@@ -233,7 +232,7 @@ def _validate_iter(
     """
     # Each frame tracks: the list of raw dicts it must emit nodes for
     # in order, and the cursor into that list.
-    frame_stack: list[tuple[list, int, Optional[TreeNode]]] = [
+    frame_stack: list[tuple[list, int, TreeNode | None]] = [
         (raw_list, 0, parent)
     ]
     while frame_stack:
@@ -327,7 +326,7 @@ def ask_population(
     population: str,
     llm: str,
     backend: Backend,
-    cache: Optional[Cache],
+    cache: Cache | None,
     call_kw: dict,
 ) -> tuple[float, bool]:
     """Ask the population-level question, with cache.
@@ -362,7 +361,7 @@ def ask_leaf(
     question: str,
     llm: str,
     backend: Backend,
-    cache: Optional[Cache],
+    cache: Cache | None,
     call_kw: dict,
 ) -> tuple[float, bool]:
     """Ask one leaf's question, with cache. Returns ``(value, cache_hit)``."""
@@ -390,7 +389,7 @@ def ask_leaf(
 
 def _call_with_cache(
     *,
-    cache: Optional[Cache],
+    cache: Cache | None,
     namespace: str,
     key: str,
     backend: Backend,

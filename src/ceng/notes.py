@@ -19,11 +19,10 @@ This isn't a database. It's a directory of markdown you can read with
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Iterable
-
 
 SAFE_REL_PATH = re.compile(r"^[A-Za-z0-9_./\-]+$")
 
@@ -50,7 +49,7 @@ class Note:
     tags: tuple[str, ...] = field(default_factory=tuple)
 
     @classmethod
-    def from_file(cls, abs_path: Path, root: Path) -> "Note":
+    def from_file(cls, abs_path: Path, root: Path) -> Note:
         rel = abs_path.resolve().relative_to(root.resolve()).as_posix()
         text = abs_path.read_text(encoding="utf-8")
         return cls(

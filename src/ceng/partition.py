@@ -15,10 +15,8 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
-from typing import Optional
 
 from ceng.tokens import count_tokens
-
 
 WORD_MAX_BYTES = 4096
 
@@ -38,7 +36,7 @@ class Partition:
 
 
 def partition_text(
-    text: str, *, max_tokens: int = 512, tokenizer: Optional[object] = None
+    text: str, *, max_tokens: int = 512, tokenizer: object | None = None
 ) -> list[Partition]:
     """Return the leaf chunks of an adaptive partition of ``text``.
 
@@ -66,7 +64,7 @@ def partition_text(
 
 
 def split_recursive(
-    text: str, max_tokens: int, tokenizer: Optional[object]
+    text: str, max_tokens: int, tokenizer: object | None
 ) -> list[str]:
     """Split ``text`` into leaves, recursively halving until each fits."""
     if count_tokens(text, tokenizer) <= max_tokens:
@@ -107,7 +105,7 @@ def split_paragraphs(text: str) -> list[str]:
 
 
 def greedy_word_split(
-    text: str, max_tokens: int, tokenizer: Optional[object]
+    text: str, max_tokens: int, tokenizer: object | None
 ) -> list[str]:
     """Greedy word-level chunker; streams words without holding them all.
 
@@ -119,7 +117,10 @@ def greedy_word_split(
     chunks: list[str] = []
     current: list[str] = []
     current_tokens = 0
-    flush = lambda: chunks.append(" ".join(current)) if current else None
+
+    def flush() -> None:
+        if current:
+            chunks.append(" ".join(current))
     for match in re.finditer(r"\S+", text):
         word = match.group(0)
         w_bytes = len(word.encode("utf-8"))

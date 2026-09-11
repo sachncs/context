@@ -32,13 +32,13 @@ References:
 from __future__ import annotations
 
 import re
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any
 
 import yaml
-
 
 OKF_VERSION = "0.1"
 RESERVED_INDEX = "index.md"
@@ -100,7 +100,7 @@ class Frontmatter:
     extra: tuple[tuple[str, Any], ...] = ()
 
     @classmethod
-    def now(cls, **kw: Any) -> "Frontmatter":
+    def now(cls, **kw: Any) -> Frontmatter:
         """Return a :class:`Frontmatter` with ``timestamp`` set to UTC now."""
         return cls(timestamp=now_iso(), **kw)
 
@@ -130,7 +130,7 @@ class Frontmatter:
         return out
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "Frontmatter":
+    def from_dict(cls, d: dict[str, Any]) -> Frontmatter:
         """Build a :class:`Frontmatter` from a dict.
 
         Unknown keys flow into ``extra`` and must be OKF-acceptable
@@ -206,13 +206,13 @@ class Concept:
 
     frontmatter: Frontmatter
     body: str = ""
-    path: Optional[Path] = None
+    path: Path | None = None
 
     def __post_init__(self) -> None:
         if self.path is not None and not isinstance(self.path, Path):
             self.path = Path(self.path)
 
-    def with_path(self, path: str | Path) -> "Concept":
+    def with_path(self, path: str | Path) -> Concept:
         """Return a copy of this concept with ``path`` set."""
         return Concept(self.frontmatter, self.body, Path(path))
 
@@ -264,7 +264,7 @@ def render_concept(concept: Concept) -> str:
     return f"---\n{yaml_block}\n---\n\n{body}"
 
 
-def parse_concept(text: str, path: Optional[Path] = None) -> Concept:
+def parse_concept(text: str, path: Path | None = None) -> Concept:
     """Parse OKF markdown into a :class:`Concept`.
 
     Normalises line endings (CRLF and bare CR collapse to LF) and
@@ -405,7 +405,7 @@ def read_bundle(directory: str | Path) -> list[Concept]:
 
 def find_concept(
     bundle: Iterable[Concept], path: str | Path
-) -> Optional[Concept]:
+) -> Concept | None:
     """Find a concept by bundle-relative path."""
     needle = Path(path).as_posix()
     for concept in bundle:
