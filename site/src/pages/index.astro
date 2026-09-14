@@ -1,0 +1,30 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import Nav from "../components/Nav.astro";
+import Hero from "../components/Hero.astro";
+import TrustStrip from "../components/TrustStrip.astro";
+import Overview from "../components/Overview.astro";
+import Features from "../components/Features.astro";
+import CodeShowcase from "../components/CodeShowcase.astro";
+import Metrics from "../components/Metrics.astro";
+import Research from "../components/Research.astro";
+import Install from "../components/Install.astro";
+import FinalCTA from "../components/FinalCTA.astro";
+
+const title = "ceng — Context, engineered.";
+const description =
+  "Research-grade context engineering for LLMs. Four production-shaped Python primitives: PPA compression, self-consistency checks, evolving ACE playbooks, and portable OKF bundles. One pip install, no framework lock-in.";
+---
+
+<BaseLayout title={title} description={description}>
+  <Nav slot="nav" />
+  <Hero />
+  <TrustStrip />
+  <Overview />
+  <Features />
+  <CodeShowcase />
+  <Metrics />
+  <Research />
+  <Install />
+  <FinalCTA />
+</BaseLayout>

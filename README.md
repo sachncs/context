@@ -309,6 +309,19 @@ The full architecture document (module map, cache topology, backend
 trade-offs, extension points) lives in
 [`ARCHITECTURE.md`](./ARCHITECTURE.md).
 
+## Website
+
+The product site (https://sachncs.github.io/context) lives entirely under
+[`site/`](./site) — an Astro + Tailwind static build, deployed to GitHub
+Pages by the [`pages.yml`](./.github/workflows/pages.yml) workflow.
+
+```bash
+cd site
+npm install
+npm run dev        # local development server
+npm run build      # static output → site/dist
+```
+
 ## License
 
 Apache-2.0.

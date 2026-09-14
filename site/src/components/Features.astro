@@ -1,0 +1,111 @@
+---
+import Icons from "./Icons.astro";
+
+const features = [
+  {
+    icon: "layers",
+    title: "PPA Compression",
+    tag: "ppa_compress",
+    body: "Partition a long message, summarise each chunk in isolation, then aggregate. Macro-fallacy-resistant by construction.",
+    code: 'ppa_compress(messages, budget_tokens=2000)',
+  },
+  {
+    icon: "shield",
+    title: "Self-consistency checks",
+    tag: "ppa_check",
+    body: "Ask at the population level and per leaf of a binary tree, then compare. Catch macro fallacies before they ship.",
+    code: "ppa_check(question, population, tree)",
+  },
+  {
+    icon: "spark",
+    title: "Evolving playbooks",
+    tag: "ceng.playbook.Evolver",
+    body: "ACE's Generator → Reflector → Curator loop with the paper's recommended hyperparameters baked in as defaults.",
+    code: "Evolver(llm=...).run(playbook, queries)",
+  },
+  {
+    icon: "cube",
+    title: "OKF bundles",
+    tag: "ppa_compress_to_okf",
+    body: "Portable, on-disk context bundles with just-in-time retrieval. index.md + combined.md by default — nothing more.",
+    code: "ppa_compress_to_okf(messages, bundle_dir='ctx-out')",
+  },
+  {
+    icon: "curve",
+    title: "U-shape compaction",
+    tag: "compact_messages",
+    body: "Preserve primacy and recency, summarise the middle in one call. The system role is never dropped or altered.",
+    code: "compact_messages(history, preserve_first=2, preserve_last=4)",
+  },
+  {
+    icon: "note",
+    title: "Agentic notes",
+    tag: "ceng.notes.NotesManager",
+    body: "Filesystem-backed external memory with atomic writes, LRU compaction, and pinned notes. No database, no daemon.",
+    code: "NotesManager(root='.ceng_notes').write(path, body)",
+  },
+];
+---
+
+<section id="features" class="relative py-28 sm:py-36">
+  <div class="mx-auto max-w-6xl px-5 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-2xl text-center" data-reveal>
+      <p class="eyebrow">The primitives</p>
+      <h2
+        class="mt-5 text-balance text-4xl font-semibold tracking-[-0.02em] text-white sm:text-5xl"
+      >
+        Four primitives.
+        <span class="text-gradient-soft">Zero ideology.</span>
+      </h2>
+      <p class="mt-6 text-lg leading-relaxed text-slate-400">
+        Every function is synchronous, return-typed, and cache-aware. Compose
+        them, or call one — they stand alone and disappear into your codebase.
+      </p>
+    </div>
+
+    <div
+      class="mt-16 grid gap-5 sm:grid-cols-2 lg:grid-cols-3"
+    >
+      {
+        features.map((f, i) => (
+          <article
+            class="spot card-line group flex flex-col rounded-2xl p-6 transition-transform duration-500 hover:-translate-y-1"
+            data-reveal
+            style={`--reveal-delay: ${(i % 3) * 90}ms`}
+          >
+            <div class="flex items-start justify-between">
+              <div
+                class="flex h-12 w-12 items-center justify-center rounded-xl border border-brand-400/22 bg-gradient-to-br from-brand-500/[0.16] to-violet-glow/[0.12] text-brand-300 transition-colors duration-500"
+              >
+                <Icons name={f.icon} class="h-5 w-5" />
+              </div>
+              <span
+                class="rounded-full border border-white/8 bg-white/[0.04] px-2.5 py-1 font-mono text-[0.68rem] text-slate-400"
+              >
+                {f.tag}
+              </span>
+            </div>
+
+            <h3 class="mt-6 text-xl font-semibold tracking-tight text-white">
+              {f.title}
+            </h3>
+            <p class="mt-2.5 flex-1 text-[0.94rem] leading-relaxed text-slate-400">
+              {f.body}
+            </p>
+
+            <div
+              class="mt-5 rounded-lg border border-white/7 bg-ink-950/70 px-3.5 py-2.5 font-mono text-[0.76rem] text-brand-200/90 truncate"
+            >
+              {f.code}
+            </div>
+          </article>
+        ))
+      }
+    </div>
+
+    <p class="mt-10 text-center text-sm text-slate-500" data-reveal>
+      All entry points are synchronous — no async, no streaming, no hidden
+      agents to reason about.
+    </p>
+  </div>
+</section>

@@ -1,0 +1,202 @@
+---
+import CodeWindow from "./CodeWindow.astro";
+import Icons from "./Icons.astro";
+
+const tabs = [
+  { id: "compress", icon: "layers", title: "Compress", sub: "Partition · prompt · aggregate", file: "compress.py" },
+  { id: "verify", icon: "shield", title: "Verify", sub: "Macro-fallacy probe", file: "check.py" },
+  { id: "evolve", icon: "spark", title: "Evolve", sub: "ACE playbooks", file: "evolver.py" },
+  { id: "compact", icon: "curve", title: "Compact", sub: "U-shape chat history", file: "compact.py" },
+];
+
+const baseBtn =
+  "tab-btn group flex shrink-0 items-center gap-3.5 rounded-2xl border px-4 py-3.5 text-left transition-all duration-300 lg:px-5 lg:py-4 ";
+const activeBtn =
+  baseBtn + "border-brand-400/35 bg-brand-500/[0.09]";
+const idleBtn =
+  baseBtn + "border-white/8 bg-white/[0.02] hover:border-white/18 hover:bg-white/[0.05]";
+
+const preCls = "font-mono text-[0.8rem] leading-6 text-slate-400";
+
+const code = {
+  compress: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng <span class="k-token-4">import</span> <span class="k-token-1">ppa_compress</span>
+
+messages = [
+    {<span class="k-token-3">"role"</span>: <span class="k-token-3">"system"</span>, <span class="k-token-3">"content"</span>: <span class="k-token-3">"You are a careful analyst."</span>},
+    {<span class="k-token-3">"role"</span>: <span class="k-token-3">"user"</span>,   <span class="k-token-3">"content"</span>: <span class="k-token-3">"&lt;very long context…&gt;"</span>},
+]
+
+<span class="k-token-2">small</span> = <span class="k-token-1">ppa_compress</span>(
+    messages,
+    budget_tokens=<span class="k-num">2000</span>,    <span class="k-cmt"># whatever fits the ceiling</span>
+    llm=<span class="k-token-3">"gpt-4o-mini"</span>,    <span class="k-cmt"># any litellm model id</span>
+    cache_dir=<span class="k-token-3">".ceng/cache"</span>,
+)</code></pre>`,
+
+  verify: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng <span class="k-token-4">import</span> <span class="k-token-1">ppa_check</span>
+
+verdict = <span class="k-token-1">ppa_check</span>(
+    question=<span class="k-token-3">"What fraction of users prefer feature X?"</span>,
+    population=<span class="k-token-3">"All of our users"</span>,
+    tree=[
+        {<span class="k-token-3">"description"</span>: <span class="k-token-3">"EU users"</span>, <span class="k-token-3">"prior"</span>: <span class="k-num">0.3</span>, <span class="k-token-3">"children"</span>: [
+            {<span class="k-token-3">"description"</span>: <span class="k-token-3">"German users"</span>, <span class="k-token-3">"prior"</span>: <span class="k-num">0.5</span>},
+            {<span class="k-token-3">"description"</span>: <span class="k-token-3">"French users"</span>, <span class="k-token-3">"prior"</span>: <span class="k-num">0.5</span>},
+        ]},
+        {<span class="k-token-3">"description"</span>: <span class="k-token-3">"US users"</span>, <span class="k-token-3">"prior"</span>: <span class="k-num">0.7</span>},
+    ],
+    llm=<span class="k-token-3">"gpt-4o-mini"</span>,
+)
+
+<span class="k-token-4">print</span>(verdict.<span class="k-token-2">self_consistent</span>)  <span class="k-cmt"># False ⇒ macro fallacy</span></code></pre>`,
+
+  evolve: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng.playbook <span class="k-token-4">import</span> <span class="k-token-1">empty_playbook</span>
+<span class="k-token-4">from</span> ceng.playbook.evolver <span class="k-token-4">import</span> <span class="k-token-1">Evolver</span>
+
+ev = <span class="k-token-1">Evolver</span>(llm=<span class="k-token-3">"gpt-4o-mini"</span>, cache_dir=<span class="k-token-3">".ceng/cache"</span>)
+playbook, stats = ev.<span class="k-token-1">run</span>(
+    playbook=<span class="k-token-1">empty_playbook</span>(),
+    queries=train_samples,    <span class="k-cmt"># {"question", "ground_truth"}</span>
+    evaluator=<span class="k-token-4">lambda</span> q, a, s: <span class="k-token-3">"correct"</span> <span class="k-token-4">if</span> a == s[<span class="k-token-3">"ground_truth"</span>] <span class="k-token-4">else</span> <span class="k-token-3">"wrong"</span>,
+    max_iterations=<span class="k-num">5</span>,
+)
+<span class="k-cmt"># Generator → Reflector → Curator with ADD / UPDATE / MERGE / DELETE</span></code></pre>`,
+
+  compact: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng.compact <span class="k-token-4">import</span> <span class="k-token-1">compact_messages</span>
+
+small, prov = <span class="k-token-1">compact_messages</span>(
+    long_chat_history,
+    preserve_first=<span class="k-num">2</span>,    <span class="k-cmt"># keep system + first user</span>
+    preserve_last=<span class="k-num">4</span>,     <span class="k-cmt"># keep the most recent turns</span>
+    summarise_middle=<span class="k-token-4">True</span>,  <span class="k-cmt"># one backend call for the strip</span>
+    llm=<span class="k-token-3">"gpt-4o-mini"</span>,
+)
+<span class="k-token-4">print</span>(prov.<span class="k-token-2">summarised_count</span>)  <span class="k-cmt"># provenance for your logs</span></code></pre>`,
+};
+---
+
+<section class="relative overflow-hidden border-y border-white/6 bg-ink-925/40 py-28 sm:py-36">
+  <div aria-hidden="true" class="pointer-events-none absolute inset-0">
+    <div class="glow-b -top-24 left-[-16rem] opacity-40"></div>
+  </div>
+
+  <div class="relative mx-auto max-w-6xl px-5 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-2xl text-center" data-reveal>
+      <p class="eyebrow">In practice</p>
+      <h2
+        class="mt-5 text-balance text-4xl font-semibold tracking-[-0.02em] text-white sm:text-5xl"
+      >
+        Four lines.
+        <span class="text-gradient-soft">Every pipeline.</span>
+      </h2>
+      <p class="mt-6 text-lg leading-relaxed text-slate-400">
+        No builder objects. No context managers. Just named functions with
+        sensible defaults and typed returns.
+      </p>
+    </div>
+
+    <div class="mt-16 grid gap-6 lg:grid-cols-[0.9fr_1.4fr]" data-tabs>
+      <div
+        class="flex flex-row gap-2 overflow-x-auto pb-1 lg:flex-col lg:justify-center lg:gap-3 lg:overflow-visible"
+        role="tablist"
+        aria-label="Code examples"
+      >
+        {
+          tabs.map((t, i) => (
+            <button
+              data-tab={t.id}
+              role="tab"
+              aria-selected={i === 0}
+              class={i === 0 ? activeBtn : idleBtn}
+            >
+              <span
+                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 bg-ink-900/80 text-slate-300"
+              >
+                <Icons name={t.icon} class="h-4 w-4" />
+              </span>
+              <span>
+                <span class="block text-[0.92rem] font-semibold text-white">
+                  {t.title}
+                </span>
+                <span class="mt-0.5 block text-[0.76rem] text-slate-500">
+                  {t.sub}
+                </span>
+              </span>
+            </button>
+          ))
+        }
+      </div>
+
+      <div>
+        <div data-panel="compress" class="tab-panel is-active">
+          <CodeWindow
+            file="compress.py"
+            title={'python -c "from ceng import ppa_compress"'}
+            note="260k tokens in, a golden summary out — leaves summarised in isolation, combined without macro fallacies."
+          >
+            <Fragment set:html={code.compress} />
+          </CodeWindow>
+        </div>
+
+        <div data-panel="verify" class="tab-panel">
+          <CodeWindow
+            file="check.py"
+            title={'python -c "from ceng import ppa_check"'}
+            note="Population-level and per-leaf answers are compared automatically. A mismatch is your early warning."
+          >
+            <Fragment set:html={code.verify} />
+          </CodeWindow>
+        </div>
+
+        <div data-panel="evolve" class="tab-panel">
+          <CodeWindow
+            file="evolver.py"
+            title="python -m ceng.playbook.evolver"
+            note="Paper defaults out of the box: 5 reflector rounds, 0.90 dedup, 80k-token playbook budget."
+          >
+            <Fragment set:html={code.evolve} />
+          </CodeWindow>
+        </div>
+
+        <div data-panel="compact" class="tab-panel">
+          <CodeWindow
+            file="compact.py"
+            title="python -m ceng.compact"
+            note="The system role is never dropped or altered — a ValueError guards it at the boundary."
+          >
+            <Fragment set:html={code.compact} />
+          </CodeWindow>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .tab-btn {
+    transition:
+      border-color 0.3s ease,
+      background-color 0.3s ease,
+      transform 0.3s ease;
+  }
+  .tab-btn:hover {
+    transform: translateY(-1px);
+  }
+  .tab-panel {
+    display: none;
+  }
+  .tab-panel.is-active {
+    display: block;
+    animation: panel-in 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  @keyframes panel-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+</style>

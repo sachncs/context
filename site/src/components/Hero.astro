@@ -1,0 +1,200 @@
+---
+import Icons from "./Icons.astro";
+
+const gh = "https://github.com/sachncs/context";
+const cmd = "pip install ceng";
+---
+
+<section id="top" class="relative overflow-hidden pt-32 pb-14 sm:pt-40 sm:pb-20">
+  <!-- Background -->
+  <div aria-hidden="true" class="pointer-events-none absolute inset-0">
+    <div class="glow-a -top-48 left-1/2 -ml-[440px] opacity-80"></div>
+    <div class="glow-b -top-24 right-[-14rem]"></div>
+    <div class="bg-grid absolute inset-0"></div>
+    <div
+      class="absolute inset-0"
+      style="background: radial-gradient(ellipse 100% 55% at 50% 0%, transparent 40%, #04050a 88%);"
+    ></div>
+  </div>
+
+  <div class="relative mx-auto max-w-6xl px-5 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-3xl text-center">
+      <div class="hero-in" style="--hero-delay: 0ms">
+        <span
+          class="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.045] px-4 py-1.5 text-[0.8rem] font-medium text-slate-300 backdrop-blur"
+        >
+          <span class="flex h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse-soft"></span>
+          v0.4.0 · Research-grade · Apache-2.0
+        </span>
+      </div>
+
+      <h1
+        class="hero-in mt-8 text-balance text-[2.9rem] leading-[1.02] font-semibold tracking-[-0.03em] sm:text-6xl lg:text-7xl"
+        style="--hero-delay: 90ms"
+      >
+        Context,
+        <br />
+        <span class="text-gradient">engineered.</span>
+      </h1>
+
+      <p
+        class="hero-in mx-auto mt-7 max-w-2xl text-balance text-lg leading-relaxed text-slate-400 sm:text-xl"
+        style="--hero-delay: 180ms"
+      >
+        ceng distills the strongest context-engineering research of the past two
+        years into four production-shaped Python primitives — compression,
+        self-consistency checks, evolving playbooks, and portable OKF bundles.
+        One <span class="font-mono text-slate-200">pip install</span>. No
+        framework lock-in.
+      </p>
+
+      <div
+        class="hero-in mt-10 flex flex-col items-center justify-center gap-3.5 sm:flex-row"
+        style="--hero-delay: 260ms"
+      >
+        <a href="#install" class="btn btn-primary px-7 py-3.5 text-[0.95rem]">
+          <Icons name="zap" class="h-4 w-4" />
+          Install ceng
+        </a>
+        <a
+          href={gh}
+          target="_blank"
+          rel="noreferrer"
+          class="btn btn-ghost px-7 py-3.5 text-[0.95rem]"
+        >
+          <Icons name="github" class="h-4 w-4" strokeWidth={0} />
+          Read the docs
+        </a>
+      </div>
+
+      <div class="hero-in mt-8" style="--hero-delay: 340ms">
+        <button
+          data-copy={cmd}
+          class="group mx-auto flex items-center gap-3 rounded-full border border-white/10 bg-ink-900/80 py-2 pr-2 pl-4 font-mono text-[0.85rem] text-slate-300 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.8)] transition-colors duration-300 hover:border-white/20"
+          aria-label="Copy install command"
+        >
+          <span class="text-brand-300">$</span>
+          <span>{cmd}</span>
+          <span
+            class="flex h-7 w-7 items-center justify-center rounded-full bg-white/[0.07] text-slate-300 transition-colors duration-300 group-hover:bg-brand-500 group-hover:text-white"
+          >
+            <Icons name="copy" class="h-3.5 w-3.5" />
+          </span>
+          <span class="copy-feedback" aria-hidden="true">Copied</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Pipeline mockup -->
+    <div class="hero-in mx-auto mt-16 max-w-4xl sm:mt-20" style="--hero-delay: 430ms">
+      <div
+        class="relative overflow-hidden rounded-2xl border border-white/10 bg-ink-925/90 shadow-[0_40px_120px_-40px_rgba(77,125,255,0.28),0_20px_60px_-30px_rgba(0,0,0,0.9)]"
+      >
+        <div
+          class="flex items-center justify-between border-b border-white/8 bg-white/[0.03] px-4 py-3 sm:px-5"
+        >
+          <div class="flex items-center gap-2">
+            <span class="h-3 w-3 rounded-full bg-white/14"></span>
+            <span class="h-3 w-3 rounded-full bg-white/14"></span>
+            <span class="h-3 w-3 rounded-full bg-white/14"></span>
+          </div>
+          <span
+            class="hidden text-xs font-medium text-slate-500 sm:block"
+          >
+            ppa_compress — longest user message → OKF bundle
+          </span>
+          <span
+            class="flex items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[0.7rem] font-medium text-emerald-300"
+          >
+            <span class="h-1 w-1 rounded-full bg-emerald-400 animate-pulse-soft"></span>
+            gpt-4o-mini
+          </span>
+        </div>
+
+        <div class="grid gap-0 lg:grid-cols-[1.25fr_1fr]">
+          <!-- Code -->
+          <div class="border-b border-white/8 lg:border-r lg:border-b-0">
+            <div class="code-scroll overflow-x-auto p-5 font-mono text-[0.82rem] leading-6 sm:p-6">
+              <pre class="text-slate-400"><code><span class="text-slate-500">1</span>  <span class="k-token-4">from</span> ceng <span class="k-token-4">import</span> <span class="k-token-1">ppa_compress</span>
+
+<span class="text-slate-500">3</span>  <span class="k-token-2">small</span> = <span class="k-token-1">ppa_compress</span>(
+<span class="text-slate-500">4</span>      messages,              <span class="k-cmt"># longest user message</span>
+<span class="text-slate-500">5</span>      budget_tokens=<span class="k-num">2000</span>,
+<span class="text-slate-500">6</span>      llm=<span class="k-token-3">"gpt-4o-mini"</span>,
+<span class="text-slate-500">7</span>      cache_dir=<span class="k-token-3">".ceng/cache"</span>,
+<span class="text-slate-500">8</span>  )
+
+<span class="text-slate-500">10</span> <span class="k-cmt"># 260k tokens → 2.1k golden summary</span>
+<span class="text-slate-500">11</span> <span class="k-token-4">print</span>(<span class="k-token-2">small</span>.tokens)     <span class="k-cmt"># 2103</span></code></pre>
+            </div>
+            <div
+              class="flex flex-wrap items-center gap-2 border-t border-white/8 px-4 py-3 sm:px-5"
+            >
+              <span
+                class="flex items-center gap-1.5 rounded-full bg-white/[0.05] px-2.5 py-1 text-[0.7rem] font-medium text-slate-300"
+              >
+                <Icons name="database" class="h-3 w-3 text-brand-300" /> sqlite cache · 94% hit
+              </span>
+              <span
+                class="flex items-center gap-1.5 rounded-full bg-white/[0.05] px-2.5 py-1 text-[0.7rem] font-medium text-slate-300"
+              >
+                <Icons name="check" class="h-3 w-3 text-emerald-400" /> deterministic replay
+              </span>
+            </div>
+          </div>
+
+          <!-- Pipeline flow -->
+          <div class="relative p-5 sm:p-6">
+            <p
+              class="text-[0.68rem] font-semibold tracking-[0.18em] text-slate-500 uppercase"
+            >
+              Pipeline
+            </p>
+
+            <div class="mt-4 flex flex-col gap-0">
+              {
+                [
+                  { t: "messages", s: "chat history", hot: false, d: "0ms", i: "terminal" },
+                  { t: "partition_text", s: "16 leaves", hot: false, d: "600ms", i: "gitbranch" },
+                  { t: "summarise_leaf ×N", s: "cache-hit fast path", hot: true, d: "1200ms", i: "spark" },
+                  { t: "combine_summaries", s: "aggregate → golden", hot: false, d: "1800ms", i: "layers" },
+                  { t: "OKF bundle", s: "index.md + combined.md", hot: true, d: "2400ms", i: "cube" },
+                ].map((n) => (
+                  <div class="flex items-center gap-3.5">
+                    <div
+                      class={
+                        "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border " +
+                        (n.hot
+                          ? "border-brand-400/40 bg-brand-500/15 text-brand-300 step-dot-on"
+                          : "border-white/10 bg-white/[0.04] text-slate-400")
+                      }
+                      style={`animation-delay: ${n.d}`}
+                    >
+                      <Icons name={n.i} class="h-3.5 w-3.5" />
+                    </div>
+                    <div
+                      class="flex w-full items-center justify-between rounded-lg border border-white/8 bg-white/[0.03] px-3 py-2"
+                    >
+                      <span class="font-mono text-[0.8rem] text-slate-200">{n.t}</span>
+                      <span class="text-[0.7rem] text-slate-500">{n.s}</span>
+                    </div>
+                  </div>
+                ))
+              }
+            </div>
+
+            <div
+              class="mt-5 flex items-center justify-between rounded-lg border border-emerald-400/16 bg-emerald-400/[0.07] px-3.5 py-2.5"
+            >
+              <span class="flex items-center gap-2 text-[0.75rem] font-medium text-emerald-300">
+                <Icons name="check" class="h-3.5 w-3.5" />
+                Self-consistency verified
+              </span>
+              <span class="font-mono text-[0.72rem] text-emerald-200/70">-99.2% tokens</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,130 @@
+---
+import Logo from "./Logo.astro";
+import Icons from "./Icons.astro";
+
+const links = [
+  { href: "#product", label: "Product" },
+  { href: "#features", label: "Features" },
+  { href: "#research", label: "Research" },
+  { href: "#install", label: "Install" },
+];
+
+const gh = "https://github.com/sachncs/context";
+---
+
+<header
+  id="site-nav"
+  class="fixed inset-x-0 top-0 z-50 border-b border-transparent transition-all delay-0"
+>
+  <nav
+    aria-label="Primary"
+    class="mx-auto flex h-[4.5rem] w-full max-w-6xl items-center justify-between px-5 sm:px-6 lg:px-8"
+  >
+    <a href="#top" class="flex items-center gap-3" aria-label="ceng — home">
+      <Logo size={26} withWordmark />
+    </a>
+
+    <div class="hidden items-center gap-9 md:flex">
+      {
+        links.map((l) => (
+          <a
+            href={l.href}
+            class="text-[0.925rem] font-medium text-slate-300 transition-colors duration-300 hover:text-white"
+          >
+            {l.label}
+          </a>
+        ))
+      }
+    </div>
+
+    <div class="hidden items-center gap-3 md:flex">
+      <a
+        href={gh}
+        target="_blank"
+        rel="noreferrer"
+        class="flex h-9 items-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-3.5 text-[0.85rem] font-medium text-slate-200 transition-all duration-300 hover:border-white/25 hover:bg-white/[0.08]"
+      >
+        <Icons name="github" class="h-4 w-4" strokeWidth={0} />
+        <span class="hidden lg:inline">Star on GitHub</span>
+      </a>
+      <a
+        href="#install"
+        class="btn btn-primary px-5 py-2.5 text-[0.85rem]"
+      >
+        Get started
+        <Icons name="arrow-right" class="h-3.5 w-3.5" />
+      </a>
+    </div>
+
+    <button
+      data-menu-btn
+      aria-label="Open menu"
+      aria-expanded="false"
+      class="flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-slate-200 md:hidden"
+    >
+      <Icons name="menu" class="h-5 w-5" />
+    </button>
+  </nav>
+
+  <div
+    id="mobile-menu"
+    class="overflow-hidden border-b border-white/8 bg-ink-950/95 backdrop-blur-2xl md:hidden"
+  >
+    <div class="flex flex-col gap-1 px-5 py-4">
+      {
+        links.map((l) => (
+          <a
+            href={l.href}
+            class="rounded-xl px-3 py-3 text-base font-medium text-slate-200 transition-colors hover:bg-white/[0.06] hover:text-white"
+          >
+            {l.label}
+          </a>
+        ))
+      }
+      <a
+        href={gh}
+        target="_blank"
+        rel="noreferrer"
+        class="mt-2 flex items-center justify-center gap-2 rounded-full border border-white/12 bg-white/[0.04] px-4 py-3 text-sm font-semibold text-slate-200"
+      >
+        <Icons name="github" class="h-4 w-4" strokeWidth={0} /> Star on GitHub
+      </a>
+      <a
+        href="#install"
+        class="btn btn-primary mt-2 px-4 py-3 text-sm"
+      >
+        Get started
+        <Icons name="arrow-right" class="h-4 w-4" />
+      </a>
+    </div>
+  </div>
+</header>
+
+<style>
+  #site-nav {
+    --nav-bg: rgba(4, 5, 10, 0);
+    --nav-border: transparent;
+    background-color: var(--nav-bg);
+    transition:
+      background-color 0.4s ease,
+      border-color 0.4s ease;
+  }
+  #site-nav.is-scrolled {
+    --nav-bg: rgba(4, 5, 10, 0.74);
+    --nav-border: rgb(255 255 255 / 0.07);
+  }
+  #site-nav.is-scrolled {
+    background-color: var(--nav-bg);
+    border-bottom-color: var(--nav-border);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    box-shadow: 0 8px 32px -16px rgb(0 0 0 / 0.6);
+  }
+  #mobile-menu {
+    max-height: 0;
+    transition: max-height 0.45s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  #mobile-menu.is-open {
+    max-height: 30rem;
+  }
+</style>

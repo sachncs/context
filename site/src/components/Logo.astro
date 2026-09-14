@@ -1,0 +1,39 @@
+---
+interface Props {
+  size?: number;
+  withWordmark?: boolean;
+  className?: string;
+}
+const { size = 28, withWordmark = false, className = "" } = Astro.props;
+---
+
+<div class={["flex items-center gap-2.5", className].join(" ")}>
+  <svg
+    width={size}
+    height={size}
+    viewBox="0 0 32 32"
+    fill="none"
+    xmlns="http://www.w3.org/2000/svg"
+    role="img"
+    aria-label="ceng logo"
+    class="shrink-0 drop-shadow-[0_2px_10px_rgba(77,125,255,0.45)]"
+  >
+    <defs>
+      <linearGradient id="ceng-mark" x1="4" y1="2" x2="28" y2="30" gradientUnits="userSpaceOnUse">
+        <stop stop-color="#5D8BFF" />
+        <stop offset="0.55" stop-color="#6F6BFF" />
+        <stop offset="1" stop-color="#9A63FF" />
+      </linearGradient>
+    </defs>
+    <rect x="1" y="1" width="30" height="30" rx="9" fill="url(#ceng-mark)" />
+    <rect x="1" y="1" width="30" height="30" rx="9" stroke="rgba(255,255,255,0.28)" stroke-width="1" />
+    <rect x="9" y="9" width="14" height="4.4" rx="2.2" fill="white" fill-opacity="0.97" />
+    <rect x="9" y="14.2" width="10" height="4.4" rx="2.2" fill="white" fill-opacity="0.78" />
+    <rect x="9" y="19.4" width="14" height="4.4" rx="2.2" fill="white" fill-opacity="0.58" />
+  </svg>
+  {
+    withWordmark && (
+      <span class="text-lg font-semibold tracking-tight text-white">ceng</span>
+    )
+  }
+</div>

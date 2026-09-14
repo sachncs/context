@@ -1,0 +1,39 @@
+---
+import Icons from "./Icons.astro";
+
+interface Props {
+  file: string;
+  cmd: string;
+  note: string;
+  title?: string;
+}
+
+const { file, cmd, note, title } = Astro.props;
+---
+
+<div
+  class="overflow-hidden rounded-2xl border border-white/10 bg-ink-900/80 shadow-[0_30px_90px_-40px_rgba(77,125,255,0.35)]"
+>
+  <div class="flex items-center justify-between border-b border-white/8 bg-white/[0.03] px-4 py-3 sm:px-5">
+    <div class="flex items-center gap-2">
+      <span class="h-3 w-3 rounded-full bg-white/14"></span>
+      <span class="h-3 w-3 rounded-full bg-white/14"></span>
+      <span class="h-3 w-3 rounded-full bg-white/14"></span>
+      <span class="ml-2 hidden text-xs font-medium text-slate-500 sm:inline">
+        {file}
+      </span>
+    </div>
+    <span class="truncate pl-3 font-mono text-[0.72rem] text-slate-500 sm:pl-0">
+      {title ?? cmd}
+    </span>
+  </div>
+
+  <div class="code-scroll overflow-x-auto p-5 sm:p-6">
+    <slot />
+  </div>
+
+  <div class="flex items-start gap-2.5 border-t border-white/8 bg-white/[0.02] px-4 py-3 sm:px-5">
+    <Icons name="check" class="h-3.5 w-3.5 shrink-0 text-emerald-400" />
+    <p class="text-[0.8rem] leading-relaxed text-slate-500">{note}</p>
+  </div>
+</div>

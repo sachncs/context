@@ -1,0 +1,31 @@
+---
+const stats = [
+  { value: 4, suffix: "", label: "research-grade primitives", sub: "compress · check · evolve · store" },
+  { value: 260, suffix: "+", label: "tests, fixture-driven", sub: "no live LLMs in the suite" },
+  { value: 3, suffix: "", label: "backends, one interface", sub: "litellm · openai · vllm" },
+  { value: 2, suffix: "", label: "runtime dependencies", sub: "litellm + pyyaml, nothing else" },
+];
+---
+
+<section class="border-b border-white/6 py-16 sm:py-20">
+  <div class="mx-auto max-w-6xl px-5 sm:px-6 lg:px-8">
+    <div class="grid grid-cols-2 gap-y-12 lg:grid-cols-4">
+      {
+        stats.map((s, i) => (
+          <div
+            class={"flex flex-col items-center px-4 text-center " + (i > 0 ? "lg:border-l lg:border-white/8" : "")}
+            data-reveal
+            style={`--reveal-delay: ${i * 90}ms`}
+          >
+            <p class="text-[2.6rem] leading-none font-semibold tracking-tight text-white sm:text-5xl">
+              <span data-count={s.value}>0</span>
+              <span class="text-gradient">{s.suffix}</span>
+            </p>
+            <p class="mt-3 text-[0.92rem] font-medium text-slate-300">{s.label}</p>
+            <p class="mt-1 font-mono text-[0.72rem] text-slate-500">{s.sub}</p>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>

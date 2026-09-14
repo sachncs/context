@@ -1,0 +1,106 @@
+---
+import Icons from "./Icons.astro";
+
+const papers = [
+  {
+    id: "arXiv:2607.15277",
+    title: "Partition, Prompt, Aggregate",
+    authors: "Wolf, Kleine Buening, Krause, Mendler-Dünner · 2026",
+    line: "Macro-fallacy-resistant summarisation — partitioned, summarised in isolation, aggregated.",
+    impl: "ppa_compress · ppa_check",
+    url: "https://arxiv.org/abs/2607.15277",
+  },
+  {
+    id: "arXiv:2510.04618",
+    title: "Agentic Context Engineering",
+    authors: "Zhang, Hu, Upasani et al. · 2026",
+    line: "Evolving itemised playbooks, updated by a Generator → Reflector → Curator loop.",
+    impl: "ceng.playbook.Evolver — verbatim prompts, paper defaults",
+    url: "https://arxiv.org/abs/2510.04618",
+  },
+  {
+    id: "arXiv:2510.26493",
+    title: "Context Engineering 2.0",
+    authors: "Hua, Ye, Fu et al. · 2025",
+    line: "Memory as a first-class engineering concern, not an afterthought.",
+    impl: "Philosophy that drives compaction + notes defaults",
+    url: "https://arxiv.org/abs/2510.26493",
+  },
+  {
+    id: "Anthropic · 2025",
+    title: "Effective Context Engineering",
+    authors: "Anthropic Engineering",
+    line: "Finite context as a precious resource — just-in-time retrieval over eager context stuffing.",
+    impl: "OKF index-only default · U-shape compaction",
+    url: "https://www.anthropic.com/engineering/effective-context-engineering-for-ai-agents",
+  },
+  {
+    id: "Google Cloud · 2026",
+    title: "Open Knowledge Format",
+    authors: "McVeety & Hormati · Google Cloud",
+    line: "A portable, self-describing on-disk bundle for knowledge — relational and shareable.",
+    impl: "ceng.okf reader / writer · bundle builders",
+    url: "https://cloud.google.com/blog/products/data-analytics/how-the-open-knowledge-format-can-improve-data-sharing",
+  },
+];
+---
+
+<section id="research" class="relative py-28 sm:py-36">
+  <div class="mx-auto max-w-6xl px-5 sm:px-6 lg:px-8">
+    <div class="max-w-2xl" data-reveal>
+      <p class="eyebrow">Citations, not vibes</p>
+      <h2
+        class="mt-5 text-balance text-4xl font-semibold tracking-[-0.02em] text-white sm:text-5xl"
+      >
+        Every primitive has a
+        <span class="text-gradient"> paper behind it.</span>
+      </h2>
+      <p class="mt-6 text-lg leading-relaxed text-slate-400">
+        No hand-waving. Each function traces to a specific publication — with
+        the authors' own prompts and recommended hyperparameters where they
+        shipped them.
+      </p>
+    </div>
+
+    <div class="mt-14 grid gap-4 sm:grid-cols-2 lg:grid-cols-3" data-reveal style="--reveal-delay: 120ms">
+      {
+        papers.map((p, i) => (
+          <a
+            href={p.url}
+            target="_blank"
+            rel="noreferrer"
+            class={
+              "spot card-line group flex flex-col rounded-2xl p-6 transition-transform duration-500 hover:-translate-y-1 " +
+              (i === 4 ? "sm:col-span-2 lg:col-span-1" : "")
+            }
+          >
+            <div class="flex items-center justify-between gap-3">
+              <span
+                class="rounded-md border border-brand-400/22 bg-brand-500/[0.07] px-2.5 py-1 font-mono text-[0.7rem] text-brand-300"
+              >
+                {p.id}
+              </span>
+              <Icons
+                name="external"
+                class="h-4 w-4 text-slate-500 transition-all duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:text-brand-300"
+              />
+            </div>
+            <h3 class="mt-4 text-lg font-semibold tracking-tight text-white">
+              {p.title}
+            </h3>
+            <p class="mt-1 text-[0.76rem] text-slate-500">{p.authors}</p>
+            <p class="mt-3 flex-1 text-[0.88rem] leading-relaxed text-slate-400">
+              {p.line}
+            </p>
+            <div class="mt-4 border-t border-white/8 pt-3.5">
+              <span class="text-[0.7rem] font-bold tracking-[0.14em] text-slate-500 uppercase">
+                Shipped in ceng
+              </span>
+              <p class="mt-1.5 font-mono text-[0.74rem] text-brand-200/90">{p.impl}</p>
+            </div>
+          </a>
+        ))
+      }
+    </div>
+  </div>
+</section>

@@ -1,0 +1,124 @@
+---
+import Icons from "./Icons.astro";
+
+const installs = [
+  { cmd: "pip install ceng", note: "litellm + pyyaml — the base install" },
+  { cmd: "pip install ceng[tokenize]", note: "adds exact tiktoken counting" },
+  { cmd: "pip install ceng[openai]", note: "raw openai.OpenAI client, leaner" },
+  { cmd: "pip install ceng[vllm]", note: "in-process vLLM on your GPU" },
+];
+
+const quickstartCode = `<span class="k-token-4">import</span> ceng
+
+<span class="k-token-1">ceng</span>.<span class="k-token-1">set_backend</span>(<span class="k-token-3">"litellm"</span>)     <span class="k-cmt"># openai · vllm also built in</span>
+
+<span class="k-token-4">from</span> ceng <span class="k-token-4">import</span> <span class="k-token-1">ppa_compress</span>
+
+small = <span class="k-token-1">ppa_compress</span>(
+    messages,
+    budget_tokens=<span class="k-num">2000</span>,
+    llm=<span class="k-token-3">"gpt-4o-mini"</span>,   <span class="k-cmt"># or any model you can name</span>
+    cache_dir=<span class="k-token-3">".ceng/cache"</span>,
+)
+
+<span class="k-token-4">print</span>(<span class="k-token-3">f"</span><span class="k-token-3">{len(messages)}</span> messages → <span class="k-token-3">{budget_tokens}</span>-token summary<span class="k-token-3">"</span>)`;
+---
+
+<section id="install" class="relative overflow-hidden border-t border-white/6 py-28 sm:py-36">
+  <div aria-hidden="true" class="pointer-events-none absolute inset-0">
+    <div class="glow-a -bottom-56 right-[-16rem] opacity-60"></div>
+  </div>
+
+  <div class="relative mx-auto max-w-6xl px-5 sm:px-6 lg:px-8">
+    <div class="grid items-start gap-14 lg:grid-cols-2 lg:gap-20">
+      <!-- Install commands -->
+      <div data-reveal>
+        <p class="eyebrow">Get started</p>
+        <h2
+          class="mt-5 text-balance text-4xl font-semibold tracking-[-0.02em] text-white sm:text-5xl"
+        >
+          In your environment
+          <span class="text-gradient-soft"> in ten seconds.</span>
+        </h2>
+        <p class="mt-6 text-lg leading-relaxed text-slate-400">
+          Python 3.10 – 3.12. One import, typed returns, silent-by-default
+          logging. Apache-2.0, so ship it anywhere.
+        </p>
+
+        <div class="mt-9 flex flex-col gap-3">
+          {
+            installs.map((inst) => (
+              <div
+                class="group flex items-center justify-between gap-4 rounded-xl border border-white/9 bg-ink-900/70 px-4 py-3.5 transition-colors duration-300 hover:border-brand-400/30"
+              >
+                <div class="min-w-0">
+                  <p class="flex items-center gap-2.5 font-mono text-[0.88rem] text-slate-200">
+                    <span class="text-brand-300">$</span>
+                    <span class="truncate">{inst.cmd}</span>
+                  </p>
+                  <p class="mt-0.5 truncate pl-6 text-[0.76rem] text-slate-500">
+                    {inst.note}
+                  </p>
+                </div>
+                <button
+                  data-copy={inst.cmd}
+                  aria-label={`Copy ${inst.cmd}`}
+                  class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 text-slate-400 transition-all duration-300 hover:border-brand-400/40 hover:bg-brand-500/15 hover:text-white"
+                >
+                  <Icons name="copy" class="h-3.5 w-3.5" />
+                  <span class="copy-feedback" aria-hidden="true">Copied</span>
+                </button>
+              </div>
+            ))
+          }
+        </div>
+
+        <div class="mt-7 flex flex-wrap items-center gap-x-5 gap-y-2" data-reveal style="--reveal-delay: 140ms">
+          <span class="flex items-center gap-1.5 text-[0.8rem] text-slate-500">
+            <Icons name="check" class="h-3.5 w-3.5 text-emerald-400" />
+            No telemetry
+          </span>
+          <span class="flex items-center gap-1.5 text-[0.8rem] text-slate-500">
+            <Icons name="check" class="h-3.5 w-3.5 text-emerald-400" />
+            No framework
+          </span>
+          <span class="font-mono text-[0.8rem] text-slate-500">
+            OPENAI_API_KEY · ANTHROPIC_API_KEY · CENG_BACKEND
+          </span>
+        </div>
+      </div>
+
+      <!-- Quick start code -->
+      <div class="relative" data-reveal style="--reveal-delay: 160ms">
+        <div
+          class="overflow-hidden rounded-2xl border border-white/10 bg-ink-900/80 shadow-[0_30px_90px_-40px_rgba(77,125,255,0.3)]"
+        >
+          <div class="flex items-center justify-between border-b border-white/8 bg-white/[0.03] px-4 py-3 sm:px-5">
+            <div class="flex items-center gap-2">
+              <span class="h-3 w-3 rounded-full bg-white/14"></span>
+              <span class="h-3 w-3 rounded-full bg-white/14"></span>
+              <span class="h-3 w-3 rounded-full bg-white/14"></span>
+            </div>
+            <span class="text-xs font-medium text-slate-500">Your first compress</span>
+            <span class="flex items-center gap-1 text-[0.7rem] font-medium text-slate-500">
+              <Icons name="book" class="h-3.5 w-3.5" /> quickstart.py
+            </span>
+          </div>
+          <div class="code-scroll overflow-x-auto p-5 sm:p-6">
+            <pre class="font-mono text-[0.82rem] leading-6 text-slate-400"><Fragment set:html={quickstartCode} /></pre>
+          </div>
+          <div class="flex flex-wrap items-center gap-2 border-t border-white/8 px-4 py-3 sm:px-5">
+            {["pip", "poetry", "uv", "venv", "conda"].map((t) => (
+              <span class="rounded-full bg-white/[0.05] px-2.5 py-1 text-[0.7rem] font-medium text-slate-400">
+                {t}-friendly
+              </span>
+            ))}
+            <span class="ml-auto flex items-center gap-1.5 text-[0.7rem] text-slate-500">
+              <Icons name="star" class="h-3 w-3" /> 0.4.0 · stable API
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>

@@ -1,0 +1,167 @@
+---
+import Icons from "./Icons.astro";
+
+const principles = [
+  {
+    title: "Treat memory as a first-class resource",
+    body: "Finite context is the precious resource. Every ceng strategy starts from the U-shape retention curve — keep what models actually use, compact the rest.",
+    icon: "layers",
+  },
+  {
+    title: "Research, not folklore",
+    body: "Each primitive is pinned to a specific paper, with recommended hyperparameters and verbatim prompts where the authors shipped them.",
+    icon: "book",
+  },
+  {
+    title: "Primitives, not a framework",
+    body: "Every entry point is a plain synchronous function. No agents, no orchestration, no lock-in — call it from any stack you already run.",
+    icon: "cpu",
+  },
+  {
+    title: "Dependency-light by design",
+    body: "Two runtime dependencies. Third-party SDKs load lazily, and transient failures recover with exponential backoff plus jitter.",
+    icon: "zap",
+  },
+];
+---
+
+<section id="product" class="relative overflow-hidden py-28 sm:py-36">
+  <div aria-hidden="true" class="pointer-events-none absolute inset-0">
+    <div class="glow-c -bottom-40 -left-40 opacity-50"></div>
+  </div>
+
+  <div class="relative mx-auto max-w-6xl px-5 sm:px-6 lg:px-8">
+    <div class="max-w-2xl" data-reveal>
+      <p class="eyebrow">Why ceng</p>
+      <h2
+        class="mt-5 text-balance text-4xl font-semibold tracking-[-0.02em] text-white sm:text-5xl"
+      >
+        Context is the constraint.
+        <br />
+        <span class="text-gradient-soft">Treat it like one.</span>
+      </h2>
+      <p class="mt-6 text-lg leading-relaxed text-slate-400">
+        The strongest context-engineering papers of the last two years
+        converged on the same insight: a good prompt is only as good as the
+        context it stands on. ceng packages that insight into primitives you
+        can reason about.
+      </p>
+    </div>
+
+    <div class="mt-16 grid items-start gap-12 lg:grid-cols-2 lg:gap-16">
+      <!-- Copy -->
+      <div class="flex flex-col gap-2" data-reveal style="--reveal-delay: 100ms">
+        {
+          principles.map((p) => (
+            <div class="group flex gap-5 rounded-2xl p-4 transition-colors duration-300 hover:bg-white/[0.03]">
+              <div
+                class="mt-0.5 flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-brand-400/25 bg-gradient-to-br from-brand-500/20 to-violet-glow/20 text-brand-300"
+              >
+                <Icons name={p.icon} class="h-5 w-5" />
+              </div>
+              <div>
+                <h3 class="text-[1.02rem] font-semibold text-white">{p.title}</h3>
+                <p class="mt-1.5 text-[0.95rem] leading-relaxed text-slate-400">
+                  {p.body}
+                </p>
+              </div>
+            </div>
+          ))
+        }
+      </div>
+
+      <!-- U-shape visual -->
+      <div class="relative" data-reveal style="--reveal-delay: 200ms">
+        <div
+          class="relative overflow-hidden rounded-2xl border border-white/9 bg-ink-900/70 p-6 sm:p-8"
+        >
+          <div class="flex items-center justify-between">
+            <p class="text-[0.68rem] font-semibold tracking-[0.18em] text-slate-500 uppercase">
+              Context retention · U-shape
+            </p>
+            <span
+              class="rounded-full border border-white/10 bg-white/[0.04] px-2.5 py-1 text-[0.7rem] font-medium text-slate-300"
+            >
+              compact_messages
+            </span>
+          </div>
+
+          <svg viewBox="0 0 520 300" class="mt-4 w-full" role="img" aria-label="U-shape context retention curve">
+            <defs>
+              <linearGradient id="u-stroke" x1="0" y1="1" x2="1" y2="1">
+                <stop offset="0" stop-color="#5FD3FF" />
+                <stop offset="0.5" stop-color="#6F98FF" />
+                <stop offset="1" stop-color="#9672FF" />
+              </linearGradient>
+              <linearGradient id="u-fill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#6F98FF" stop-opacity="0.22" />
+                <stop offset="1" stop-color="#6F98FF" stop-opacity="0" />
+              </linearGradient>
+            </defs>
+
+            <!-- grid -->
+            {[70, 140, 210, 280].map((y) => (
+              <line x1="30" x2="490" y1={y} y2={y} stroke="rgba(255,255,255,0.06)" />
+            ))}
+
+            <!-- compact band -->
+            <rect x="185" y="40" width="150" height="260" rx="10" fill="rgba(150,114,255,0.05)" />
+            <rect x="185" y="40" width="150" height="260" rx="10" fill="none" stroke="rgba(150,114,255,0.22)" stroke-dasharray="4 5" />
+
+            <!-- curve fill + stroke -->
+            <path
+              d="M30 78 C 120 78 155 232 260 232 C 365 232 400 78 490 78 L 490 268 L 30 268 Z"
+              fill="url(#u-fill)"
+            />
+            <path
+              d="M30 78 C 120 78 155 232 260 232 C 365 232 400 78 490 78"
+              fill="none"
+              stroke="url(#u-stroke)"
+              stroke-width="2.5"
+              stroke-linecap="round"
+            />
+
+            <!-- peak dots -->
+            <circle cx="30" cy="78" r="4.5" fill="#5FD3FF" />
+            <circle cx="490" cy="78" r="4.5" fill="#9672FF" />
+
+            <!-- labels -->
+            <text x="30" y="54" fill="#9CC8FF" font-size="11" font-family="Inter, sans-serif" font-weight="600">
+              Primacy
+            </text>
+            <text x="428" y="54" fill="#C9A8FF" font-size="11" font-family="Inter, sans-serif" font-weight="600">
+              Recency
+            </text>
+            <text x="243" y="252" fill="#A89AE0" font-size="10.5" font-family="Inter, sans-serif" text-anchor="middle">
+              summarised in one call
+            </text>
+
+            <!-- axis -->
+            <line x1="30" y1="268" x2="490" y2="268" stroke="rgba(255,255,255,0.14)" />
+            <text x="30" y="288" fill="#5D6B8C" font-size="10.5" font-family="Inter, sans-serif">start</text>
+            <text x="460" y="288" fill="#5D6B8C" font-size="10.5" font-family="Inter, sans-serif">end</text>
+          </svg>
+
+          <div class="mt-5 grid grid-cols-2 gap-3">
+            <div class="rounded-xl border border-white/8 bg-white/[0.03] p-3.5">
+              <p class="flex items-center gap-1.5 text-[0.72rem] font-semibold text-slate-200">
+                <span class="h-1.5 w-1.5 rounded-full bg-cyan-glow"></span> Kept verbatim
+              </p>
+              <p class="mt-1 text-[0.78rem] leading-relaxed text-slate-500">
+                System prompt, opening turns, and the latest context — untouched.
+              </p>
+            </div>
+            <div class="rounded-xl border border-white/8 bg-white/[0.03] p-3.5">
+              <p class="flex items-center gap-1.5 text-[0.72rem] font-semibold text-slate-200">
+                <span class="h-1.5 w-1.5 rounded-full bg-brand-300"></span> Distilled away
+              </p>
+              <p class="mt-1 text-[0.78rem] leading-relaxed text-slate-500">
+                The middle strip collapsed in a single backend call, with provenance.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
