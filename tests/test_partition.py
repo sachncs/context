@@ -26,7 +26,11 @@ def test_small_text_yields_single_partition():
 
 
 def test_indices_are_dense_and_ordered():
-    text = ("First paragraph with several sentences. " * 5) + "\n\n" + ("Second paragraph also long. " * 5)
+    text = (
+        ("First paragraph with several sentences. " * 5)
+        + "\n\n"
+        + ("Second paragraph also long. " * 5)
+    )
     out = partition_text(text, max_tokens=10)
     indices = [p.index for p in out]
     assert indices == list(range(len(out)))
@@ -44,7 +48,9 @@ def test_partitions_concatenate_to_original():
 def test_recursion_handles_long_inputs(monkeypatch):
     import ceng.partition as partition_module
 
-    monkeypatch.setattr(partition_module.count_tokens.__module__, "_TOKENIZER", False) if False else None
+    monkeypatch.setattr(
+        partition_module.count_tokens.__module__, "_TOKENIZER", False
+    ) if False else None
     # Force the heuristic branch by mocking count_tokens in the partitioner.
     import ceng.tokens as tokens_module
 
@@ -78,6 +84,7 @@ def test_oversized_single_word_is_capped_not_unbounded():
     chunk that violates ``max_tokens``.
     """
     from ceng.partition import WORD_MAX_BYTES
+
     text = "x" * 5000  # one giant "word"
     out = partition_text(text, max_tokens=10)
     assert any(len(p.text) == WORD_MAX_BYTES for p in out)

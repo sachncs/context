@@ -189,9 +189,7 @@ class NotesManager:
         )
 
         # Phase 1: keep_recent wins; everything older than that is dropped.
-        keep_set = set(
-            rest[-keep_recent:] if len(rest) > keep_recent else rest
-        )
+        keep_set = set(rest[-keep_recent:] if len(rest) > keep_recent else rest)
         dropped = 0
         for p in rest:
             if p in keep_set:

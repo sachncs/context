@@ -166,6 +166,7 @@ def test_context_manager_closes_on_exit(tmp_path):
         handle = cache.conn
     # ``conn`` should be closed now; further use raises ProgrammingError.
     import sqlite3
+
     with pytest.raises(sqlite3.ProgrammingError):
         handle.execute("SELECT 1")
 

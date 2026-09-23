@@ -20,6 +20,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from ceng.backends import Backend
+
 
 @dataclass(frozen=True)
 class CompactionProvenance:
@@ -45,7 +47,7 @@ class CompactionProvenance:
 def compact_messages(
     messages: list[dict],
     *,
-    backend: object | None = None,
+    backend: Backend | None = None,
     llm: str = "gpt-4o-mini",
     preserve_first: int = 2,
     preserve_last: int = 4,
@@ -106,8 +108,12 @@ def compact_messages(
         )
 
     head = list(messages[:preserve_first])
-    tail = list(messages[len(messages) - preserve_last:]) if preserve_last else []
-    middle = messages[preserve_first:len(messages) - preserve_last] if preserve_first + preserve_last < len(messages) else []
+    tail = list(messages[len(messages) - preserve_last :]) if preserve_last else []
+    middle = (
+        messages[preserve_first : len(messages) - preserve_last]
+        if preserve_first + preserve_last < len(messages)
+        else []
+    )
 
     # System-role messages are sacred. They cannot be summarised or
     # dropped. If any system message falls outside the preserved head
@@ -132,9 +138,7 @@ def compact_messages(
     if middle and any(m.get("role") == "system" for m in middle):
         # Defensive: the loop above already raised. This branch is
         # unreachable but kept as a safety net.
-        raise ValueError(
-            "system-role message in the middle strip"
-        )
+        raise ValueError("system-role message in the middle strip")
 
     if not summarise_middle:
         compacted = head + tail
@@ -161,6 +165,7 @@ def compact_messages(
     }
     compacted = [*head, summary_message, *tail]
     from ceng.tokens import count_tokens
+
     return compacted, CompactionProvenance(
         preserved_first=len(head),
         preserved_last=len(tail),
@@ -174,7 +179,7 @@ def compact_messages(
 def _summarise_middle(
     *,
     middle: list[dict],
-    backend: object | None,
+    backend: Backend | None,
     llm: str,
     summary_max_tokens: int,
     cache_dir: str,
@@ -208,9 +213,7 @@ def _summarise_middle(
         {
             "op": "compact_middle",
             "model": llm,
-            "messages_sha256": __import__("hashlib").sha256(
-                body.encode("utf-8")
-            ).hexdigest(),
+            "messages_sha256": __import__("hashlib").sha256(body.encode("utf-8")).hexdigest(),
             "max_tokens": summary_max_tokens,
         }
     )
@@ -234,8 +237,7 @@ def _summarise_middle(
         )
     except Exception as exc:
         raise RuntimeError(
-            f"middle-strip summarisation failed after {len(middle)} "
-            f"messages: {exc!r}"
+            f"middle-strip summarisation failed after {len(middle)} messages: {exc!r}"
         ) from exc
 
     if not text or not text.strip():
@@ -257,8 +259,6 @@ def _strip_to_text(middle: list[dict]) -> str:
         role = m.get("role", "user")
         content = m.get("content", "")
         if isinstance(content, list):
-            content = "".join(
-                c.get("text", "") for c in content if isinstance(c, dict)
-            )
+            content = "".join(c.get("text", "") for c in content if isinstance(c, dict))
         pieces.append(f"{role}: {content}")
     return "\n\n".join(pieces)

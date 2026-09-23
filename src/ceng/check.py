@@ -163,20 +163,12 @@ def ppa_check(
             call_kw=call_kw,
         )
         estimates.append(
-            LeafEstimate(
-                description=description, prior=prior, estimate=value, cache_hit=cache_hit
-            )
+            LeafEstimate(description=description, prior=prior, estimate=value, cache_hit=cache_hit)
         )
     aggregated = sum(e.prior * e.estimate for e in estimates)
     delta = abs(population_estimate - aggregated)
-    cache_hits = (
-        (1 if population_cache_hit else 0)
-        + sum(1 for e in estimates if e.cache_hit)
-    )
-    cache_misses = (
-        (0 if population_cache_hit else 1)
-        + sum(1 for e in estimates if not e.cache_hit)
-    )
+    cache_hits = (1 if population_cache_hit else 0) + sum(1 for e in estimates if e.cache_hit)
+    cache_misses = (0 if population_cache_hit else 1) + sum(1 for e in estimates if not e.cache_hit)
     return Verdict(
         question=question,
         population=population,
@@ -232,9 +224,7 @@ def _validate_iter(
     """
     # Each frame tracks: the list of raw dicts it must emit nodes for
     # in order, and the cursor into that list.
-    frame_stack: list[tuple[list, int, TreeNode | None]] = [
-        (raw_list, 0, parent)
-    ]
+    frame_stack: list[tuple[list, int, TreeNode | None]] = [(raw_list, 0, parent)]
     while frame_stack:
         current, idx, parent_node = frame_stack[-1]
         if idx >= len(current):
@@ -243,25 +233,18 @@ def _validate_iter(
         raw = current[idx]
         frame_stack[-1] = (current, idx + 1, parent_node)
         if not isinstance(raw, dict):
-            raise ValueError(
-                f"tree node must be a dict, got {type(raw).__name__}"
-            )
+            raise ValueError(f"tree node must be a dict, got {type(raw).__name__}")
         description = raw.get("description")
         if not isinstance(description, str) or not description:
             raise ValueError("tree node must have a non-empty 'description'")
         prior = raw.get("prior", 1.0)
         if not isinstance(prior, (int, float)) or not 0 <= prior <= 1:
-            raise ValueError(
-                f"tree node 'prior' must be between 0 and 1, got {prior!r}"
-            )
+            raise ValueError(f"tree node 'prior' must be between 0 and 1, got {prior!r}")
         if prior == 0:
             raise ValueError(
-                f"tree node {description!r} has prior=0; "
-                "omit the node or set prior > 0"
+                f"tree node {description!r} has prior=0; omit the node or set prior > 0"
             )
-        node = TreeNode(
-            description=description, prior=float(prior), children=[]
-        )
+        node = TreeNode(description=description, prior=float(prior), children=[])
         pending.append(node)
         if parent_node is None:
             out.append(node)
@@ -280,21 +263,15 @@ def _check_sibling_sums_iter(nodes: list[TreeNode]) -> None:
         if node.children:
             total = sum(c.prior for c in node.children)
             if total > 1 + 1e-9:
-                raise ValueError(
-                    f"children of {node.description!r} sum to {total}; "
-                    "expected <= 1"
-                )
+                raise ValueError(f"children of {node.description!r} sum to {total}; expected <= 1")
             if total < 1 - 1e-9:
                 raise ValueError(
-                    f"children of {node.description!r} sum to {total}; "
-                    "expected exactly 1.0"
+                    f"children of {node.description!r} sum to {total}; expected exactly 1.0"
                 )
             stack.extend(node.children)
 
 
-def flatten_tree(
-    nodes: list[TreeNode], parent_prior: float = 1.0
-) -> list[tuple[str, float]]:
+def flatten_tree(nodes: list[TreeNode], parent_prior: float = 1.0) -> list[tuple[str, float]]:
     """Walk the tree iteratively in document (left-to-right) order.
 
     Yields ``(description, effective_prior)`` per leaf. Iterative
@@ -304,9 +281,7 @@ def flatten_tree(
     from collections import deque
 
     out: list[tuple[str, float]] = []
-    work: deque[tuple[TreeNode, float]] = deque(
-        (n, parent_prior) for n in nodes
-    )
+    work: deque[tuple[TreeNode, float]] = deque((n, parent_prior) for n in nodes)
     while work:
         node, ancestor_prior = work.popleft()
         effective = ancestor_prior * node.prior
@@ -349,9 +324,7 @@ def ask_population(
         backend=backend,
         llm=llm,
         call_kw=call_kw,
-        prompt=POPULATION_PROMPT_TEMPLATE.format(
-            question=question, population=population
-        ),
+        prompt=POPULATION_PROMPT_TEMPLATE.format(question=question, population=population),
     )
 
 
@@ -381,9 +354,7 @@ def ask_leaf(
         backend=backend,
         llm=llm,
         call_kw=call_kw,
-        prompt=LEAF_PROMPT_TEMPLATE.format(
-            question=question, description=description
-        ),
+        prompt=LEAF_PROMPT_TEMPLATE.format(question=question, description=description),
     )
 
 
@@ -418,9 +389,7 @@ def _call_with_cache(
 # Matches integers, decimals, and scientific notation, with optional
 # sign. Captures mantissa+exponent as a unit so ``5e10`` doesn't get
 # truncated to ``5``.
-_PROBABILITY_PATTERN = re.compile(
-    r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?"
-)
+_PROBABILITY_PATTERN = re.compile(r"[-+]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][-+]?\d+)?")
 
 
 def parse_probability(raw: str) -> float:
@@ -439,8 +408,6 @@ def parse_probability(raw: str) -> float:
         raise ValueError("LLM returned no content")
     match = _PROBABILITY_PATTERN.search(raw)
     if match is None:
-        raise ValueError(
-            f"could not parse probability from LLM response: {raw!r}"
-        )
+        raise ValueError(f"could not parse probability from LLM response: {raw!r}")
     value = float(match.group(0))
     return max(0.0, min(1.0, value))

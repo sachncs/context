@@ -37,9 +37,7 @@ def test_keep_verbatim_when_preserve_first_plus_preserve_last_exceeds_length():
         {"role": "user", "content": "b"},
         {"role": "user", "content": "c"},
     ]
-    out, prov = compact_messages(
-        msgs, backend=FakeBackend(), preserve_first=2, preserve_last=2
-    )
+    out, prov = compact_messages(msgs, backend=FakeBackend(), preserve_first=2, preserve_last=2)
     assert out == msgs
     assert prov.summarised_count == 0
 
@@ -48,7 +46,10 @@ def test_u_shape_preserves_first_and_last_middle_summarised():
     backend = FakeBackend(response="(summary of middle)")
     msgs = [
         {"role": "system", "content": "sys"},  # kept at position 0
-        {"role": "user", "content": "head-1"},  # preserved head (preserve_first=1 means system only? no: head slice is messages[:preserve_first])
+        {
+            "role": "user",
+            "content": "head-1",
+        },  # preserved head (preserve_first=1 means system only? no: head slice is messages[:preserve_first])
         {"role": "user", "content": "mid-1"},
         {"role": "user", "content": "mid-2"},
         {"role": "user", "content": "tail-1"},
@@ -77,7 +78,10 @@ def test_summarise_middle_false_drops_middle():
     backend = FakeBackend()
     msgs = [{"role": "user", "content": str(i)} for i in range(20)]
     out, prov = compact_messages(
-        msgs, backend=backend, preserve_first=2, preserve_last=3,
+        msgs,
+        backend=backend,
+        preserve_first=2,
+        preserve_last=3,
         summarise_middle=False,
     )
     assert len(out) == 5
@@ -103,7 +107,10 @@ def test_system_message_in_preserved_head_is_safe():
         {"role": "user", "content": "u2"},
     ]
     out, prov = compact_messages(
-        msgs, backend=FakeBackend(), preserve_first=2, preserve_last=0,
+        msgs,
+        backend=FakeBackend(),
+        preserve_first=2,
+        preserve_last=0,
         summarise_middle=False,
     )
     assert out[0]["content"] == "INSTRUCTIONS"
@@ -114,23 +121,25 @@ def test_empty_messages_raises():
         compact_messages([], backend=FakeBackend())
 
 
-def test_backend_error_carries_strip_length():
+def test_backend_error_carries_strip_length(tmp_path):
     class FailBackend:
         name = "fail"
 
         def complete(self, messages, model, **kw):
             raise ConnectionError("upstream died")
 
-    msgs = [
-        {"role": "user", "content": str(i)} for i in range(10)
-    ]
+    msgs = [{"role": "user", "content": str(i)} for i in range(10)]
     with pytest.raises(RuntimeError, match="middle-strip summarisation"):
         compact_messages(
-            msgs, backend=FailBackend(), preserve_first=1, preserve_last=1
+            msgs,
+            backend=FailBackend(),
+            preserve_first=1,
+            preserve_last=1,
+            cache_dir=str(tmp_path / "cache"),
         )
 
 
-def test_empty_summary_output_rejected():
+def test_empty_summary_output_rejected(tmp_path):
     class EmptyBackend:
         name = "empty"
 
@@ -140,7 +149,11 @@ def test_empty_summary_output_rejected():
     msgs = [{"role": "user", "content": str(i)} for i in range(10)]
     with pytest.raises(RuntimeError, match="empty"):
         compact_messages(
-            msgs, backend=EmptyBackend(), preserve_first=1, preserve_last=1
+            msgs,
+            backend=EmptyBackend(),
+            preserve_first=1,
+            preserve_last=1,
+            cache_dir=str(tmp_path / "cache"),
         )
 
 
@@ -173,7 +186,10 @@ def test_provenance_carries_counts():
     msgs = [{"role": "user", "content": f"m{i}"} for i in range(15)]
     backend = FakeBackend()
     out, prov = compact_messages(
-        msgs, backend=backend, preserve_first=2, preserve_last=3,
+        msgs,
+        backend=backend,
+        preserve_first=2,
+        preserve_last=3,
         summarise_middle=False,
     )
     assert isinstance(prov, CompactionProvenance)
@@ -200,6 +216,7 @@ def test_summarised_tokens_uses_count_tokens_not_split():
     )
     expected = count_tokens("one two three four five six seven eight nine ten")
     assert prov.summarised_tokens == expected
-    assert prov.summarised_tokens != len(
-        "one two three four five six seven eight nine ten".split()
-    ) or expected == 10
+    assert (
+        prov.summarised_tokens != len("one two three four five six seven eight nine ten".split())
+        or expected == 10
+    )

@@ -33,46 +33,26 @@ def formula_fixture_path(tmp_path) -> Path:
 
 
 _FORMULA_FIXTURE: list[tuple[str, str, str]] = [
-    ("Revenue was $1,000,000; expenses $600,000.",
-     "What is the net income?", "400000"),
-    ("Revenue 200,000; net income 30,000.",
-     "What is the net margin (decimal)?", "0.15"),
-    ("Total assets 500,000; net income 50,000.",
-     "What is the ROA (decimal)?", "0.1"),
-    ("Current assets 200,000; current liabilities 100,000.",
-     "What is the current ratio?", "2.0"),
-    ("This year 1,200; last year 1,000.",
-     "What is YoY growth (decimal)?", "0.2"),
-    ("Net income 50,000; shares 10,000.",
-     "What is the EPS?", "5"),
-    ("Operating income 80,000; revenue 400,000.",
-     "Operating margin?", "0.2"),
-    ("Cash 50,000; receivables 30,000; inventory 20,000.",
-     "Current assets total?", "100000"),
-    ("Current liabilities 50,000; current assets 200,000.",
-     "Current ratio?", "4.0"),
-    ("Sales 500,000; cost of goods 300,000.",
-     "Gross margin (decimal)?", "0.4"),
-    ("Total revenue 1,000,000; returns 50,000; discounts 50,000.",
-     "Net revenue?", "900000"),
-    ("Profit 100,000; tax rate 25%.",
-     "Net profit after tax?", "75000"),
-    ("Cash 20,000; receivables 30,000; payables 25,000.",
-     "Net working capital?", "25000"),
-    ("Total debt 400,000; equity 600,000.",
-     "Debt-to-equity ratio (decimal)?", "0.667"),
-    ("Sales 800,000; prior sales 1,000,000.",
-     "Sales decline (decimal)?", "-0.2"),
-    ("Cost 50,000; markup 25%.",
-     "Selling price?", "62500"),
-    ("Total 1,000; probability 0.1.",
-     "Expected value?", "100"),
-    ("Inventory 100 units; sold 75; remaining 25.",
-     "Inventory turnover (decimal)?", "0.75"),
-    ("Loan 100,000 at 5% for 1 year.",
-     "Simple interest?", "5000"),
-    ("Loan 100,000 at 5% for 1 year, compounded annually.",
-     "Compound interest?", "5000"),
+    ("Revenue was $1,000,000; expenses $600,000.", "What is the net income?", "400000"),
+    ("Revenue 200,000; net income 30,000.", "What is the net margin (decimal)?", "0.15"),
+    ("Total assets 500,000; net income 50,000.", "What is the ROA (decimal)?", "0.1"),
+    ("Current assets 200,000; current liabilities 100,000.", "What is the current ratio?", "2.0"),
+    ("This year 1,200; last year 1,000.", "What is YoY growth (decimal)?", "0.2"),
+    ("Net income 50,000; shares 10,000.", "What is the EPS?", "5"),
+    ("Operating income 80,000; revenue 400,000.", "Operating margin?", "0.2"),
+    ("Cash 50,000; receivables 30,000; inventory 20,000.", "Current assets total?", "100000"),
+    ("Current liabilities 50,000; current assets 200,000.", "Current ratio?", "4.0"),
+    ("Sales 500,000; cost of goods 300,000.", "Gross margin (decimal)?", "0.4"),
+    ("Total revenue 1,000,000; returns 50,000; discounts 50,000.", "Net revenue?", "900000"),
+    ("Profit 100,000; tax rate 25%.", "Net profit after tax?", "75000"),
+    ("Cash 20,000; receivables 30,000; payables 25,000.", "Net working capital?", "25000"),
+    ("Total debt 400,000; equity 600,000.", "Debt-to-equity ratio (decimal)?", "0.667"),
+    ("Sales 800,000; prior sales 1,000,000.", "Sales decline (decimal)?", "-0.2"),
+    ("Cost 50,000; markup 25%.", "Selling price?", "62500"),
+    ("Total 1,000; probability 0.1.", "Expected value?", "100"),
+    ("Inventory 100 units; sold 75; remaining 25.", "Inventory turnover (decimal)?", "0.75"),
+    ("Loan 100,000 at 5% for 1 year.", "Simple interest?", "5000"),
+    ("Loan 100,000 at 5% for 1 year, compounded annually.", "Compound interest?", "5000"),
 ]
 
 
@@ -104,12 +84,13 @@ def test_formula_answer_is_correct_with_tolerance():
 def test_formula_evaluate_accuracy():
     p = FormulaProcessor()
     preds = ["400000", "0.2", "100", "garbage"]
-    gold =  ["400000", "0.15", "100", "100"]
+    gold = ["400000", "0.15", "100", "100"]
     assert p.evaluate_accuracy(preds, gold) == pytest.approx(2 / 4)
 
 
 def test_formula_seed_playbook_loads_with_curated_content():
     from ceng.playbook import parse_playbook
+
     pb = parse_playbook(seed_playbook())
     # Has formulas
     formula_bullets = [
@@ -150,8 +131,12 @@ def test_formula_full_eval_pipeline(formula_fixture_path, tmp_path):
     rows = [json.loads(l) for l in formula_fixture_path.read_text().splitlines() if l.strip()]
     samples = p.process_task_data(rows)
     result = run_eval(
-        benchmark="formula", processor=p, samples=samples,
-        backend=backend, llm="m", cache_dir=str(tmp_path / "cache"),
+        benchmark="formula",
+        processor=p,
+        samples=samples,
+        backend=backend,
+        llm="m",
+        cache_dir=str(tmp_path / "cache"),
     )
     assert result.n_samples == 20
     assert 0.0 <= result.baseline_accuracy <= 1.0
@@ -175,8 +160,12 @@ def test_run_eval_counts_backend_errors(formula_fixture_path, tmp_path):
     rows = [json.loads(l) for l in formula_fixture_path.read_text().splitlines() if l.strip()]
     samples = p.process_task_data(rows)
     result = run_eval(
-        benchmark="formula", processor=p, samples=samples,
-        backend=backend, llm="m", cache_dir=str(tmp_path / "cache"),
+        benchmark="formula",
+        processor=p,
+        samples=samples,
+        backend=backend,
+        llm="m",
+        cache_dir=str(tmp_path / "cache"),
     )
     assert result.backend_errors == 2 * len(samples)
     assert result.ceng_accuracy == 0.0
@@ -202,14 +191,22 @@ def test_run_eval_seed_is_reproducible(formula_fixture_path, tmp_path):
     rows = [json.loads(l) for l in formula_fixture_path.read_text().splitlines() if l.strip()]
     samples = p.process_task_data(rows)
     a = run_eval(
-        benchmark="formula", processor=p, samples=samples,
-        backend=backend_a, llm="m",
-        cache_dir=str(tmp_path / "cache_a"), seed=42,
+        benchmark="formula",
+        processor=p,
+        samples=samples,
+        backend=backend_a,
+        llm="m",
+        cache_dir=str(tmp_path / "cache_a"),
+        seed=42,
     )
     b = run_eval(
-        benchmark="formula", processor=p, samples=samples,
-        backend=backend_b, llm="m",
-        cache_dir=str(tmp_path / "cache_b"), seed=42,
+        benchmark="formula",
+        processor=p,
+        samples=samples,
+        backend=backend_b,
+        llm="m",
+        cache_dir=str(tmp_path / "cache_b"),
+        seed=42,
     )
     assert a.sample_correctness == b.sample_correctness
     assert a.baseline_accuracy == b.baseline_accuracy

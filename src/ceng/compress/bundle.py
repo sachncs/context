@@ -8,6 +8,8 @@ pipeline so each piece is independently testable.
 
 from __future__ import annotations
 
+from pathlib import Path
+
 # Import here to avoid a circular dependency: compress/__init__.py
 # exports CompressionBundle; bundle.py imports it lazily.
 from typing import TYPE_CHECKING
@@ -69,17 +71,15 @@ def build_bundle_concepts(
                         timestamp=now_iso(),
                     ),
                     body=_render_leaf_body(leaf),
-                    path=path,
+                    path=Path(path),
                 )
             )
 
         if len(bundle.leaves) > 1:
-            concepts.append(
-                _combined_concept(bundle, leaf_links)
-            )
-            index_entries = [
-                "- [Combined summary](combined.md)"
-            ] + [f"- {link}" for link in leaf_links]
+            concepts.append(_combined_concept(bundle, leaf_links))
+            index_entries = ["- [Combined summary](combined.md)"] + [
+                f"- {link}" for link in leaf_links
+            ]
         else:
             index_entries = [f"- {link}" for link in leaf_links]
         concepts.append(_index_concept(bundle, bundle_name, index_entries))
@@ -102,21 +102,17 @@ def _combined_concept(bundle: CompressionBundle, leaf_links: list[str]) -> Conce
         + "\n\n## Cross-links\n\n"
         + "\n".join(f"- {link}" for link in leaf_links)
         + "\n",
-        path="combined.md",
+        path=Path("combined.md"),
     )
 
 
-def _index_concept(
-    bundle: CompressionBundle, bundle_name: str, entries: list[str]
-) -> Concept:
+def _index_concept(bundle: CompressionBundle, bundle_name: str, entries: list[str]) -> Concept:
     body = (
         f"# {bundle_name}\n\n"
         f"Bundle produced by `ceng.ppa_compress_to_okf`. "
         f"{bundle.leaf_count} leaves, "
         f"{bundle.cache_hits} cache hits, {bundle.cache_misses} misses.\n\n"
-        f"## Sections\n\n"
-        + "\n".join(entries)
-        + "\n"
+        f"## Sections\n\n" + "\n".join(entries) + "\n"
     )
     return Concept(
         frontmatter=Frontmatter(
@@ -127,7 +123,7 @@ def _index_concept(
             timestamp=now_iso(),
         ),
         body=body,
-        path=RESERVED_INDEX,
+        path=Path(RESERVED_INDEX),
     )
 
 
@@ -145,18 +141,13 @@ def _noop_index_concept(bundle: CompressionBundle, bundle_name: str) -> Concept:
             f"Original message was {bundle.original_tokens} tokens, "
             f"under the budget of compressed output. No leaves generated.\n"
         ),
-        path=RESERVED_INDEX,
+        path=Path(RESERVED_INDEX),
     )
 
 
 def _render_leaf_body(leaf) -> str:
     """Build the markdown body for a leaf concept."""
-    return (
-        f"## Summary\n\n"
-        f"{leaf.summary}\n\n"
-        f"## Original chunk\n\n"
-        f"```\n{leaf.text}\n```\n"
-    )
+    return f"## Summary\n\n{leaf.summary}\n\n## Original chunk\n\n```\n{leaf.text}\n```\n"
 
 
 def _first_line(text: str, limit: int) -> str:

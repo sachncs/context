@@ -125,9 +125,7 @@ def test_render_and_parse_with_quoted_string():
 
 
 def test_parse_frontmatter_skips_comments_and_blank_lines():
-    parsed = parse_frontmatter(
-        "# header\n\ntype: x\n# trailing\ntitle: hello\n"
-    )
+    parsed = parse_frontmatter("# header\n\ntype: x\n# trailing\ntitle: hello\n")
     assert parsed == {"type": "x", "title": "hello"}
 
 
@@ -284,9 +282,7 @@ def test_read_bundle_finds_every_md(tmp_path):
     bundle.mkdir()
     (bundle / "a.md").write_text("---\ntype: x\n---\n\nA\n", encoding="utf-8")
     (bundle / "sub").mkdir()
-    (bundle / "sub" / "b.md").write_text(
-        "---\ntype: y\ntitle: b\n---\n\nB\n", encoding="utf-8"
-    )
+    (bundle / "sub" / "b.md").write_text("---\ntype: y\ntitle: b\n---\n\nB\n", encoding="utf-8")
     (bundle / "ignore.txt").write_text("not a concept", encoding="utf-8")
     loaded = read_bundle(bundle)
     types = {c.frontmatter.type for c in loaded}
@@ -430,10 +426,7 @@ def test_keys_with_colons_rejected():
 
 
 def test_cross_links_excludes_external_urls():
-    body = (
-        "See [internal](tables/orders.md) and "
-        "[external](https://example.com/foo.md)."
-    )
+    body = "See [internal](tables/orders.md) and [external](https://example.com/foo.md)."
     assert cross_links(body) == ["tables/orders.md"]
 
 
@@ -465,9 +458,7 @@ def test_read_bundle_rejects_symlink_escaping_root(tmp_path):
     bundle.mkdir()
     (bundle / "good.md").write_text("---\ntype: x\n---\n\n", encoding="utf-8")
     outside = tmp_path / "outside.md"
-    outside.write_text(
-        "---\ntype: x\n---\n\nSECRET\n", encoding="utf-8"
-    )
+    outside.write_text("---\ntype: x\n---\n\nSECRET\n", encoding="utf-8")
     try:
         (bundle / "bad.md").symlink_to(outside)
     except (OSError, NotImplementedError):
@@ -618,9 +609,7 @@ def test_write_bundle_cleans_staging_on_failure(tmp_path):
     with pytest.raises(ValueError):
         write_bundle(target, [bad])
     # No leftover staging dirs in the parent.
-    leftovers = [
-        p for p in tmp_path.iterdir() if ".staging-" in p.name
-    ]
+    leftovers = [p for p in tmp_path.iterdir() if ".staging-" in p.name]
     assert leftovers == []
 
 

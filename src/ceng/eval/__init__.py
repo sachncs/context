@@ -54,18 +54,15 @@ class DataProcessor(Protocol):
     Concrete subclasses live in :mod:`ceng.eval.finer` and friends.
     """
 
-    def process_task_data(self, raw_data: list[dict]) -> list[DataSample]:
-        ...
+    def process_task_data(self, raw_data: list[dict]) -> list[DataSample]: ...
 
-    def answer_is_correct(self, predicted: str, ground_truth: str) -> bool:
-        ...
+    def answer_is_correct(self, predicted: str, ground_truth: str) -> bool: ...
 
     def evaluate_accuracy(
         self,
         predictions: list[str],
         ground_truths: list[str],
-    ) -> float:
-        ...
+    ) -> float: ...
 
 
 @dataclass
@@ -192,9 +189,7 @@ def run_eval(
             f"Context: {sample.context}\n"
             f"Answer with ONLY the final answer value, no explanation."
         )
-        base_response, base_errored = _safe_complete(
-            chosen, base_prompt, llm, cache
-        )
+        base_response, base_errored = _safe_complete(chosen, base_prompt, llm, cache)
         if base_errored:
             backend_errors += 1
         base_ans = _strip_to_answer(base_response)
@@ -210,9 +205,7 @@ def run_eval(
             "comparison)\n"
             f"Answer with ONLY the final answer value, no explanation."
         )
-        ceng_response, ceng_errored = _safe_complete(
-            chosen, ceng_prompt, llm, cache
-        )
+        ceng_response, ceng_errored = _safe_complete(chosen, ceng_prompt, llm, cache)
         if ceng_errored:
             backend_errors += 1
         ceng_ans = _strip_to_answer(ceng_response)
@@ -241,8 +234,9 @@ def run_eval(
     )
 
 
-def render_report(result: EvalResult, *, cited_baseline: float | None = None,
-                  cited_ceng: float | None = None) -> str:
+def render_report(
+    result: EvalResult, *, cited_baseline: float | None = None, cited_ceng: float | None = None
+) -> str:
     """Render a Markdown report comparing baseline to ceng, plus cited
     numbers from the ACE paper if provided.
 
@@ -264,9 +258,7 @@ def render_report(result: EvalResult, *, cited_baseline: float | None = None,
     lines.append("|---|---|")
     lines.append(f"| Baseline (no ACE) | {result.baseline_accuracy:.3f} |")
     lines.append(f"| ceng | {result.ceng_accuracy:.3f} |")
-    lines.append(
-        f"| Δ (ceng - baseline) | {result.delta:+.3f} |"
-    )
+    lines.append(f"| Δ (ceng - baseline) | {result.delta:+.3f} |")
     lines.append("")
     if cited_baseline is not None or cited_ceng is not None:
         lines.append("## Cited from ACE paper (arXiv:2510.04618)")
@@ -274,17 +266,11 @@ def render_report(result: EvalResult, *, cited_baseline: float | None = None,
         lines.append("| Variant | Accuracy | Source |")
         lines.append("|---|---|---|")
         if cited_baseline is not None:
-            lines.append(
-                f"| Base LLM (no ACE) | {cited_baseline:.1f} | "
-                "Zhang et al., Table 2"
-            )
+            lines.append(f"| Base LLM (no ACE) | {cited_baseline:.1f} | Zhang et al., Table 2")
         if cited_ceng is not None:
-            lines.append(
-                f"| ACE (paper) | {cited_ceng:.1f} | "
-                "Zhang et al., Table 2"
-            )
+            lines.append(f"| ACE (paper) | {cited_ceng:.1f} | Zhang et al., Table 2")
         lines.append("")
-        lines.append("> ceng 0.4.0 reproduces the ACE framework verbatim from")
+        lines.append("> ceng 1.0.0 reproduces the ACE framework verbatim from")
         lines.append("> the upstream repo. Differences between the measured")
         lines.append("> numbers above and the paper's cited numbers reflect")
         lines.append("> the model used, the smoke sample size, and random")
@@ -296,9 +282,13 @@ def render_report(result: EvalResult, *, cited_baseline: float | None = None,
     return "\n".join(lines)
 
 
-def write_report(result: EvalResult, path: str | Path, *,
-                 cited_baseline: float | None = None,
-                 cited_ceng: float | None = None) -> Path:
+def write_report(
+    result: EvalResult,
+    path: str | Path,
+    *,
+    cited_baseline: float | None = None,
+    cited_ceng: float | None = None,
+) -> Path:
     """Write the JSON artefact and the Markdown report under ``path``."""
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -306,9 +296,7 @@ def write_report(result: EvalResult, path: str | Path, *,
     md_path = path.with_suffix(".md")
     json_path.write_text(result.to_json(), encoding="utf-8")
     md_path.write_text(
-        render_report(
-            result, cited_baseline=cited_baseline, cited_ceng=cited_ceng
-        ),
+        render_report(result, cited_baseline=cited_baseline, cited_ceng=cited_ceng),
         encoding="utf-8",
     )
     return md_path
@@ -349,6 +337,6 @@ def _strip_to_answer(text: str) -> str:
             continue
         for prefix in ("Answer:", "Output:", "Result:"):
             if line.startswith(prefix):
-                line = line[len(prefix):].strip()
+                line = line[len(prefix) :].strip()
         return line
     return text.strip()

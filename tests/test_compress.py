@@ -76,9 +76,7 @@ def test_picks_longest_user_message(fake_backend, tmp_cache):
 
 def test_raises_when_no_text_to_compress(fake_backend, tmp_cache):
     with pytest.raises(ValueError, match="no user-role text"):
-        ppa_compress(
-            [], budget_tokens=10, llm="m", cache_dir=tmp_cache, backend=fake_backend
-        )
+        ppa_compress([], budget_tokens=10, llm="m", cache_dir=tmp_cache, backend=fake_backend)
 
 
 def test_budget_must_be_positive(fake_backend, tmp_cache):
@@ -111,6 +109,7 @@ def test_short_circuit_compressed_tokens_is_zero(fake_backend, tmp_cache):
     """Short-circuit path: compressed_tokens is 0 (not original_tokens)
     so callers can tell a skip from a no-reduction compression."""
     from ceng.compress import compress_to_bundle
+
     bundle = compress_to_bundle(
         [{"role": "user", "content": "hello"}],
         budget_tokens=100,

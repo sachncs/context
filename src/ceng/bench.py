@@ -43,8 +43,8 @@ def _check_credentials() -> bool:
         "OPENROUTER_API_KEY",
         "MISTRAL_API_KEY",
         "COHERE_API_KEY",
-        "OLLAMA_HOST",          # local Ollama server
-        "CENG_LITELLM_API_BASE", # any litellm-style override
+        "OLLAMA_HOST",  # local Ollama server
+        "CENG_LITELLM_API_BASE",  # any litellm-style override
     ]
     for name in candidates:
         if os.environ.get(name):
@@ -75,19 +75,14 @@ def _load_finer_samples(limit: int | None) -> list:
 
     from ceng.eval.finer import FiNERProcessor
 
-    fixture_path = (
-        Path(__file__).parent / "eval" / "fixtures" / "finer.jsonl"
-    )
+    fixture_path = Path(__file__).parent / "eval" / "fixtures" / "finer.jsonl"
     if fixture_path.exists():
-        rows = [
-            _json.loads(line)
-            for line in fixture_path.read_text().splitlines()
-            if line.strip()
-        ]
+        rows = [_json.loads(line) for line in fixture_path.read_text().splitlines() if line.strip()]
         if limit is not None:
             rows = rows[:limit]
         return FiNERProcessor().process_task_data(rows)
     from ceng.eval import DataSample
+
     return [
         DataSample(
             question="Sentence: Apple Inc. reported sales.\nTokens: Apple Inc. reported sales\n\nTags (one per line):",
@@ -102,19 +97,14 @@ def _load_formula_samples(limit: int | None) -> list:
 
     from ceng.eval.formula import FormulaProcessor
 
-    fixture_path = (
-        Path(__file__).parent / "eval" / "fixtures" / "formula.jsonl"
-    )
+    fixture_path = Path(__file__).parent / "eval" / "fixtures" / "formula.jsonl"
     if fixture_path.exists():
-        rows = [
-            _json.loads(line)
-            for line in fixture_path.read_text().splitlines()
-            if line.strip()
-        ]
+        rows = [_json.loads(line) for line in fixture_path.read_text().splitlines() if line.strip()]
         if limit is not None:
             rows = rows[:limit]
         return FormulaProcessor().process_task_data(rows)
     from ceng.eval import DataSample
+
     return [
         DataSample(
             question="Revenue was $1,000,000; expenses $600,000.\n\nQuestion: What is the net income?",
@@ -129,19 +119,14 @@ def _load_ddxplus_samples(limit: int | None) -> list:
 
     from ceng.eval.ddxplus import DDXPlusProcessor
 
-    fixture_path = (
-        Path(__file__).parent / "eval" / "fixtures" / "ddxplus.jsonl"
-    )
+    fixture_path = Path(__file__).parent / "eval" / "fixtures" / "ddxplus.jsonl"
     if fixture_path.exists():
-        rows = [
-            _json.loads(line)
-            for line in fixture_path.read_text().splitlines()
-            if line.strip()
-        ]
+        rows = [_json.loads(line) for line in fixture_path.read_text().splitlines() if line.strip()]
         if limit is not None:
             rows = rows[:limit]
         return DDXPlusProcessor().process_task_data(rows)
     from ceng.eval import DataSample
+
     return [
         DataSample(
             question="A 35-year-old with sudden severe headache and fever.\n\nOptions:\n0. Migraine\n1. Meningitis\n2. Tension headache\n3. Cluster headache\n\nAnswer with the option number only.",
@@ -173,8 +158,10 @@ def finer(model: str, limit: int | None = 30, results_dir: Path = DEFAULT_RESULT
         cited_baseline=70.7,
         cited_ceng=78.3,
     )
-    print(f"finer: baseline={result.baseline_accuracy:.3f} "
-          f"ceng={result.ceng_accuracy:.3f} n={result.n_samples} → {out}")
+    print(
+        f"finer: baseline={result.baseline_accuracy:.3f} "
+        f"ceng={result.ceng_accuracy:.3f} n={result.n_samples} → {out}"
+    )
     return out
 
 
@@ -200,8 +187,10 @@ def formula(model: str, limit: int | None = 30, results_dir: Path = DEFAULT_RESU
         cited_baseline=67.5,
         cited_ceng=85.5,
     )
-    print(f"formula: baseline={result.baseline_accuracy:.3f} "
-          f"ceng={result.ceng_accuracy:.3f} n={result.n_samples} → {out}")
+    print(
+        f"formula: baseline={result.baseline_accuracy:.3f} "
+        f"ceng={result.ceng_accuracy:.3f} n={result.n_samples} → {out}"
+    )
     return out
 
 
@@ -227,8 +216,10 @@ def ddxplus(model: str, limit: int | None = 30, results_dir: Path = DEFAULT_RESU
         cited_baseline=75.2,
         cited_ceng=90.2,
     )
-    print(f"ddxplus: baseline={result.baseline_accuracy:.3f} "
-          f"ceng={result.ceng_accuracy:.3f} n={result.n_samples} → {out}")
+    print(
+        f"ddxplus: baseline={result.baseline_accuracy:.3f} "
+        f"ceng={result.ceng_accuracy:.3f} n={result.n_samples} → {out}"
+    )
     return out
 
 
@@ -242,6 +233,7 @@ def appworld(model: str, limit: int | None = 30, results_dir: Path = DEFAULT_RES
     success.
     """
     from ceng.eval.appworld import require_appworld
+
     if not require_appworld():
         raise SystemExit(1)
     if not _check_credentials():

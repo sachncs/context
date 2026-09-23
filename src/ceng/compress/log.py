@@ -26,9 +26,7 @@ def configure_logging(level: int = logging.WARNING) -> None:
         if getattr(handler, "_ceng_owned", False):
             logger.removeHandler(handler)
     handler = logging.StreamHandler()
-    handler.setFormatter(
-        logging.Formatter("%(asctime)s ceng %(levelname)s %(message)s")
-    )
+    handler.setFormatter(logging.Formatter("%(asctime)s ceng %(levelname)s %(message)s"))
     handler._ceng_owned = True  # type: ignore[attr-defined]
     logger.addHandler(handler)
     logger.propagate = False

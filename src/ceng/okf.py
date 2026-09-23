@@ -72,9 +72,7 @@ def coerce_str(value: Any, field: str) -> str:
     """Coerce ``value`` to ``str`` or raise :class:`ValueError`."""
     if isinstance(value, str):
         return value
-    raise ValueError(
-        f"frontmatter field {field!r} must be a string, got {type(value).__name__}"
-    )
+    raise ValueError(f"frontmatter field {field!r} must be a string, got {type(value).__name__}")
 
 
 @dataclass(frozen=True)
@@ -138,8 +136,16 @@ class Frontmatter:
         otherwise.
         """
         known = {
-            "type", "title", "description", "resource", "tags", "timestamp",
-            "priority", "expires_at", "helpful_count", "harmful_count",
+            "type",
+            "title",
+            "description",
+            "resource",
+            "tags",
+            "timestamp",
+            "priority",
+            "expires_at",
+            "helpful_count",
+            "harmful_count",
         }
         kwargs: dict[str, Any] = {}
         extras: list[tuple[str, Any]] = []
@@ -235,9 +241,9 @@ def validate_bundle_path(rel: Path) -> Path:
 
 def render_frontmatter(d: dict[str, Any]) -> str:
     """Serialise ``d`` as YAML text (no surrounding ``---`` markers)."""
-    return yaml.safe_dump(
-        d, sort_keys=False, allow_unicode=True, default_flow_style=False
-    ).rstrip("\n")
+    return yaml.safe_dump(d, sort_keys=False, allow_unicode=True, default_flow_style=False).rstrip(
+        "\n"
+    )
 
 
 def parse_frontmatter(text: str) -> dict[str, Any]:
@@ -249,9 +255,7 @@ def parse_frontmatter(text: str) -> dict[str, Any]:
     if loaded is None:
         return {}
     if not isinstance(loaded, dict):
-        raise ValueError(
-            f"frontmatter must be a mapping, got {type(loaded).__name__}"
-        )
+        raise ValueError(f"frontmatter must be a mapping, got {type(loaded).__name__}")
     return loaded
 
 
@@ -275,9 +279,7 @@ def parse_concept(text: str, path: Path | None = None) -> Concept:
     if text.startswith("\ufeff"):
         text = text[1:]
     if not text.startswith("---\n"):
-        raise ValueError(
-            "OKF concept text must begin with '---\\n' followed by YAML frontmatter"
-        )
+        raise ValueError("OKF concept text must begin with '---\\n' followed by YAML frontmatter")
     after_open = text[4:]
     close_idx = after_open.find("\n---\n")
     if close_idx == -1:
@@ -345,9 +347,7 @@ def write_bundle(directory: str | Path, concepts: Iterable[Concept]) -> list[Pat
     try:
         for concept in concepts:
             if concept.path is None:
-                raise ValueError(
-                    "every concept in a bundle must have a path set"
-                )
+                raise ValueError("every concept in a bundle must have a path set")
             rel = validate_bundle_path(concept.path)
             target = (root / rel).resolve()
             if not target.is_relative_to(root):
@@ -391,9 +391,7 @@ def read_bundle(directory: str | Path) -> list[Concept]:
         try:
             abs_path.resolve().relative_to(abs_root)
         except ValueError as exc:
-            raise ValueError(
-                f"symlink target escapes bundle: {abs_path}"
-            ) from exc
+            raise ValueError(f"symlink target escapes bundle: {abs_path}") from exc
         rel = abs_path.relative_to(root).as_posix()
         try:
             text = abs_path.read_text(encoding="utf-8-sig")
@@ -403,9 +401,7 @@ def read_bundle(directory: str | Path) -> list[Concept]:
     return out
 
 
-def find_concept(
-    bundle: Iterable[Concept], path: str | Path
-) -> Concept | None:
+def find_concept(bundle: Iterable[Concept], path: str | Path) -> Concept | None:
     """Find a concept by bundle-relative path."""
     needle = Path(path).as_posix()
     for concept in bundle:
@@ -416,9 +412,7 @@ def find_concept(
     return None
 
 
-def find_concepts_by_tag(
-    bundle: Iterable[Concept], tag: str
-) -> list[Concept]:
+def find_concepts_by_tag(bundle: Iterable[Concept], tag: str) -> list[Concept]:
     """Return every concept that has ``tag`` in its frontmatter ``tags``.
 
     Progressive-disclosure primitive: an agent can load only the
@@ -426,20 +420,12 @@ def find_concepts_by_tag(
     Order is preserved from the input iteration.
     """
     needle = str(tag)
-    return [
-        concept for concept in bundle
-        if needle in concept.frontmatter.tags
-    ]
+    return [concept for concept in bundle if needle in concept.frontmatter.tags]
 
 
-def find_concepts_by_type(
-    bundle: Iterable[Concept], type_: str
-) -> list[Concept]:
+def find_concepts_by_type(bundle: Iterable[Concept], type_: str) -> list[Concept]:
     """Return every concept whose frontmatter ``type`` matches ``type_``."""
-    return [
-        concept for concept in bundle
-        if concept.frontmatter.type == type_
-    ]
+    return [concept for concept in bundle if concept.frontmatter.type == type_]
 
 
 def find_concepts_with_priority_at_least(
@@ -451,10 +437,7 @@ def find_concepts_with_priority_at_least(
     Used by progressive-disclosure: keep only the high-priority
     leaves in the visible window.
     """
-    selected = [
-        concept for concept in bundle
-        if concept.frontmatter.priority >= min_priority
-    ]
+    selected = [concept for concept in bundle if concept.frontmatter.priority >= min_priority]
     selected.sort(
         key=lambda c: (c.frontmatter.priority, c.frontmatter.helpful_count),
         reverse=True,
@@ -462,9 +445,7 @@ def find_concepts_with_priority_at_least(
     return selected
 
 
-_MD_LINK_RE = re.compile(
-    r"(?<!!)\[[^\]]*\]\(([^)\s]+?\.md)(?:\s+\"[^\"]*\")?\)"
-)
+_MD_LINK_RE = re.compile(r"(?<!!)\[[^\]]*\]\(([^)\s]+?\.md)(?:\s+\"[^\"]*\")?\)")
 
 
 def cross_links(body: str) -> list[str]:

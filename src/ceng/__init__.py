@@ -4,8 +4,6 @@ Public surface:
 
 * :func:`ppa_compress` — compress a long context by partitioning,
   summarising each chunk, and aggregating the summaries.
-* :func:`compress_with_stats` / :class:`CompressResult` — same as
-  :func:`ppa_compress` but with cache-hit bookkeeping.
 * :func:`compress_to_bundle` / :class:`CompressionBundle` — same as
   :func:`ppa_compress` but with per-leaf provenance.
 * :func:`ppa_compress_to_okf` — run the compressor and persist the
@@ -126,4 +124,4 @@ __all__ = [
     "token_budget_split",
 ]
 
-__version__ = "0.4.0"
+__version__ = "1.0.0"

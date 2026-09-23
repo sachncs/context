@@ -69,9 +69,7 @@ class Bullet:
 
 
 # Match: [id] helpful=N harmful=N :: content
-_BULLET_RE = re.compile(
-    r"^\[([A-Za-z0-9_\-]+)\]\s*helpful=(\d+)\s*harmful=(\d+)\s*::\s*(.*)$"
-)
+_BULLET_RE = re.compile(r"^\[([A-Za-z0-9_\-]+)\]\s*helpful=(\d+)\s*harmful=(\d+)\s*::\s*(.*)$")
 _SECTION_HEADER_RE = re.compile(r"^##\s+(.+?)\s*$")
 
 
@@ -130,9 +128,7 @@ class Playbook:
             self.sections_in_order.append(canon_section(bullet.section))
         self.bullets[bullet.id] = bullet
 
-    def merge(
-        self, incoming: Iterable[Bullet], *, dedup_threshold: float = 0.90
-    ) -> int:
+    def merge(self, incoming: Iterable[Bullet], *, dedup_threshold: float = 0.90) -> int:
         """Merge ``incoming`` bullets into the playbook.
 
         Two-pass dedup:
@@ -177,9 +173,7 @@ class Playbook:
             return bullets[:top_k]
         return bullets
 
-    def trim_to_token_budget(
-        self, tokenizer=None, budget: int = 80_000
-    ) -> int:
+    def trim_to_token_budget(self, tokenizer=None, budget: int = 80_000) -> int:
         """Drop lowest-net-score bullets until the rendered playbook
         fits under ``budget`` tokens. Returns the number dropped.
 

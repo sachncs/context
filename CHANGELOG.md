@@ -4,6 +4,21 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/).
 
+## [1.0.0] - 2026-09-23
+
+### Added
+
+- Production release of the public `ceng` API.
+- Reproducible packaging, coverage gates, CLI metadata, and trusted-release workflow.
+- Python 3.13 support.
+- Configurable backend timeout through `CENG_TIMEOUT_SECONDS`.
+
+### Changed
+
+- Backend adapters apply the configured timeout environment variable when no
+  per-call timeout is supplied.
+- Documentation defines semantic-versioning and provider-runtime guarantees.
+
 ## [Unreleased]
 
 ## [0.4.0] - 2026-07-19
@@ -130,7 +145,8 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 - Initial PPA paper reproduction: `ppa_compress` and `ppa_check`
   for the iwoszapar / 2026 PPA paper (arXiv:2607.15277)
 
-[Unreleased]: https://github.com/sachncs/context/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/sachncs/context/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/sachncs/context/compare/v0.4.0...v1.0.0
 
 [0.4.0]: https://github.com/sachncs/context/compare/v0.3.0...v0.4.0
 
@@ -139,4 +155,3 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 [0.2.0]: https://github.com/sachncs/context/compare/v0.1.0...v0.3.0
 
 [0.1.0]: https://github.com/sachncs/context/releases/tag/v0.1.0
-

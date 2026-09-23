@@ -50,9 +50,7 @@ class FiNERProcessor:
     def process_task_data(self, raw_data: list[dict]) -> list[DataSample]:
         out: list[DataSample] = []
         for row in raw_data:
-            sentence = row.get("sentence") or row.get("text") or " ".join(
-                row.get("tokens", [])
-            )
+            sentence = row.get("sentence") or row.get("text") or " ".join(row.get("tokens", []))
             tokens = row.get("tokens", [])
             labels = row.get("labels", [])
             target = _format_gold(tokens, labels)
@@ -95,11 +93,7 @@ class FiNERProcessor:
     ) -> float:
         if not predictions:
             return 0.0
-        correct = sum(
-            1
-            for p, g in zip(predictions, ground_truths)
-            if self.answer_is_correct(p, g)
-        )
+        correct = sum(1 for p, g in zip(predictions, ground_truths) if self.answer_is_correct(p, g))
         return correct / len(predictions)
 
 

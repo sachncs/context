@@ -34,6 +34,7 @@ from typing import Any
 ENV_BACKEND = "CENG_BACKEND"
 ENV_RETRY = "CENG_RETRY"
 ENV_RETRY_BASE_MS = "CENG_RETRY_BASE_MS"
+ENV_TIMEOUT_SECONDS = "CENG_TIMEOUT_SECONDS"
 DEFAULT_BACKEND = "litellm"
 DEFAULT_TIMEOUT_SECONDS = 60.0
 DEFAULT_RETRY_ATTEMPTS = 3
@@ -48,6 +49,17 @@ def _env_int(name: str, default: int) -> int:
         return int(raw)
     except ValueError:
         return default
+
+
+def _env_float(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or not raw.strip():
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return value if value > 0 else default
 
 
 def retry_with_backoff(
@@ -134,7 +146,7 @@ class LiteLLMBackend(Backend):
         import litellm
 
         if "timeout" not in kw:
-            kw["timeout"] = self.timeout_seconds
+            kw["timeout"] = _env_float(ENV_TIMEOUT_SECONDS, self.timeout_seconds)
         attempts = _env_int(ENV_RETRY, self.retry_attempts)
         base_ms = _env_int(ENV_RETRY_BASE_MS, self.retry_base_ms)
         return retry_with_backoff(
@@ -221,7 +233,7 @@ class OpenAIBackend(Backend):
             from openai import OpenAI
 
             self.client = OpenAI()
-        kw.setdefault("timeout", self.timeout_seconds)
+        kw.setdefault("timeout", _env_float(ENV_TIMEOUT_SECONDS, self.timeout_seconds))
         attempts = _env_int(ENV_RETRY, self.retry_attempts)
         base_ms = _env_int(ENV_RETRY_BASE_MS, self.retry_base_ms)
         return retry_with_backoff(
@@ -302,9 +314,7 @@ def resolve_backend(name: str | None, **init_kw: Any) -> Backend:
     """Construct a backend by name; ``None`` means default."""
     chosen = name or os.environ.get(ENV_BACKEND) or DEFAULT_BACKEND
     if chosen not in _BACKEND_REGISTRY:
-        raise ValueError(
-            f"unknown backend {chosen!r}; pick one of {available_backends()}"
-        )
+        raise ValueError(f"unknown backend {chosen!r}; pick one of {available_backends()}")
     return _BACKEND_REGISTRY[chosen](**init_kw)
 
 
@@ -326,9 +336,7 @@ def messages_to_prompt(messages: list[dict]) -> str:
         role = m.get("role", "user")
         content = m.get("content", "")
         if isinstance(content, list):
-            content = "".join(
-                c.get("text", "") for c in content if isinstance(c, dict)
-            )
+            content = "".join(c.get("text", "") for c in content if isinstance(c, dict))
         parts.append(f"{role}: {content}")
     parts.append("assistant:")
     return "\n".join(parts)

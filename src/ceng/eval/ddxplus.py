@@ -34,12 +34,9 @@ class DDXPlusProcessor:
             answer = str(row.get("answer") or row.get("label") or "").strip()
             if not question or not options:
                 continue
-            options_text = "\n".join(
-                f"{i}. {opt}" for i, opt in enumerate(options)
-            )
+            options_text = "\n".join(f"{i}. {opt}" for i, opt in enumerate(options))
             full_question = (
-                f"{question}\n\nOptions:\n{options_text}\n\n"
-                "Answer with the option number only."
+                f"{question}\n\nOptions:\n{options_text}\n\nAnswer with the option number only."
             )
             out.append(
                 DataSample(
@@ -69,11 +66,7 @@ class DDXPlusProcessor:
     ) -> float:
         if not predictions:
             return 0.0
-        correct = sum(
-            1
-            for p, g in zip(predictions, ground_truths)
-            if self.answer_is_correct(p, g)
-        )
+        correct = sum(1 for p, g in zip(predictions, ground_truths) if self.answer_is_correct(p, g))
         return correct / len(predictions)
 
 

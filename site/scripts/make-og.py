@@ -108,7 +108,7 @@ draw.text((790, 430), "Evolver", font=mono, fill=(146, 176, 255, 255))
 draw.text((1010, 430), "OKF", font=mono, fill=(146, 176, 255, 255))
 
 # footer
-draw.text((330, 520), "v0.4.0  ·  Apache-2.0  ·  Python 3.10–3.12", font=tag, fill=(120, 132, 164, 255))
+draw.text((330, 520), "v1.0.0  ·  Apache-2.0  ·  Python 3.10–3.13", font=tag, fill=(120, 132, 164, 255))
 draw.text((960, 520), "sachncs/context", font=tag, fill=(120, 132, 164, 255))
 
 img.convert("RGB").save("/Users/sachin/repo/mygit/context/site/public/og.png", "PNG")

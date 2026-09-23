@@ -19,8 +19,13 @@ from ceng.playbook import (
 
 
 def test_bullet_net_score_is_helpful_minus_harmful():
-    b = Bullet(id="s-00001", section="strategies_and_insights", content="x",
-               helpful_count=5, harmful_count=2)
+    b = Bullet(
+        id="s-00001",
+        section="strategies_and_insights",
+        content="x",
+        helpful_count=5,
+        harmful_count=2,
+    )
     assert b.net_score == 3
 
 
@@ -55,20 +60,24 @@ def test_add_bullet_to_new_section_appends_in_order():
 
 def test_merge_dedups_by_id_higher_score_wins():
     p = empty_playbook()
-    p.add_bullet(Bullet(id="x-00001", section="others", content="x",
-                       helpful_count=2, harmful_count=1))
-    incoming = [Bullet(id="x-00001", section="others", content="x",
-                       helpful_count=10, harmful_count=0)]
+    p.add_bullet(
+        Bullet(id="x-00001", section="others", content="x", helpful_count=2, harmful_count=1)
+    )
+    incoming = [
+        Bullet(id="x-00001", section="others", content="x", helpful_count=10, harmful_count=0)
+    ]
     p.merge(incoming)
     assert p.bullets["x-00001"].helpful_count == 10
 
 
 def test_merge_dedups_by_content_hash_keeps_higher_score():
     p = empty_playbook()
-    p.add_bullet(Bullet(id="x-00001", section="others", content="Avoid X",
-                       helpful_count=1, harmful_count=0))
-    incoming = [Bullet(id="y-00099", section="others", content="avoid x",
-                       helpful_count=5, harmful_count=0)]
+    p.add_bullet(
+        Bullet(id="x-00001", section="others", content="Avoid X", helpful_count=1, harmful_count=0)
+    )
+    incoming = [
+        Bullet(id="y-00099", section="others", content="avoid x", helpful_count=5, harmful_count=0)
+    ]
     added = p.merge(incoming)
     assert added == 0  # duplicate content
     # Higher-score bullet wins.
@@ -78,10 +87,20 @@ def test_merge_dedups_by_content_hash_keeps_higher_score():
 
 def test_merge_adds_new_bullet_with_content_keeps_lower_score():
     p = empty_playbook()
-    p.add_bullet(Bullet(id="x-00001", section="others", content="First idea",
-                       helpful_count=10, harmful_count=0))
-    incoming = [Bullet(id="y-00099", section="others", content="Different idea",
-                       helpful_count=1, harmful_count=0)]
+    p.add_bullet(
+        Bullet(
+            id="x-00001", section="others", content="First idea", helpful_count=10, harmful_count=0
+        )
+    )
+    incoming = [
+        Bullet(
+            id="y-00099",
+            section="others",
+            content="Different idea",
+            helpful_count=1,
+            harmful_count=0,
+        )
+    ]
     added = p.merge(incoming)
     assert added == 1
     assert "y-00099" in p.bullets
@@ -101,8 +120,9 @@ def test_content_canonical_is_case_insensitive():
 
 def test_render_playbook_round_trips():
     p = empty_playbook()
-    p.add_bullet(Bullet(id="str-00001", section="strategies_and_insights",
-                        content="Round-trip works"))
+    p.add_bullet(
+        Bullet(id="str-00001", section="strategies_and_insights", content="Round-trip works")
+    )
     text = render_playbook(p)
     p2 = parse_playbook(text)
     assert "str-00001" in p2.bullets
@@ -112,10 +132,12 @@ def test_render_playbook_round_trips():
 def test_get_active_orders_by_net_score_then_id():
     p = empty_playbook()
     p.add_bullet(Bullet(id="z-00005", section="others", content="z"))
-    p.add_bullet(Bullet(id="a-00010", section="others", content="a",
-                       helpful_count=5, harmful_count=0))
-    p.add_bullet(Bullet(id="m-00003", section="others", content="m",
-                       helpful_count=2, harmful_count=1))
+    p.add_bullet(
+        Bullet(id="a-00010", section="others", content="a", helpful_count=5, harmful_count=0)
+    )
+    p.add_bullet(
+        Bullet(id="m-00003", section="others", content="m", helpful_count=2, harmful_count=1)
+    )
     top = p.get_active()
     ids = [b.id for b in top]
     assert ids[0] == "a-00010"  # highest net score
@@ -126,8 +148,7 @@ def test_get_active_orders_by_net_score_then_id():
 def test_get_active_top_k_limits_results():
     p = empty_playbook()
     for i in range(5):
-        p.add_bullet(Bullet(id=f"b-{i:05d}", section="others", content="x",
-                           helpful_count=i))
+        p.add_bullet(Bullet(id=f"b-{i:05d}", section="others", content="x", helpful_count=i))
     top = p.get_active(top_k=2)
     assert len(top) == 2
     assert top[0].helpful_count == 4
@@ -140,12 +161,14 @@ def test_get_active_top_k_limits_results():
 def test_trim_to_token_budget_drops_lowest_score():
     p = empty_playbook()
     for i in range(20):
-        p.add_bullet(Bullet(
-            id=f"b-{i:05d}",
-            section="strategies_and_insights",
-            content="x" * 100,
-            helpful_count=i,
-        ))
+        p.add_bullet(
+            Bullet(
+                id=f"b-{i:05d}",
+                section="strategies_and_insights",
+                content="x" * 100,
+                helpful_count=i,
+            )
+        )
     initial = len(p.bullets)
     dropped = p.trim_to_token_budget(budget=200)
     assert dropped > 0
@@ -228,13 +251,18 @@ def test_evolver_wraps_bullets_from_curator_into_playbook():
     backend = FakeBackend()
     backend.responses = [
         json.dumps({"reasoning": "r", "bullet_ids": [], "final_answer": "42"}),
-        json.dumps({
-            "reasoning": "x",
-            "operations": [
-                {"type": "ADD", "section": "strategies_and_insights",
-                 "content": "The answer to life is 42"},
-            ],
-        }),
+        json.dumps(
+            {
+                "reasoning": "x",
+                "operations": [
+                    {
+                        "type": "ADD",
+                        "section": "strategies_and_insights",
+                        "content": "The answer to life is 42",
+                    },
+                ],
+            }
+        ),
     ]
     e = Evolver(backend=backend, llm="m", cache_dir="")
     pb, _ = e.run(
@@ -255,12 +283,16 @@ def test_evolver_reflector_runs_when_model_wrong():
         # Generator wrong
         json.dumps({"reasoning": "r", "bullet_ids": [], "final_answer": "wrong"}),
         # Reflector — produces an insight
-        json.dumps({
-            "reasoning": "r", "error_identification": "e",
-            "root_cause_analysis": "rc", "correct_approach": "ca",
-            "key_insight": "Always double-check arithmetic",
-            "bullet_tags": [],
-        }),
+        json.dumps(
+            {
+                "reasoning": "r",
+                "error_identification": "e",
+                "root_cause_analysis": "rc",
+                "correct_approach": "ca",
+                "key_insight": "Always double-check arithmetic",
+                "bullet_tags": [],
+            }
+        ),
         # Curator adds a bullet
         json.dumps({"reasoning": "x", "operations": []}),
         # (no further calls)
@@ -284,7 +316,9 @@ def test_evolver_skips_reflector_when_use_ground_truth_false():
         json.dumps({"reasoning": "x", "operations": []}),
     ]
     e = Evolver(
-        backend=backend, llm="m", cache_dir="",
+        backend=backend,
+        llm="m",
+        cache_dir="",
         config=EvolverConfig(use_ground_truth=False, max_reflector_rounds=5),
     )
     pb, stats = e.run(
@@ -336,9 +370,7 @@ def test_curator_update_mutates_existing_bullet():
     from ceng.playbook.evolver import _apply_curator_operations
 
     pb = empty_playbook()
-    pb.add_bullet(
-        Bullet(id="str-001", section="strategies_and_insights", content="old text")
-    )
+    pb.add_bullet(Bullet(id="str-001", section="strategies_and_insights", content="old text"))
     _apply_curator_operations(
         pb,
         [{"type": "UPDATE", "id": "str-001", "content": "new text"}],
@@ -350,9 +382,7 @@ def test_curator_update_unknown_id_is_noop():
     from ceng.playbook.evolver import _apply_curator_operations
 
     pb = empty_playbook()
-    pb.add_bullet(
-        Bullet(id="str-001", section="strategies_and_insights", content="x")
-    )
+    pb.add_bullet(Bullet(id="str-001", section="strategies_and_insights", content="x"))
     added, dropped, _ = _apply_curator_operations(
         pb, [{"type": "UPDATE", "id": "str-999", "content": "y"}]
     )
@@ -364,9 +394,7 @@ def test_curator_delete_removes_bullet():
     from ceng.playbook.evolver import _apply_curator_operations
 
     pb = empty_playbook()
-    pb.add_bullet(
-        Bullet(id="str-001", section="strategies_and_insights", content="x")
-    )
+    pb.add_bullet(Bullet(id="str-001", section="strategies_and_insights", content="x"))
     _apply_curator_operations(pb, [{"type": "DELETE", "id": "str-001"}])
     assert "str-001" not in pb.bullets
 

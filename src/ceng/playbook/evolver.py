@@ -126,9 +126,7 @@ class Evolver:
                 )
                 all_stats.append(stats)
                 if step % self.config.curator_frequency == 0:
-                    pb.trim_to_token_budget(
-                        budget=self.config.playbook_token_budget
-                    )
+                    pb.trim_to_token_budget(budget=self.config.playbook_token_budget)
         return pb, all_stats
 
     def _one_step(
@@ -169,7 +167,9 @@ class Evolver:
             messages=generator_msgs,
             cache=cache,
         )
-        parsed_gen = _extract_json(gen_text, {"reasoning": "", "bullet_ids": [], "final_answer": ""})
+        parsed_gen = _extract_json(
+            gen_text, {"reasoning": "", "bullet_ids": [], "final_answer": ""}
+        )
         bullets_used_ids = parsed_gen.get("bullet_ids") or []
         answer = parsed_gen.get("final_answer", "") or ""
 
@@ -192,7 +192,9 @@ class Evolver:
         # Generator used and the answer was correct.
         if self.config.use_ground_truth and ground_truth is not None and answer != ground_truth:
             current_answer = answer
-            current_feedback = env_feedback or f"model answer was {answer!r}; expected {ground_truth!r}"
+            current_feedback = (
+                env_feedback or f"model answer was {answer!r}; expected {ground_truth!r}"
+            )
             for r in range(self.config.max_reflector_rounds):
                 rounds_used += 1
                 stats.backend_call_count += 1
@@ -235,9 +237,7 @@ class Evolver:
                     },
                 )
                 reflection_text = (
-                    parsed_ref.get("key_insight")
-                    or parsed_ref.get("error_identification")
-                    or ""
+                    parsed_ref.get("key_insight") or parsed_ref.get("error_identification") or ""
                 ).strip()
                 stats.last_reflection_excerpt = reflection_text[:200]
 
@@ -280,7 +280,9 @@ class Evolver:
         # MERGE step still tidies the playbook. This matches the
         # paper's ``curator_frequency=1`` default.
         stats.backend_call_count += 1
-        curator_reflection = reflection_text or "(model produced correct answer; no error to reflect on)"
+        curator_reflection = (
+            reflection_text or "(model produced correct answer; no error to reflect on)"
+        )
         curator_msgs = build_curator_messages(
             token_budget=self.config.playbook_token_budget,
             current_step=step,
@@ -309,11 +311,9 @@ class Evolver:
             stats.cache_hits += 1
         else:
             stats.cache_misses += 1
-        parsed_cur = _extract_json(
-            cur_text, {"reasoning": "", "operations": []}
-        )
-        bullets_added_this_step, bullets_dropped_cur, excerpt = (
-            _apply_curator_operations(pb, parsed_cur.get("operations") or [])
+        parsed_cur = _extract_json(cur_text, {"reasoning": "", "operations": []})
+        bullets_added_this_step, bullets_dropped_cur, excerpt = _apply_curator_operations(
+            pb, parsed_cur.get("operations") or []
         )
         stats.last_curated_excerpt = excerpt
         bullets_dropped += bullets_dropped_cur
@@ -362,9 +362,7 @@ def _extract_json(text: str, fallback: dict[str, Any]) -> dict[str, Any]:
     return dict(fallback)
 
 
-def _apply_curator_operations(
-    playbook: Playbook, ops: list[dict]
-) -> tuple[int, int, str]:
+def _apply_curator_operations(playbook: Playbook, ops: list[dict]) -> tuple[int, int, str]:
     """Apply the Curator's ``operations`` list to ``playbook`` in place.
 
     Supports all four ACE operations:

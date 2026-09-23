@@ -159,12 +159,13 @@ def test_ddx_answer_is_correct_accepts_various_formats():
 def test_ddx_evaluate_accuracy():
     p = DDXPlusProcessor()
     preds = ["1", "0", "3", "1"]
-    gold =  ["1", "1", "3", "0"]
+    gold = ["1", "1", "3", "0"]
     assert p.evaluate_accuracy(preds, gold) == pytest.approx(0.5)
 
 
 def test_ddx_seed_playbook_loads():
     from ceng.playbook import parse_playbook
+
     pb = parse_playbook(seed_playbook())
     assert len(pb.bullets) >= 5
     # All seven ACE sections present
@@ -199,8 +200,12 @@ def test_ddx_full_eval_pipeline(ddx_fixture_path, tmp_path):
     rows = [json.loads(l) for l in ddx_fixture_path.read_text().splitlines() if l.strip()]
     samples = p.process_task_data(rows)
     result = run_eval(
-        benchmark="ddxplus", processor=p, samples=samples,
-        backend=backend, llm="m", cache_dir=str(tmp_path / "cache"),
+        benchmark="ddxplus",
+        processor=p,
+        samples=samples,
+        backend=backend,
+        llm="m",
+        cache_dir=str(tmp_path / "cache"),
     )
     assert result.n_samples == 20
     # Every sample has answer "1" in fixture so 100% baseline + ceng
@@ -223,12 +228,18 @@ def test_ddx_write_report(ddx_fixture_path, tmp_path):
     rows = [json.loads(l) for l in ddx_fixture_path.read_text().splitlines() if l.strip()]
     samples = p.process_task_data(rows)
     result = run_eval(
-        benchmark="ddxplus", processor=p, samples=samples,
-        backend=backend, llm="m", cache_dir=str(tmp_path / "cache"),
+        benchmark="ddxplus",
+        processor=p,
+        samples=samples,
+        backend=backend,
+        llm="m",
+        cache_dir=str(tmp_path / "cache"),
     )
     out = write_report(
-        result, tmp_path / "reports" / "ddxplus-2026-07-20",
-        cited_baseline=75.2, cited_ceng=90.2,
+        result,
+        tmp_path / "reports" / "ddxplus-2026-07-20",
+        cited_baseline=75.2,
+        cited_ceng=90.2,
     )
     md = out.read_text()
     assert "## Measured by ceng" in md

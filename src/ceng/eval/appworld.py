@@ -86,11 +86,7 @@ class AppWorldProcessor:
     ) -> float:
         if not predictions:
             return 0.0
-        correct = sum(
-            1
-            for p, g in zip(predictions, ground_truths)
-            if self.answer_is_correct(p, g)
-        )
+        correct = sum(1 for p, g in zip(predictions, ground_truths) if self.answer_is_correct(p, g))
         return correct / len(predictions)
 
 

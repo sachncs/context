@@ -50,9 +50,7 @@ def make_key(parts: dict[str, Any]) -> str:
     Raises:
         TypeError: If any value is not JSON-serialisable.
     """
-    canonical = json.dumps(
-        parts, sort_keys=True, separators=(",", ":"), ensure_ascii=False
-    )
+    canonical = json.dumps(parts, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
@@ -86,9 +84,7 @@ class Cache:
         # ``check_same_thread=False`` lets one Cache instance serve
         # threads created after construction; the lock serialises
         # every connection operation below.
-        self.conn: sqlite3.Connection = sqlite3.connect(
-            self.path, check_same_thread=False
-        )
+        self.conn: sqlite3.Connection = sqlite3.connect(self.path, check_same_thread=False)
         self.conn.execute(f"PRAGMA busy_timeout = {int(self.busy_timeout_seconds * 1000)}")
         self.conn.execute("PRAGMA journal_mode=WAL")
         self.conn.execute("PRAGMA synchronous=NORMAL")
@@ -117,9 +113,7 @@ class Cache:
             )
             """
         )
-        self.conn.execute(
-            "CREATE INDEX IF NOT EXISTS idx_entries_ns ON entries(namespace)"
-        )
+        self.conn.execute("CREATE INDEX IF NOT EXISTS idx_entries_ns ON entries(namespace)")
         self.conn.commit()
 
     def _enforce_schema_version(self) -> None:
@@ -132,9 +126,7 @@ class Cache:
         row = self.conn.execute("PRAGMA user_version").fetchone()
         on_disk = int(row[0]) if row else 0
         if on_disk == 0:
-            self.conn.execute(
-                f"PRAGMA user_version = {int(SCHEMA_VERSION)}"
-            )
+            self.conn.execute(f"PRAGMA user_version = {int(SCHEMA_VERSION)}")
             self.conn.commit()
         elif on_disk != int(SCHEMA_VERSION):
             raise RuntimeError(

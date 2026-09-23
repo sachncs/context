@@ -63,31 +63,21 @@ def partition_text(
     return [Partition(text=leaf, index=i) for i, leaf in enumerate(leaves)]
 
 
-def split_recursive(
-    text: str, max_tokens: int, tokenizer: object | None
-) -> list[str]:
+def split_recursive(text: str, max_tokens: int, tokenizer: object | None) -> list[str]:
     """Split ``text`` into leaves, recursively halving until each fits."""
     if count_tokens(text, tokenizer) <= max_tokens:
         return [text]
     sentences = split_sentences(text)
     if len(sentences) > 1:
         midpoint = len(sentences) // 2
-        left = split_recursive(
-            " ".join(sentences[:midpoint]), max_tokens, tokenizer
-        )
-        right = split_recursive(
-            " ".join(sentences[midpoint:]), max_tokens, tokenizer
-        )
+        left = split_recursive(" ".join(sentences[:midpoint]), max_tokens, tokenizer)
+        right = split_recursive(" ".join(sentences[midpoint:]), max_tokens, tokenizer)
         return left + right
     paragraphs = split_paragraphs(text)
     if len(paragraphs) > 1:
         midpoint = len(paragraphs) // 2
-        left = split_recursive(
-            "\n\n".join(paragraphs[:midpoint]), max_tokens, tokenizer
-        )
-        right = split_recursive(
-            "\n\n".join(paragraphs[midpoint:]), max_tokens, tokenizer
-        )
+        left = split_recursive("\n\n".join(paragraphs[:midpoint]), max_tokens, tokenizer)
+        right = split_recursive("\n\n".join(paragraphs[midpoint:]), max_tokens, tokenizer)
         return left + right
     return greedy_word_split(text, max_tokens, tokenizer)
 
@@ -104,9 +94,7 @@ def split_paragraphs(text: str) -> list[str]:
     return parts if len(parts) > 1 else [text]
 
 
-def greedy_word_split(
-    text: str, max_tokens: int, tokenizer: object | None
-) -> list[str]:
+def greedy_word_split(text: str, max_tokens: int, tokenizer: object | None) -> list[str]:
     """Greedy word-level chunker; streams words without holding them all.
 
     Uses :func:`re.finditer` to avoid materialising every word in
@@ -121,6 +109,7 @@ def greedy_word_split(
     def flush() -> None:
         if current:
             chunks.append(" ".join(current))
+
     for match in re.finditer(r"\S+", text):
         word = match.group(0)
         w_bytes = len(word.encode("utf-8"))

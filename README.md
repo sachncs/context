@@ -7,10 +7,10 @@
 
 [![CI](https://img.shields.io/github/actions/workflow/status/sachncs/context/ci.yml?branch=master&label=CI)](https://github.com/sachncs/context/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue)](https://github.com/sachncs/context/blob/master/LICENSE)
-[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12-blue)](https://github.com/sachncs/context)
+[![Python](https://img.shields.io/badge/python-3.10%20%7C%203.11%20%7C%203.12%20%7C%203.13-blue)](https://github.com/sachncs/context)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000)](https://github.com/astral-sh/ruff)
 
-`ceng` is a small, dependency-light Python library that bundles four
+`ceng` is a production-ready, dependency-light Python library that bundles four
 production-shaped context-engineering primitives: PPA compression,
 ACE-style evolving playbooks, OKF bundles, and U-shape chat
 compaction. One `pip install`, no framework lock-in.
@@ -37,6 +37,12 @@ compaction. One `pip install`, no framework lock-in.
 All entry points are synchronous; no streaming, no async, no
 sub-agent orchestration. The library aims to be a primitive, not a
 framework.
+
+Version 1.0 follows semantic versioning. Provider availability, model quality,
+and model-specific output remain outside ceng's control; backend adapters use
+bounded timeouts, retries, and clear failures for transient provider problems.
+ceng sends no telemetry and stores prompts only in the cache or bundle locations
+you explicitly configure.
 
 ## Why ceng?
 
@@ -79,6 +85,7 @@ context-engineering papers of the last two years:
 - [External NOTES](#external-notes)
 - [Backends](#backends)
 - [Architecture](#architecture)
+- [Production operations](#production-operations)
 - [Layout](#layout)
 - [License](#license)
 - [References](#references)
@@ -273,9 +280,11 @@ ceng.set_backend("openai")       # raw openai.OpenAI client
 ceng.set_backend("vllm")         # in-process vllm.LLM
 ```
 
-Honoured env vars: `CENG_BACKEND`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`,
-`OPENAI_API_BASE`. The third-party SDKs are imported lazily inside
-`complete()`.
+Honoured env vars include `CENG_BACKEND`, `CENG_TIMEOUT_SECONDS`, `CENG_RETRY`,
+`CENG_RETRY_BASE_MS`, `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, and
+`OPENAI_API_BASE`. The default timeout is 60 seconds and the default retry
+policy is three attempts with exponential jittered backoff. The third-party
+SDKs are imported lazily inside `complete()`.
 
 ## Layout
 
@@ -285,13 +294,13 @@ src/ceng/
     backends.py        # LiteLLM, vLLM, OpenAI adapters + retry/backoff
     cache.py           # sqlite-backed cache with WAL checkpoint
     check.py           # ppa_check (macro-fallacy probe)
-    compact/           # ceng.compress package
-        __init__.py    # ppa_compress, ppa_compress_to_okf, ...
+    compact.py          # chat-history compaction
+    compress/           # PPA compression package
+        __init__.py     # ppa_compress, ppa_compress_to_okf, ...
         prompts.py     # leaf-summarise + combine prompts
         bundle.py      # CompressionBundle -> OKF concepts
         log.py         # ceng logger
     compact.py         # chat-history compaction (U-shape)
-    compress/          # re-export shim for backward compat
     notes.py           # agentic NOTE-style external memory
     okf.py             # OKF v0.1 reader/writer
     partition.py       # adaptive text partitioner
@@ -308,6 +317,11 @@ tests/                # 260+ tests, fixture-driven, no live LLMs
 The full architecture document (module map, cache topology, backend
 trade-offs, extension points) lives in
 [`ARCHITECTURE.md`](./ARCHITECTURE.md).
+
+## Production operations
+
+Deployment, timeout/retry configuration, storage/privacy guidance, and the
+release checklist are documented in [`PRODUCTION.md`](./PRODUCTION.md).
 
 ## Website
 

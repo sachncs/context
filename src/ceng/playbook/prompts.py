@@ -320,12 +320,20 @@ def build_reflector_messages(
     env_fb = environment_feedback or ""
     if use_ground_truth and ground_truth is not None:
         user = REFLECTOR_PROMPT.format(
-            question, reasoning_trace, predicted_answer, ground_truth,
-            env_fb, bullets_used,
+            question,
+            reasoning_trace,
+            predicted_answer,
+            ground_truth,
+            env_fb,
+            bullets_used,
         )
     else:
         user = REFLECTOR_PROMPT_NO_GT.format(
-            question, reasoning_trace, predicted_answer, env_fb, bullets_used,
+            question,
+            reasoning_trace,
+            predicted_answer,
+            env_fb,
+            bullets_used,
         )
     return [{"role": "user", "content": user}]
 

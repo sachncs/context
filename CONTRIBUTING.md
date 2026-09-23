@@ -23,6 +23,8 @@ pip install -e .[dev]
 
 ```
 pytest -q
+coverage run -m pytest
+coverage report
 ```
 
 ## Lint / format
@@ -30,6 +32,7 @@ pytest -q
 ```
 ruff check .
 ruff format --check .
+mypy src/ceng
 ```
 
 ## Pull request flow
@@ -43,3 +46,10 @@ ruff format --check .
 
 By submitting a pull request, you agree to follow the
 [Code of Conduct](./CODE_OF_CONDUCT.md).
+
+## Releases
+
+Releases follow semantic versioning. A maintainer creates a `vX.Y.Z` tag after
+CI is green; the release workflow builds and validates the artifacts, creates a
+GitHub release, and publishes to PyPI using trusted publishing. Public API
+changes require a changelog entry and deprecation notes when applicable.

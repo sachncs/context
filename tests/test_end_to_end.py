@@ -1,4 +1,4 @@
-"""End-to-end smoke test for v0.4.0.
+"""End-to-end smoke test for v1.0.0.
 
 Exercises every new surface in one chain:
 
@@ -37,6 +37,7 @@ from ceng.playbook.evolver import Evolver
 @dataclass
 class FakeBackend:
     """Plays back canned responses in order; raises when exhausted."""
+
     name: str = "fake"
     responses: list = None
 
@@ -62,17 +63,14 @@ def _evaluator(question, answer, sample):
 
 def test_end_to_end_compact_notes_indexed_compress_evolver(tmp_path):
     # 1. A long chat history gets compacted.
-    long_chat = (
-        [{"role": "system", "content": "You are a careful assistant."}]
-        + [
-            {"role": "user" if i % 2 == 0 else "assistant",
-             "content": f"message number {i} with some content"}
-            for i in range(40)
-        ]
-    )
-    backend_for_compact = FakeBackend(
-        responses=["# compact summary\n\nkey points: 1, 2, 3"]
-    )
+    long_chat = [{"role": "system", "content": "You are a careful assistant."}] + [
+        {
+            "role": "user" if i % 2 == 0 else "assistant",
+            "content": f"message number {i} with some content",
+        }
+        for i in range(40)
+    ]
+    backend_for_compact = FakeBackend(responses=["# compact summary\n\nkey points: 1, 2, 3"])
     compacted, prov = compact_messages(
         long_chat,
         backend=backend_for_compact,
@@ -92,8 +90,7 @@ def test_end_to_end_compact_notes_indexed_compress_evolver(tmp_path):
 
     # 2. NotesManager writes a few agent notes.
     notes = NotesManager(root=tmp_path / "notes")
-    notes.write("team-handbook.md", "# Handbook\nBe kind.\n",
-                tags=("pinned",))
+    notes.write("team-handbook.md", "# Handbook\nBe kind.\n", tags=("pinned",))
     notes.write("standup-2026-07-20.md", "todos for today: ship v0.4\n")
     notes.write("decision-caching.md", "we use sqlite for the LLM cache\n")
     assert sorted(notes.list()) == [
@@ -178,54 +175,51 @@ def test_end_to_end_compact_notes_indexed_compress_evolver(tmp_path):
     on_disk_full = sorted(p.name for p in full_dir.iterdir())
     assert "combined.md" in on_disk_full
     assert "index.md" in on_disk_full
-    leaf_files = [
-        p.name for p in full_dir.iterdir()
-        if p.name.startswith("leaf-")
-    ]
+    leaf_files = [p.name for p in full_dir.iterdir() if p.name.startswith("leaf-")]
     assert len(leaf_files) >= 2
 
     # 4. The Evolver runs one step and the Curator adds a bullet.
     ev_backend = FakeBackend(
         responses=[
             # Generator
-            json.dumps({"reasoning": "r",
-                          "bullet_ids": [],
-                          "final_answer": "wrong"}),
+            json.dumps({"reasoning": "r", "bullet_ids": [], "final_answer": "wrong"}),
             # Reflector (model was wrong, GT is "right")
-            json.dumps({
-                "reasoning": "r",
-                "error_identification": "answer was wrong",
-                "root_cause_analysis": "misread the question",
-                "correct_approach": "re-read the question",
-                "key_insight": "Always read questions twice before answering",
-                "bullet_tags": [],
-            }),
+            json.dumps(
+                {
+                    "reasoning": "r",
+                    "error_identification": "answer was wrong",
+                    "root_cause_analysis": "misread the question",
+                    "correct_approach": "re-read the question",
+                    "key_insight": "Always read questions twice before answering",
+                    "bullet_tags": [],
+                }
+            ),
             # Curator
-            json.dumps({
-                "reasoning": "x",
-                "operations": [
-                    {"type": "ADD",
-                     "section": "strategies_and_insights",
-                     "content": "Always read questions twice before answering"},
-                ],
-            }),
+            json.dumps(
+                {
+                    "reasoning": "x",
+                    "operations": [
+                        {
+                            "type": "ADD",
+                            "section": "strategies_and_insights",
+                            "content": "Always read questions twice before answering",
+                        },
+                    ],
+                }
+            ),
         ]
     )
-    ev = Evolver(backend=ev_backend, llm="m",
-                 cache_dir=str(tmp_path / "evolver_cache"))
+    ev = Evolver(backend=ev_backend, llm="m", cache_dir=str(tmp_path / "evolver_cache"))
     pb, stats = ev.run(
         playbook=empty_playbook(),
-        queries=[{"question": "What is 1+1?",
-                  "ground_truth": "right",
-                  "context": ""}],
+        queries=[{"question": "What is 1+1?", "ground_truth": "right", "context": ""}],
         evaluator=_evaluator,
         max_iterations=1,
     )
     # Playbook should now contain the Curator's bullet.
-    assert any(
-        "read questions twice" in b.content
-        for b in pb.bullets.values()
-    ), f"Curator's bullet missing from playbook: {list(pb.bullets)}"
+    assert any("read questions twice" in b.content for b in pb.bullets.values()), (
+        f"Curator's bullet missing from playbook: {list(pb.bullets)}"
+    )
     # Reflector ran once (model was wrong)
     assert stats[0].reflector_rounds_used == 1
     assert stats[0].bullets_added == 1
@@ -234,11 +228,23 @@ def test_end_to_end_compact_notes_indexed_compress_evolver(tmp_path):
 
     # 5. Adding a near-identical bullet only adds once (content-hash dedup).
     before = len(pb.bullets)
-    pb.merge([Bullet(id="dup-00001",
-                     section="strategies_and_insights",
-                     content="always read questions twice before answering")])
+    pb.merge(
+        [
+            Bullet(
+                id="dup-00001",
+                section="strategies_and_insights",
+                content="always read questions twice before answering",
+            )
+        ]
+    )
     assert len(pb.bullets) == before  # dedup'd, not added
-    pb.merge([Bullet(id="new-00001",
-                     section="strategies_and_insights",
-                     content="a genuinely new strategy")])
+    pb.merge(
+        [
+            Bullet(
+                id="new-00001",
+                section="strategies_and_insights",
+                content="a genuinely new strategy",
+            )
+        ]
+    )
     assert len(pb.bullets) == before + 1

@@ -56,11 +56,12 @@ EXPECTED_EXPORTS = {
 
 def test_version_is_semver_string():
     assert isinstance(ceng.__version__, str)
-    # 0.4.0 is the current label: three numeric components
+    # 1.0.0 is the current label: three numeric components
     # separated by dots, with an optional -suffix. The numeric
     # components must all be digits; the suffix is free-form.
     parts = ceng.__version__.split("-")[0].split(".")
     assert len(parts) == 3 and all(p.isdigit() for p in parts)
+    assert ceng.__version__ == "1.0.0"
 
 
 def test_all_exports_resolve():
@@ -93,11 +94,7 @@ def test_verdict_is_dataclass_like():
         self_consistent=True,
         delta=0.1,
         tolerance=0.2,
-        leaves=(
-            ceng.LeafEstimate(
-                description="A", prior=1.0, estimate=0.4, cache_hit=False
-            ),
-        ),
+        leaves=(ceng.LeafEstimate(description="A", prior=1.0, estimate=0.4, cache_hit=False),),
         cache_hits=0,
         cache_misses=1,
     )

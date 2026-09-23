@@ -16,6 +16,10 @@ before reporting an issue.
 [private vulnerability reporting](https://docs.github.com/en/code-security/security-advisories/guidance-on-reporting-and-writing-information-about-vulnerabilities/privately-reporting-a-security-vulnerability)
 for this repository.
 
+If private reporting is unavailable, email **sachncs@gmail.com** with the
+subject `SECURITY: ceng vulnerability`. Please do not include secrets or
+production credentials in the initial report.
+
 ## Response SLA
 
 - Acknowledgement within **3 business days**.

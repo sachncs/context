@@ -52,11 +52,16 @@ from ceng.tokens import count_tokens
 
 MAX_LEAVES = 512
 
-WINDOWS_RESERVED = frozenset({
-    "CON", "PRN", "AUX", "NUL",
-    *(f"COM{i}" for i in range(1, 10)),
-    *(f"LPT{i}" for i in range(1, 10)),
-})
+WINDOWS_RESERVED = frozenset(
+    {
+        "CON",
+        "PRN",
+        "AUX",
+        "NUL",
+        *(f"COM{i}" for i in range(1, 10)),
+        *(f"LPT{i}" for i in range(1, 10)),
+    }
+)
 
 
 class CompressError(RuntimeError):
@@ -203,7 +208,9 @@ def compress_to_bundle(
     original_tokens = count_tokens(target_text, tokenizer)
     logger.info(
         "ppa_compress start: budget=%d model=%s target_tokens=%d",
-        budget_tokens, llm, original_tokens,
+        budget_tokens,
+        llm,
+        original_tokens,
     )
     if original_tokens <= budget_tokens:
         logger.info("ppa_compress short-circuit: input fits budget")
@@ -220,9 +227,7 @@ def compress_to_bundle(
             model=llm,
         )
 
-    partitions = partition_text(
-        target_text, max_tokens=partition_max_tokens, tokenizer=tokenizer
-    )
+    partitions = partition_text(target_text, max_tokens=partition_max_tokens, tokenizer=tokenizer)
     logger.info("ppa_compress partitioned: %d leaves", len(partitions))
     if not partitions:
         return CompressionBundle(
@@ -308,10 +313,12 @@ def compress_to_bundle(
         model=llm,
     )
     logger.info(
-        "ppa_compress done: leaves=%d hits=%d misses=%d "
-        "compressed=%d->%d",
-        bundle.leaf_count, bundle.cache_hits, bundle.cache_misses,
-        original_tokens, bundle.compressed_tokens,
+        "ppa_compress done: leaves=%d hits=%d misses=%d compressed=%d->%d",
+        bundle.leaf_count,
+        bundle.cache_hits,
+        bundle.cache_misses,
+        original_tokens,
+        bundle.compressed_tokens,
     )
     return bundle
 
@@ -388,13 +395,13 @@ def ppa_compress_to_okf(
         **call_kw,
     )
     root = Path(bundle_dir) / bundle_name
-    concepts = build_bundle_concepts(
-        bundle, bundle_name, tokenizer, index_only=index_only
-    )
+    concepts = build_bundle_concepts(bundle, bundle_name, tokenizer, index_only=index_only)
     write_bundle(root, concepts)
     logger.info(
         "wrote OKF bundle with %d concepts to %s (index_only=%s)",
-        len(concepts), root, index_only,
+        len(concepts),
+        root,
+        index_only,
     )
     return concepts
 
@@ -404,9 +411,7 @@ def ppa_compress_to_okf(
 # ---------------------------------------------------------------------------
 
 
-def pick_target_message(
-    messages: list[dict], *, fallback_to_last: bool = False
-) -> tuple[int, str]:
+def pick_target_message(messages: list[dict], *, fallback_to_last: bool = False) -> tuple[int, str]:
     """Pick the longest user-role message.
 
     By default, raises ``ValueError`` when no user-role message is
@@ -428,9 +433,7 @@ def pick_target_message(
             best_text = text
     if best_index == -1:
         if not fallback_to_last or not messages:
-            raise ValueError(
-                "no user-role text found in messages to compress"
-            )
+            raise ValueError("no user-role text found in messages to compress")
         last = messages[-1]
         best_index = len(messages) - 1
         best_text = _flatten_content(last.get("content"))
@@ -444,9 +447,7 @@ def _flatten_content(content: Any) -> str:
     if isinstance(content, str):
         return content
     if isinstance(content, list):
-        return "".join(
-            c.get("text", "") for c in content if isinstance(c, dict)
-        )
+        return "".join(c.get("text", "") for c in content if isinstance(c, dict))
     return ""
 
 
@@ -466,21 +467,13 @@ def _validate_bundle_name(bundle_name: str) -> None:
     if not bundle_name or bundle_name != bundle_name.strip():
         raise ValueError("bundle_name must be a non-empty directory name")
     if "/" in bundle_name or "\\" in bundle_name or bundle_name in {".", ".."}:
-        raise ValueError(
-            f"bundle_name must not contain path separators: {bundle_name!r}"
-        )
+        raise ValueError(f"bundle_name must not contain path separators: {bundle_name!r}")
     if any(ord(c) < 0x20 for c in bundle_name):
-        raise ValueError(
-            f"bundle_name must not contain control characters: {bundle_name!r}"
-        )
+        raise ValueError(f"bundle_name must not contain control characters: {bundle_name!r}")
     if bundle_name.upper().split(".")[0] in WINDOWS_RESERVED:
-        raise ValueError(
-            f"bundle_name {bundle_name!r} is reserved on Windows"
-        )
+        raise ValueError(f"bundle_name {bundle_name!r} is reserved on Windows")
     if len(bundle_name) > 100:
-        raise ValueError(
-            f"bundle_name must be at most 100 chars, got {len(bundle_name)}"
-        )
+        raise ValueError(f"bundle_name must be at most 100 chars, got {len(bundle_name)}")
 
 
 def summarise_leaf(
@@ -595,6 +588,4 @@ def _run_prompt(
 def _validate_llm_output(text: str, *, context: str) -> None:
     """Reject empty or whitespace-only LLM output as recoverable cache poison."""
     if not text or not text.strip():
-        raise CompressError(
-            f"LLM returned empty/whitespace-only output ({context})"
-        )
+        raise CompressError(f"LLM returned empty/whitespace-only output ({context})")

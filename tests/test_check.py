@@ -191,9 +191,7 @@ def test_ppa_check_uses_cache_on_repeat(tmp_cache):
     assert len(backend.calls) == 2
     backend.calls = []
     backend.responses = []
-    verdict = ppa_check(
-        "Q?", "pop", tree, llm="m", backend=backend, cache_dir=tmp_cache
-    )
+    verdict = ppa_check("Q?", "pop", tree, llm="m", backend=backend, cache_dir=tmp_cache)
     assert len(backend.calls) == 0
     assert verdict.cache_hits >= 1
 
@@ -242,23 +240,31 @@ def test_ppa_check_aggregates_with_nested_priors(tmp_cache):
 def test_ppa_check_rejects_negative_tolerance(tmp_cache):
     with pytest.raises(ValueError, match="tolerance"):
         ppa_check(
-            "Q?", "pop", [{"description": "all"}], llm="m",
-            tolerance=-0.1, backend=FakeBackend(responses=[]),
+            "Q?",
+            "pop",
+            [{"description": "all"}],
+            llm="m",
+            tolerance=-0.1,
+            backend=FakeBackend(responses=[]),
             cache_dir=tmp_cache,
         )
 
 
 def test_ppa_check_rejects_empty_tree(tmp_cache):
     with pytest.raises(ValueError, match="non-empty"):
-        ppa_check("Q?", "pop", [], llm="m", backend=FakeBackend(),
-                  cache_dir=tmp_cache)
+        ppa_check("Q?", "pop", [], llm="m", backend=FakeBackend(), cache_dir=tmp_cache)
 
 
 def test_ppa_check_kw_forwarded(tmp_cache):
     backend = FakeBackend(responses=["0.5", "0.5"])
     ppa_check(
-        "Q?", "pop", [{"description": "all"}], llm="m",
-        backend=backend, cache_dir=tmp_cache, temperature=0.3,
+        "Q?",
+        "pop",
+        [{"description": "all"}],
+        llm="m",
+        backend=backend,
+        cache_dir=tmp_cache,
+        temperature=0.3,
     )
     assert True
 
@@ -266,8 +272,12 @@ def test_ppa_check_kw_forwarded(tmp_cache):
 def test_ppa_check_with_no_cache(tmp_cache):
     backend = FakeBackend(responses=["0.5", "0.5"])
     verdict = ppa_check(
-        "Q?", "pop", [{"description": "all"}], llm="m",
-        backend=backend, cache_dir="",
+        "Q?",
+        "pop",
+        [{"description": "all"}],
+        llm="m",
+        backend=backend,
+        cache_dir="",
     )
     assert verdict.population_estimate == 0.5
     assert verdict.self_consistent is True

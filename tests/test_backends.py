@@ -10,6 +10,7 @@ import pytest
 from ceng.backends import (
     DEFAULT_BACKEND,
     ENV_BACKEND,
+    ENV_TIMEOUT_SECONDS,
     LiteLLMBackend,
     OpenAIBackend,
     VLLMBackend,
@@ -78,13 +79,11 @@ def _install_fake_openai(monkeypatch, captured, return_text):
         return SimpleNamespace(
             chat=SimpleNamespace(
                 completions=SimpleNamespace(
-                    create=lambda **kw: captured.update(create_kw=kw)
-                    or SimpleNamespace(
-                        choices=[
-                            SimpleNamespace(
-                                message=SimpleNamespace(content=return_text)
-                            )
-                        ]
+                    create=lambda **kw: (
+                        captured.update(create_kw=kw)
+                        or SimpleNamespace(
+                            choices=[SimpleNamespace(message=SimpleNamespace(content=return_text))]
+                        )
                     )
                 )
             )
@@ -173,7 +172,7 @@ def test_litellm_backend_forwards_kwargs(monkeypatch):
 
 def test_litellm_backend_raises_on_malformed_response(monkeypatch):
     fake = ModuleType("litellm")
-    fake.completion = lambda **_ : SimpleNamespace(broken=True)
+    fake.completion = lambda **_: SimpleNamespace(broken=True)
     monkeypatch.setitem(sys.modules, "litellm", fake)
     backend = LiteLLMBackend()
     with pytest.raises(RuntimeError, match="could not extract"):
@@ -269,6 +268,14 @@ def test_litellm_backend_respects_caller_timeout(monkeypatch):
     assert captured["kwargs"]["timeout"] == 12.5
 
 
+def test_litellm_backend_reads_timeout_from_environment(monkeypatch):
+    captured = {}
+    _install_fake_litellm(monkeypatch, captured, "ok")
+    monkeypatch.setenv(ENV_TIMEOUT_SECONDS, "7.5")
+    LiteLLMBackend().complete(messages=[{"role": "user", "content": "hi"}], model="m")
+    assert captured["kwargs"]["timeout"] == 7.5
+
+
 def test_vllm_backend_engine_creation_is_serialised(monkeypatch):
     """Two threads calling complete() for the same fresh model must
     only build one vllm.LLM."""
@@ -320,6 +327,7 @@ def test_openai_backend_lazily_constructs_client(monkeypatch):
 
     # Remove a preloaded openai if any
     monkeypatch.delitem(sys.modules, "openai", raising=False)
+
     # Block fresh openai imports
     class Blocker:
         def find_module(self, name, path=None):
@@ -413,9 +421,7 @@ def test_retry_with_backoff_succeeds_after_transient_failures():
             raise ConnectionError("flaky")
         return "recovered"
 
-    out = retry_with_backoff(
-        fn, attempts=5, base_ms=1, sleep=lambda _: None
-    )
+    out = retry_with_backoff(fn, attempts=5, base_ms=1, sleep=lambda _: None)
     assert out == "recovered"
     assert calls["n"] == 3
 
@@ -445,7 +451,10 @@ def test_retry_with_backoff_does_not_retry_on_non_retryable():
 
     with pytest.raises(ValueError):
         retry_with_backoff(
-            fn, attempts=5, base_ms=1, sleep=lambda _: None,
+            fn,
+            attempts=5,
+            base_ms=1,
+            sleep=lambda _: None,
             retry_on=(ConnectionError,),
         )
     assert calls["n"] == 1

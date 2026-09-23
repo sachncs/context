@@ -32,46 +32,68 @@ def finer_fixture_path(tmp_path) -> Path:
 
 
 _FINER_FIXTURE: list[tuple[list[str], list[str]]] = [
-    (["Apple", "Inc.", "reported", "record", "sales", "."],
-     ["B-ORG", "I-ORG", "O", "O", "O", "O"]),
-    (["Tim", "Cook", "is", "the", "CEO", "."],
-     ["B-PER", "I-PER", "O", "O", "O", "O"]),
-    (["Microsoft", "is", "based", "in", "Redmond", "."],
-     ["B-ORG", "O", "O", "O", "B-LOC", "O"]),
-    (["He", "joined", "Goldman", "Sachs", "in", "2010", "."],
-     ["O", "O", "B-ORG", "I-ORG", "O", "O", "O"]),
-    (["The", "report", "covers", "Q1", "2024", "earnings", "."],
-     ["O", "O", "O", "O", "O", "O", "O"]),
-    (["Apple", "and", "Samsung", "compete", "globally", "."],
-     ["B-ORG", "O", "B-ORG", "O", "O", "O"]),
-    (["London", "is", "in", "the", "UK", "."],
-     ["B-LOC", "O", "O", "O", "B-LOC", "O"]),
-    (["John", "Smith", "works", "at", "Google", "."],
-     ["B-PER", "I-PER", "O", "O", "B-ORG", "O"]),
-    (["Berlin", "and", "Paris", "hosted", "the", "summit", "."],
-     ["B-LOC", "O", "B-LOC", "O", "O", "O", "O"]),
-    (["Tesla", "Motors", "announced", "earnings", "."],
-     ["B-ORG", "I-ORG", "O", "O", "O"]),
-    (["Maria", "lives", "in", "Madrid", "and", "works", "at", "BBVA", "."],
-     ["B-PER", "O", "O", "B-LOC", "O", "O", "O", "B-ORG", "O"]),
-    (["Tokyo", "is", "the", "capital", "of", "Japan", "."],
-     ["B-LOC", "O", "O", "O", "O", "B-LOC", "O"]),
-    (["Meta", "Platforms", "owns", "Facebook", "and", "Instagram", "."],
-     ["B-ORG", "I-ORG", "O", "B-ORG", "O", "B-ORG", "O"]),
-    (["Elon", "Musk", "founded", "SpaceX", "in", "2002", "."],
-     ["B-PER", "I-PER", "O", "B-ORG", "O", "O", "O"]),
-    (["Amazon", "is", "headquartered", "in", "Seattle", "."],
-     ["B-ORG", "O", "O", "O", "B-LOC", "O"]),
-    (["Satya", "Nadella", "leads", "Microsoft", "since", "2014", "."],
-     ["B-PER", "I-PER", "O", "B-ORG", "O", "O", "O"]),
-    (["Paris", "is", "a", "city", "in", "France", "."],
-     ["B-LOC", "O", "O", "O", "O", "B-LOC", "O"]),
-    (["IBM", "is", "headquartered", "in", "Armonk", "New", "York", "."],
-     ["B-ORG", "O", "O", "O", "B-LOC", "I-LOC", "I-LOC", "O"]),
-    (["Sundar", "Pichai", "is", "CEO", "of", "Alphabet", "."],
-     ["B-PER", "I-PER", "O", "O", "O", "B-ORG", "O"]),
-    (["Toyota", "is", "headquartered", "in", "Toyota", "City", "."],
-     ["B-ORG", "O", "O", "O", "B-LOC", "I-LOC", "O"]),
+    (["Apple", "Inc.", "reported", "record", "sales", "."], ["B-ORG", "I-ORG", "O", "O", "O", "O"]),
+    (["Tim", "Cook", "is", "the", "CEO", "."], ["B-PER", "I-PER", "O", "O", "O", "O"]),
+    (["Microsoft", "is", "based", "in", "Redmond", "."], ["B-ORG", "O", "O", "O", "B-LOC", "O"]),
+    (
+        ["He", "joined", "Goldman", "Sachs", "in", "2010", "."],
+        ["O", "O", "B-ORG", "I-ORG", "O", "O", "O"],
+    ),
+    (
+        ["The", "report", "covers", "Q1", "2024", "earnings", "."],
+        ["O", "O", "O", "O", "O", "O", "O"],
+    ),
+    (
+        ["Apple", "and", "Samsung", "compete", "globally", "."],
+        ["B-ORG", "O", "B-ORG", "O", "O", "O"],
+    ),
+    (["London", "is", "in", "the", "UK", "."], ["B-LOC", "O", "O", "O", "B-LOC", "O"]),
+    (["John", "Smith", "works", "at", "Google", "."], ["B-PER", "I-PER", "O", "O", "B-ORG", "O"]),
+    (
+        ["Berlin", "and", "Paris", "hosted", "the", "summit", "."],
+        ["B-LOC", "O", "B-LOC", "O", "O", "O", "O"],
+    ),
+    (["Tesla", "Motors", "announced", "earnings", "."], ["B-ORG", "I-ORG", "O", "O", "O"]),
+    (
+        ["Maria", "lives", "in", "Madrid", "and", "works", "at", "BBVA", "."],
+        ["B-PER", "O", "O", "B-LOC", "O", "O", "O", "B-ORG", "O"],
+    ),
+    (
+        ["Tokyo", "is", "the", "capital", "of", "Japan", "."],
+        ["B-LOC", "O", "O", "O", "O", "B-LOC", "O"],
+    ),
+    (
+        ["Meta", "Platforms", "owns", "Facebook", "and", "Instagram", "."],
+        ["B-ORG", "I-ORG", "O", "B-ORG", "O", "B-ORG", "O"],
+    ),
+    (
+        ["Elon", "Musk", "founded", "SpaceX", "in", "2002", "."],
+        ["B-PER", "I-PER", "O", "B-ORG", "O", "O", "O"],
+    ),
+    (
+        ["Amazon", "is", "headquartered", "in", "Seattle", "."],
+        ["B-ORG", "O", "O", "O", "B-LOC", "O"],
+    ),
+    (
+        ["Satya", "Nadella", "leads", "Microsoft", "since", "2014", "."],
+        ["B-PER", "I-PER", "O", "B-ORG", "O", "O", "O"],
+    ),
+    (
+        ["Paris", "is", "a", "city", "in", "France", "."],
+        ["B-LOC", "O", "O", "O", "O", "B-LOC", "O"],
+    ),
+    (
+        ["IBM", "is", "headquartered", "in", "Armonk", "New", "York", "."],
+        ["B-ORG", "O", "O", "O", "B-LOC", "I-LOC", "I-LOC", "O"],
+    ),
+    (
+        ["Sundar", "Pichai", "is", "CEO", "of", "Alphabet", "."],
+        ["B-PER", "I-PER", "O", "O", "O", "B-ORG", "O"],
+    ),
+    (
+        ["Toyota", "is", "headquartered", "in", "Toyota", "City", "."],
+        ["B-ORG", "O", "O", "O", "B-LOC", "I-LOC", "O"],
+    ),
 ]
 
 
@@ -83,7 +105,9 @@ def test_finer_processor_implements_protocol():
 
 def test_finer_process_task_data_builds_datasamples(finer_fixture_path):
     p = FiNERProcessor()
-    rows = [json.loads(line) for line in finer_fixture_path.read_text().splitlines() if line.strip()]
+    rows = [
+        json.loads(line) for line in finer_fixture_path.read_text().splitlines() if line.strip()
+    ]
     samples = p.process_task_data(rows)
     assert len(samples) == 20
     assert samples[0].question.startswith("Sentence:")
@@ -98,22 +122,20 @@ def test_finer_answer_is_correct_is_exact_match():
     assert p.answer_is_correct("B-ORG\nI-ORG", gold) is False  # missing tags
     assert p.answer_is_correct("B-ORG\nI-MISC\nO\nO", gold) is False  # wrong type
     # token\\ttag format is also accepted (last column is the tag)
-    assert (
-        p.answer_is_correct("Apple\tB-ORG\nInc.\tI-ORG\nfoo\tO\nbar\tO", gold)
-        is True
-    )
+    assert p.answer_is_correct("Apple\tB-ORG\nInc.\tI-ORG\nfoo\tO\nbar\tO", gold) is True
 
 
 def test_finer_evaluate_accuracy_returns_fraction():
     p = FiNERProcessor()
     preds = ["B-ORG\nI-ORG", "B-PER\nI-PER", "O"]
-    gold =  ["B-ORG\nI-ORG", "B-PER\nO",     "O"]
+    gold = ["B-ORG\nI-ORG", "B-PER\nO", "O"]
     assert p.evaluate_accuracy(preds, gold) == pytest.approx(2 / 3)
 
 
 def test_finer_seed_playbook_is_non_empty():
     """The seed must be non-empty for ceng to differ from a blank start."""
     from ceng.playbook import parse_playbook
+
     text = seed_playbook()
     assert len(text) > 100
     # All seven ACE sections present in the parsed playbook so the
@@ -133,6 +155,7 @@ def test_finer_seed_playbook_is_non_empty():
 
 def test_finer_seed_playbook_loads_into_playbook():
     from ceng.playbook import parse_playbook
+
     pb = parse_playbook(seed_playbook())
     assert len(pb.bullets) >= 5
     # Every parsed bullet is in one of the seven sections
@@ -164,7 +187,9 @@ def test_finer_full_eval_pipeline_with_mock_backend(finer_fixture_path, tmp_path
 
     backend = FakeBackend(response="B-ORG\nI-ORG\nO\nO")
     p = FiNERProcessor()
-    rows = [json.loads(line) for line in finer_fixture_path.read_text().splitlines() if line.strip()]
+    rows = [
+        json.loads(line) for line in finer_fixture_path.read_text().splitlines() if line.strip()
+    ]
     samples = p.process_task_data(rows)
     result = run_eval(
         benchmark="finer",
@@ -197,11 +222,17 @@ def test_finer_write_report_emits_md_and_json(finer_fixture_path, tmp_path):
 
     backend = FakeBackend()
     p = FiNERProcessor()
-    rows = [json.loads(line) for line in finer_fixture_path.read_text().splitlines() if line.strip()]
+    rows = [
+        json.loads(line) for line in finer_fixture_path.read_text().splitlines() if line.strip()
+    ]
     samples = p.process_task_data(rows)
     result = run_eval(
-        benchmark="finer", processor=p, samples=samples,
-        backend=backend, llm="m", cache_dir=str(tmp_path / "cache"),
+        benchmark="finer",
+        processor=p,
+        samples=samples,
+        backend=backend,
+        llm="m",
+        cache_dir=str(tmp_path / "cache"),
     )
     out = write_report(
         result,
