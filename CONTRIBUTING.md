@@ -14,9 +14,8 @@ Discussions if enabled). For security issues, follow
 ## Development setup
 
 ```
-python -m venv .venv
+make setup
 source .venv/bin/activate
-pip install -e .[dev]
 ```
 
 ## Tests
@@ -25,6 +24,9 @@ pip install -e .[dev]
 pytest -q
 coverage run -m pytest
 coverage report
+
+# Or run the complete local gate:
+make check
 ```
 
 ## Lint / format

@@ -25,6 +25,7 @@ from ceng.backends import (
     VLLMBackend,
     available_backends,
     get_backend,
+    register_backend,
     reset_backend,
     set_backend,
 )
@@ -76,6 +77,7 @@ __all__ = [
     "OpenAIBackend",
     "VLLMBackend",
     "available_backends",
+    "register_backend",
     "get_backend",
     "reset_backend",
     "set_backend",

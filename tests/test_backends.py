@@ -16,6 +16,7 @@ from ceng.backends import (
     VLLMBackend,
     available_backends,
     get_backend,
+    register_backend,
     reset_backend,
     set_backend,
 )
@@ -139,6 +140,31 @@ def test_set_backend_honours_env_var(monkeypatch):
 def test_set_backend_with_unknown_name_raises():
     with pytest.raises(ValueError, match="unknown backend"):
         set_backend("does-not-exist")
+
+
+def test_custom_backend_can_be_registered_without_editing_registry():
+    class CustomBackend:
+        name = "custom"
+
+        def complete(self, messages, model, **kw):
+            return "custom-result"
+
+    register_backend(" Custom ", CustomBackend)
+    backend = set_backend("custom")
+    assert backend.complete([], "model") == "custom-result"
+    assert "custom" in available_backends()
+
+
+def test_backend_registration_rejects_duplicates():
+    class CustomBackend:
+        name = "duplicate"
+
+        def complete(self, messages, model, **kw):
+            return "ok"
+
+    register_backend("duplicate", CustomBackend)
+    with pytest.raises(ValueError, match="already registered"):
+        register_backend("duplicate", CustomBackend)
 
 
 def test_reset_backend_forces_rebuild(monkeypatch):
@@ -274,6 +300,14 @@ def test_litellm_backend_reads_timeout_from_environment(monkeypatch):
     monkeypatch.setenv(ENV_TIMEOUT_SECONDS, "7.5")
     LiteLLMBackend().complete(messages=[{"role": "user", "content": "hi"}], model="m")
     assert captured["kwargs"]["timeout"] == 7.5
+
+
+def test_litellm_backend_sanitizes_invalid_retry_environment(monkeypatch):
+    captured = {}
+    _install_fake_litellm(monkeypatch, captured, "ok")
+    monkeypatch.setenv("CENG_RETRY", "0")
+    monkeypatch.setenv("CENG_RETRY_BASE_MS", "-10")
+    assert LiteLLMBackend().complete(messages=[], model="m") == "ok"
 
 
 def test_vllm_backend_engine_creation_is_serialised(monkeypatch):

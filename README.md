@@ -3,7 +3,7 @@
 > Partition-Prompt-Aggregate context engineering for LLMs. Apache-2.0.
 > Drop-in `ppa_compress`, `ppa_check`, ACE `Evolver`, and OKF writer/reader.
 
-> Package name: **`ceng`** — GitHub repo: **`sachncs/context`**.
+> PyPI package: **`ceng-context`** · Python import: **`ceng`** · GitHub: **`sachncs/context`**.
 
 [![CI](https://img.shields.io/github/actions/workflow/status/sachncs/context/ci.yml?branch=master&label=CI)](https://github.com/sachncs/context/actions/workflows/ci.yml)
 [![License](https://img.shields.io/badge/license-Apache_2.0-blue)](https://github.com/sachncs/context/blob/master/LICENSE)
@@ -148,11 +148,11 @@ Three pipelines ship today:
 ## Install
 
 ```bash
-pip install ceng                  # litellm + pyyaml
-pip install ceng[tokenize]        # + tiktoken
-pip install ceng[vllm]            # + vllm (in-process)
-pip install ceng[openai]          # + openai
-pip install ceng[all]             # everything
+pip install ceng-context                  # litellm + pyyaml
+pip install 'ceng-context[tokenize]'       # + tiktoken
+pip install 'ceng-context[vllm]'            # + vllm (in-process)
+pip install 'ceng-context[openai]'          # + openai
+pip install 'ceng-context[all]'             # everything
 pip install -e .[dev]              # local checkout with pytest
 ```
 

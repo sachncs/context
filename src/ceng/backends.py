@@ -29,7 +29,7 @@ import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, Protocol, runtime_checkable
 
 ENV_BACKEND = "CENG_BACKEND"
 ENV_RETRY = "CENG_RETRY"
@@ -112,17 +112,18 @@ def retry_with_backoff(
     raise last_exc
 
 
-class Backend:
+@runtime_checkable
+class Backend(Protocol):
     """Callable interface every adapter implements.
 
     Subclasses set ``name`` and override :meth:`complete`.
     """
 
-    name: str = ""
+    name: str
 
     def complete(self, messages: list[dict], model: str, **kw: Any) -> str:
         """Return the assistant's text for ``messages`` using ``model``."""
-        raise NotImplementedError
+        ...
 
 
 @dataclass
@@ -147,8 +148,8 @@ class LiteLLMBackend(Backend):
 
         if "timeout" not in kw:
             kw["timeout"] = _env_float(ENV_TIMEOUT_SECONDS, self.timeout_seconds)
-        attempts = _env_int(ENV_RETRY, self.retry_attempts)
-        base_ms = _env_int(ENV_RETRY_BASE_MS, self.retry_base_ms)
+        attempts = max(1, _env_int(ENV_RETRY, self.retry_attempts))
+        base_ms = max(0, _env_int(ENV_RETRY_BASE_MS, self.retry_base_ms))
         return retry_with_backoff(
             _litellm_call,
             litellm,
@@ -234,8 +235,8 @@ class OpenAIBackend(Backend):
 
             self.client = OpenAI()
         kw.setdefault("timeout", _env_float(ENV_TIMEOUT_SECONDS, self.timeout_seconds))
-        attempts = _env_int(ENV_RETRY, self.retry_attempts)
-        base_ms = _env_int(ENV_RETRY_BASE_MS, self.retry_base_ms)
+        attempts = max(1, _env_int(ENV_RETRY, self.retry_attempts))
+        base_ms = max(0, _env_int(ENV_RETRY_BASE_MS, self.retry_base_ms))
         return retry_with_backoff(
             self._openai_call,
             model=model,
@@ -254,7 +255,9 @@ class OpenAIBackend(Backend):
         return response.choices[0].message.content
 
 
-_BACKEND_REGISTRY: dict[str, type[Backend]] = {
+BackendFactory = Callable[..., Backend]
+
+_BACKEND_REGISTRY: dict[str, BackendFactory] = {
     "litellm": LiteLLMBackend,
     "vllm": VLLMBackend,
     "openai": OpenAIBackend,
@@ -267,6 +270,33 @@ _active_lock = threading.Lock()
 def available_backends() -> list[str]:
     """Return the names of all built-in backends."""
     return sorted(_BACKEND_REGISTRY.keys())
+
+
+def register_backend(name: str, factory: BackendFactory, *, replace: bool = False) -> None:
+    """Register a backend factory for use by :func:`set_backend`.
+
+    This is the extension point for application-owned adapters. Registration
+    is process-local and should happen during application startup, before any
+    worker threads begin selecting backends.
+
+    Args:
+        name: Non-empty backend identifier used by ``set_backend``.
+        factory: Callable returning an object implementing :class:`Backend`.
+        replace: Permit replacing an existing built-in or custom backend.
+
+    Raises:
+        TypeError: If ``name`` or ``factory`` is invalid.
+        ValueError: If the name is already registered and ``replace`` is false.
+    """
+    if not isinstance(name, str) or not name.strip():
+        raise TypeError("backend name must be a non-empty string")
+    if not callable(factory):
+        raise TypeError("backend factory must be callable")
+    normalized = name.strip().lower()
+    with _active_lock:
+        if normalized in _BACKEND_REGISTRY and not replace:
+            raise ValueError(f"backend {normalized!r} is already registered")
+        _BACKEND_REGISTRY[normalized] = factory
 
 
 def get_backend() -> Backend:
@@ -313,6 +343,7 @@ def reset_backend() -> None:
 def resolve_backend(name: str | None, **init_kw: Any) -> Backend:
     """Construct a backend by name; ``None`` means default."""
     chosen = name or os.environ.get(ENV_BACKEND) or DEFAULT_BACKEND
+    chosen = chosen.strip().lower()
     if chosen not in _BACKEND_REGISTRY:
         raise ValueError(f"unknown backend {chosen!r}; pick one of {available_backends()}")
     return _BACKEND_REGISTRY[chosen](**init_kw)

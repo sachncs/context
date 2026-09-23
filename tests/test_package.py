@@ -10,6 +10,7 @@ EXPECTED_EXPORTS = {
     "OpenAIBackend",
     "VLLMBackend",
     "available_backends",
+    "register_backend",
     "get_backend",
     "reset_backend",
     "set_backend",
