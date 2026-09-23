@@ -13,7 +13,7 @@ Under [`src/ceng/`](./src/ceng):
 | Module | Responsibility | Depends on |
 |---|---|---|
 | `__init__.py` | Top-level exports (`ppa_compress`, `ppa_check`, `set_backend`, OKF primitives, ...) and `__version__`. Re-exports `configure_logging` from `compress.log` so callers can do `ceng.configure_logging(level=logging.INFO)` once at startup. | everything below |
-| `backends.py` | `Backend` Protocol and three adapters (`LiteLLMBackend`, `VLLMBackend`, `OpenAIBackend`) behind `set_backend(name)` selector. Also hosts `retry_with_backoff` for transient 5xx / rate-limit recovery. | `litellm`, `vllm`, `openai` (lazy) |
+| `backends.py` | `Backend` Protocol and three adapters (`LiteLLMBackend`, `VLLMBackend`, `OpenAIBackend`) behind `set_backend(name)` selector. Application-owned adapters can use `register_backend`. Also hosts `retry_with_backoff` for transient 5xx / rate-limit recovery. | `litellm`, `vllm`, `openai` (lazy) |
 | `cache.py` | `Cache` — sqlite-on-disk KV store with WAL mode, `__enter__`/`__exit__`, `PRAGMA busy_timeout`, `PRAGMA user_version` migration. Two namespaces (`summarize`, `ppa_check`). | stdlib only |
 | `check.py` | `ppa_check` — macro-fallacy probe. Iteratively queries the model at the population level and at each leaf of a binary tree, then compares answers. Validates the tree (`prior == 0` rejection, scientific notation parsing, iterative flatten). | `backends`, `cache`, `partition`, `tokens` |
 | `compress/` | The PPA compression package. Public via `ceng.compress` and re-exported at top level. | `backends`, `cache`, `okf`, `partition`, `tokens` |
@@ -133,15 +133,30 @@ globally via env vars.
 
 ### Add a new backend
 
-Subclass `ceng.backends.Backend` and add it to `_BACKEND_REGISTRY`
-in `ceng/backends.py`. Two methods to implement:
+Implement the structural `ceng.backends.Backend` protocol and register a
+factory during application startup:
+
+```python
+import ceng
+
+class MyBackend:
+    name = "my-backend"
+
+    def complete(self, messages, model, **kwargs):
+        return "..."
+
+ceng.register_backend("my-backend", MyBackend)
+```
+
+Two methods to implement:
 
 * `name: str` — the registry key.
 * `complete(messages, model, **kw) -> str` — send the chat
   messages to the model and return the assistant text.
 
-Wrap `complete()` in `retry_with_backoff` if you want transient
-failures to recover.
+Wrap `complete()` in `retry_with_backoff` if you want transient failures to
+recover. Registration is process-local and should happen during application
+startup before worker threads select a backend.
 
 ### Add a new ACE preset
 
