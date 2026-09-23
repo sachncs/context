@@ -1,5 +1,9 @@
 # Production operations
 
+The published distribution is `ceng-context`; the Python import remains
+`ceng`. The shorter `ceng` name is already registered on PyPI by an unrelated
+project.
+
 `ceng` is a synchronous library. Run it inside the host service that owns the
 request lifecycle, credentials, timeouts, and observability.
 

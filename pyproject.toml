@@ -3,7 +3,7 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "ceng"
+name = "ceng-context"
 version = "1.0.0"
 description = "Partition-Prompt-Aggregate context engineering for LLMs."
 readme = "README.md"
