@@ -25,7 +25,7 @@ classifiers = [
 ]
 dependencies = [
     "litellm>=1.40",
-    "pyyaml>=6.0",
+    "pyyaml>=6.0.3",
 ]
 
 [project.optional-dependencies]
