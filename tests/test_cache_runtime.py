@@ -5,8 +5,8 @@ import pytest
 
 from ceng import errors, messages, observability
 from ceng import runtime as runtime_lib
-from ceng.backends import scripted
 from ceng.cache import base, sqlite
+from tests import faults as scripted
 
 USER = [messages.Message(messages.Role.USER, "hello")]
 
@@ -258,3 +258,85 @@ def test_single_flight_cancelling_a_follower_leaves_leader_running():
 
     assert run(go()).text == "hello"
     assert len(backend.requests) == 1
+
+
+class TestTruncationAndOptions:
+    def truncated(self):
+        from ceng.backends import base as backend_base
+
+        return backend_base.Completion(text="", finish_reason="length")
+
+    def test_empty_truncated_output_is_retried_with_larger_cap(self):
+        backend = scripted.ScriptedBackend(
+            [self.truncated(), self.truncated(), "answer"]
+        )
+        rt = runtime_lib.Runtime(backend=backend)
+        out = run(rt.complete(USER, source="t", namespace="n", max_tokens=10))
+        assert out.text == "answer"
+        assert [r.max_tokens for r in backend.requests] == [10, 40, 160]
+
+    def test_truncation_gives_up_after_bounded_retries(self):
+        backend = scripted.ScriptedBackend([self.truncated()] * 10)
+        rt = runtime_lib.Runtime(backend=backend)
+        with pytest.raises(errors.ValidationError, match="token cap"):
+            run(rt.complete(USER, source="t", namespace="n", max_tokens=10))
+        assert len(backend.requests) == 1 + runtime_lib.LENGTH_RETRIES
+
+    def test_partial_text_on_length_is_accepted(self):
+        from ceng.backends import base as backend_base
+
+        backend = scripted.ScriptedBackend(
+            [
+                backend_base.Completion(
+                    text="cut off mid", finish_reason="length"
+                )
+            ]
+        )
+        rt = runtime_lib.Runtime(backend=backend)
+        out = run(rt.complete(USER, source="t", namespace="n", max_tokens=10))
+        assert out.text == "cut off mid" and len(backend.requests) == 1
+
+    def test_options_reach_the_request_and_change_the_cache_key(self):
+        backend = scripted.ScriptedBackend()
+        low = runtime_lib.Runtime(
+            backend=backend, options={"reasoning_effort": "low"}
+        )
+        high = runtime_lib.Runtime(
+            backend=backend,
+            cache=low.cache,
+            options={"reasoning_effort": "high"},
+        )
+        run(low.complete(USER, source="t", namespace="n"))
+        run(high.complete(USER, source="t", namespace="n"))
+        assert len(backend.requests) == 2
+        assert backend.requests[0].options == (("reasoning_effort", "low"),)
+
+    def test_without_llm_refuses_to_call_a_model(self):
+        rt = runtime_lib.Runtime.without_llm()
+        with pytest.raises(
+            errors.PermanentBackendError, match="no LLM backend"
+        ):
+            run(rt.complete(USER, source="t", namespace="n"))
+
+    def test_env_base_url_and_options(self):
+        rt = runtime_lib.Runtime.from_env(
+            {
+                "CENG_CACHE_DIR": "",
+                "CENG_BASE_URL": "http://localhost:9/v1",
+                "CENG_OPTIONS": '{"reasoning_effort": "low"}',
+            }
+        )
+        assert rt.options == {"reasoning_effort": "low"}
+        assert rt.backend.inner.base_url == "http://localhost:9/v1"
+
+    @pytest.mark.parametrize(
+        "env",
+        [
+            {"CENG_OPTIONS": "{bad"},
+            {"CENG_OPTIONS": "[1]"},
+            {"CENG_BACKEND": "none", "CENG_BASE_URL": "http://x"},
+        ],
+    )
+    def test_env_rejects_bad_values(self, env):
+        with pytest.raises(errors.ConfigError):
+            runtime_lib.Runtime.from_env({"CENG_CACHE_DIR": "", **env})

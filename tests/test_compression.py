@@ -6,10 +6,10 @@ from hypothesis import strategies as st
 
 from ceng import Context, Message, Role, compression, errors
 from ceng import runtime as runtime_lib
-from ceng.backends import scripted
 from ceng.cache import base as cache_base
 from ceng.compression import Budget, Overflow
 from ceng.tokenizers import HeuristicTokenizer
+from tests import faults as scripted
 
 
 def make_runtime(responder=None, steps=(), **kw):

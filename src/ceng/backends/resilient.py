@@ -10,6 +10,7 @@ from collections.abc import Awaitable, Callable
 
 from ceng import errors, observability
 from ceng.backends import base
+from ceng.internals import looplocal
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -135,7 +136,9 @@ class ResilientBackend(base.Backend):
         self.deadline = deadline
         self.clock = clock
         self.next_start = 0.0
-        self.pacing: dict[int, asyncio.Lock] = {}
+        self.pacing: looplocal.LoopLocal[asyncio.Lock] = looplocal.LoopLocal(
+            asyncio.Lock
+        )
         self.inner = inner
         self.retry = retry or RetryPolicy()
         self.timeout = timeout
@@ -144,22 +147,15 @@ class ResilientBackend(base.Backend):
         self.sleep = sleep
         self.rng = rng or random.Random()
         self.max_concurrency = max_concurrency
-        self.semaphores: dict[int, asyncio.Semaphore] = {}
-
-    def semaphore(self) -> asyncio.Semaphore:
-        """Returns the semaphore bound to the running event loop."""
-        loop_id = id(asyncio.get_running_loop())
-        if loop_id not in self.semaphores:
-            self.semaphores[loop_id] = asyncio.Semaphore(self.max_concurrency)
-        return self.semaphores[loop_id]
+        self.semaphores: looplocal.LoopLocal[asyncio.Semaphore] = (
+            looplocal.LoopLocal(lambda: asyncio.Semaphore(max_concurrency))
+        )
 
     async def pace(self) -> None:
         """Spaces call starts to honour `rate_per_second`."""
         if self.rate_per_second is None:
             return
-        loop_id = id(asyncio.get_running_loop())
-        lock = self.pacing.setdefault(loop_id, asyncio.Lock())
-        async with lock:
+        async with self.pacing.get():
             now = self.clock()
             wait = self.next_start - now
             self.next_start = (
@@ -174,7 +170,7 @@ class ResilientBackend(base.Backend):
             raise errors.CircuitOpenError("circuit breaker is open")
         await self.pace()
         try:
-            async with self.semaphore():
+            async with self.semaphores.get():
                 result = await asyncio.wait_for(
                     self.inner.complete(request), timeout=self.timeout
                 )

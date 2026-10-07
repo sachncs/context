@@ -60,6 +60,7 @@ ceng = ["py.typed", "bench/fixtures/*.jsonl", "bench/seeds/*.md"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra -q"
+markers = ["integration: calls a real LLM provider (needs NVIDIA_API_KEY)"]
 
 [tool.coverage.run]
 branch = true

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import abc
 import dataclasses
+from collections.abc import Callable
 
 from ceng import messages as messages_lib
 from ceng import usage as usage_lib
@@ -19,12 +20,16 @@ class Request:
         messages: Conversation to complete.
         temperature: Sampling temperature.
         max_tokens: Completion cap, or None for the backend default.
+        options: Provider-specific parameters as sorted `(name, value)`
+            pairs (for example `reasoning_effort`). Backends forward them
+            as the request's extra body.
     """
 
     model: str
     messages: tuple[messages_lib.Message, ...]
     temperature: float = 0.0
     max_tokens: int | None = None
+    options: tuple[tuple[str, object], ...] = ()
 
     @property
     def fingerprint(self) -> str:
@@ -34,6 +39,7 @@ class Request:
             [m.to_mapping() for m in self.messages],
             self.temperature,
             self.max_tokens,
+            [list(pair) for pair in self.options],
         )
 
 
@@ -47,6 +53,7 @@ class Completion:
         model: Model that served the request.
         seconds: Wall-clock latency (0.0 for cache hits).
         cached: Whether the response came from the cache.
+        finish_reason: Provider stop reason ("stop", "length", ...).
     """
 
     text: str
@@ -54,12 +61,20 @@ class Completion:
     model: str = ""
     seconds: float = 0.0
     cached: bool = False
+    finish_reason: str = ""
+
+    @property
+    def truncated(self) -> bool:
+        """Returns whether generation stopped because of the token cap."""
+        return self.finish_reason == "length"
 
 
 class Backend(abc.ABC):
     """An asynchronous LLM provider."""
 
-    registry: registry.Registry[type[Backend]] = registry.Registry("backend")
+    registry: registry.Registry[Callable[..., Backend]] = registry.Registry(
+        "backend"
+    )
 
     @abc.abstractmethod
     async def complete(self, request: Request) -> Completion:
