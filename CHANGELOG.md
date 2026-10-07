@@ -28,7 +28,6 @@ what changed so you can port, not how to keep old code running.
   and cost accounting, structured events and `MetricsObserver`.
 - SQLite cache with TTL, size bound and corruption recovery; cache keys cover
   the full request and prompt/strategy versions.
-- `ceng` CLI: `compress`, `verify`, `convert`, `bench`.
 - OKF persistence as `Context.save/load` (plus `json`), atomic bundle writes.
 - `FilesystemNotesStore` with persisted tags/timestamps, atomic writes and
   cross-process locking.
@@ -59,7 +58,8 @@ what changed so you can port, not how to keep old code running.
 - `ppa_compress`, `compress_to_bundle`, `ppa_compress_to_okf`,
   `compact_messages`, `ppa_check`, `NotesManager`, `ceng.notes`,
   `ceng.compact`, `ceng.check`, `ceng.presets`, `ceng.playbooks`, `ceng.eval`,
-  `ceng.tokens`, `ceng.log`, `ceng.compress`, `ceng-bench`.
+  `ceng.tokens`, `ceng.log`, `ceng.compress`, and the `ceng-bench` command
+  (v2 ships no command line; use the Python API).
 - The global backend registry functions (`set_backend`, `get_backend`, ...).
 - AppWorld stub, the `index_only` and `fallback_to_last` options, and the
   `litellm` hard dependency (now the `litellm` extra).

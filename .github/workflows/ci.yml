@@ -52,7 +52,7 @@ jobs:
           python -m pip install --upgrade pip build twine
           python -m build
           twine check dist/*
-      - name: Wheel ships resources and entry point
+      - name: Wheel ships resources
         run: |
           python - <<'PY'
           import glob, zipfile
@@ -68,7 +68,7 @@ jobs:
           "$RUNNER_TEMP/venv/bin/pip" install dist/*.whl
           cd "$RUNNER_TEMP"
           "$RUNNER_TEMP/venv/bin/python" -I -c "import ceng, importlib.metadata as m; assert ceng.__version__ == m.version('ceng-context')"
-          CENG_BACKEND=scripted CENG_CACHE_DIR= "$RUNNER_TEMP/venv/bin/ceng" bench formula --offline --limit 5 --results-dir "$RUNNER_TEMP/out"
+          "$RUNNER_TEMP/venv/bin/python" -I -c "from ceng.bench import Formula; assert len(Formula().seed_playbook()) > 0 and len(Formula().load_samples()) == 20"
 
   site:
     runs-on: ubuntu-latest

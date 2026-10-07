@@ -5,10 +5,22 @@ prompt that injects a playbook (the curated seed playbook, or one evolved by
 `ceng.evolution`). Each sample is scored under every arm concurrently; backend
 failures are counted separately and never scored as wrong answers.
 
-```bash
-ceng bench formula --limit 30 --model gpt-4o-mini            # seed playbook
-ceng bench formula --limit 30 --evolve 2                     # evolve 2 epochs first
-ceng bench all --offline                                     # wiring check, no network
+```python
+import asyncio
+from ceng.bench import Arm, Finer, Formula, Runner
+from ceng.evolution import Evolver
+
+benchmark = Formula()
+samples = benchmark.load_samples(limit=30)
+seed = benchmark.seed_playbook()
+evolved = Evolver(runtime).evolve(seed, samples, benchmark, epochs=2).playbook
+
+result = asyncio.run(
+    Runner(runtime).arun(
+        benchmark, samples, [Arm("baseline"), Arm("seed", seed), Arm("evolved", evolved)]
+    )
+)
+result.write(pathlib.Path("bench/results"))   # .json and .md
 ```
 
 Reports are written to `bench/results/<name>-<timestamp>.{json,md}`. They keep
@@ -16,7 +28,7 @@ Reports are written to `bench/results/<name>-<timestamp>.{json,md}`. They keep
 
 ## What the offline mode proves
 
-`--offline` uses a scripted model that answers correctly only when a playbook
+`bench.offline.wiring_runtime(samples)` builds a scripted model that answers correctly only when a playbook
 is present in the prompt. A non-zero delta therefore proves the playbook
 reaches the model; a zero delta (for an empty playbook arm) proves it does
 not leak in otherwise. It says nothing about real model quality, and its model
