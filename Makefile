@@ -1,4 +1,4 @@
-.PHONY: setup test lint typecheck check build site
+.PHONY: setup test lint format typecheck check build site clean
 
 PYTHON ?= python3
 VENV ?= .venv
@@ -10,14 +10,18 @@ setup:
 	$(BIN)/pip install -e ".[dev,tokenize]"
 
 test:
-	$(BIN)/pytest -q
+	$(BIN)/pytest --cov --cov-report=term-missing
 
 lint:
 	$(BIN)/ruff check src tests
 	$(BIN)/ruff format --check src tests
 
+format:
+	$(BIN)/ruff check --fix src tests
+	$(BIN)/ruff format src tests
+
 typecheck:
-	$(BIN)/mypy src/ceng
+	$(BIN)/mypy
 
 check: lint typecheck test
 
@@ -27,3 +31,6 @@ build:
 
 site:
 	cd site && npm ci && npm run build
+
+clean:
+	rm -rf build dist .mypy_cache .ruff_cache .pytest_cache .coverage htmlcov

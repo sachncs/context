@@ -102,41 +102,68 @@ class PartitionSummarizeCombine(base.Compressor):
         budget: report.Budget,
         trace: report.Trace,
     ) -> context_lib.Context:
-        tokenizer = context.runtime.tokenizer
-        index = fit.largest_index(context.messages, tokenizer)
-        message = context.messages[index]
-        size = tokenizer.count(message.content)
-        target = max(
-            self.min_summary_tokens,
-            budget.tokens - (context.token_count - size),
+        targets = fit.fair_targets(
+            context.messages,
+            budget.tokens,
+            context.runtime.tokenizer,
+            floor=self.min_summary_tokens,
         )
-        if size <= target:
+        if not targets:
             return context
+        prefixed = len(targets) > 1
+
+        def job(index: int) -> Callable[[], Awaitable[str]]:
+            async def work() -> str:
+                return await self.compress_message(
+                    context,
+                    trace,
+                    context.messages[index].content,
+                    targets[index],
+                    f"m{index} " if prefixed else "",
+                )
+
+            return work
+
+        indices = sorted(targets)
+        summaries = await concurrency.gather_bounded(
+            [job(i) for i in indices], context.runtime.concurrency
+        )
+        messages = list(context.messages)
+        for index, summary in zip(indices, summaries, strict=True):
+            messages[index] = messages[index].with_content(summary)
+        return dataclasses.replace(context, messages=tuple(messages))
+
+    async def compress_message(
+        self,
+        context: context_lib.Context,
+        trace: report.Trace,
+        text: str,
+        target: int,
+        prefix: str,
+    ) -> str:
+        """Compresses one message's text to about `target` tokens."""
+        tokenizer = context.runtime.tokenizer
         splitter = self.partitioner or partition_base.RecursivePartitioner(
             self.leaf_tokens
         )
-        parts = splitter.split(message.content, tokenizer)
+        parts = splitter.split(text, tokenizer)
         if len(parts) > self.max_leaves:
             raise errors.CompressionError(
                 f"{len(parts)} partitions exceed max_leaves={self.max_leaves}",
                 step="partition",
             )
         if len(parts) == 1:
-            summary = await self.ask(
+            return await self.ask(
                 context,
                 trace,
-                step="leaf 0",
+                step=f"{prefix}leaf 0",
                 template=SUMMARIZE,
                 max_tokens=self.completion_cap(target),
-                input_tokens=size,
+                input_tokens=parts[0].tokens,
                 target=str(target),
                 text=parts[0].text,
             )
-        else:
-            summary = await self.aggregate(context, trace, parts, target)
-        messages = list(context.messages)
-        messages[index] = message.with_content(summary)
-        return dataclasses.replace(context, messages=tuple(messages))
+        return await self.aggregate(context, trace, parts, target, prefix)
 
     async def aggregate(
         self,
@@ -144,6 +171,7 @@ class PartitionSummarizeCombine(base.Compressor):
         trace: report.Trace,
         parts: list[partition_base.Partition],
         target: int,
+        prefix: str = "",
     ) -> str:
         """Summarises all parts concurrently, then combines as configured."""
         leaf_target = max(
@@ -158,7 +186,7 @@ class PartitionSummarizeCombine(base.Compressor):
                 return await self.ask(
                     context,
                     trace,
-                    step=f"leaf {part.index}",
+                    step=f"{prefix}leaf {part.index}",
                     template=SUMMARIZE,
                     max_tokens=self.completion_cap(leaf_target),
                     input_tokens=part.tokens,
@@ -182,7 +210,7 @@ class PartitionSummarizeCombine(base.Compressor):
         return await self.ask(
             context,
             trace,
-            step="combine",
+            step=f"{prefix}combine",
             template=COMBINE,
             max_tokens=self.completion_cap(target),
             input_tokens=joined_tokens,

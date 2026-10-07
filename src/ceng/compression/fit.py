@@ -108,3 +108,54 @@ def fit(
         updated[index] = dataclasses.replace(current[index], content=shorter)
         current = tuple(updated)
     return current
+
+
+def fair_targets(
+    messages: Sequence[messages_lib.Message],
+    budget_tokens: int,
+    tokenizer: tokenizer_base.Tokenizer,
+    floor: int = 1,
+) -> dict[int, int]:
+    """Allocates per-message token targets by max-min fairness.
+
+    System messages are protected and counted against the budget. The rest
+    share what remains by water-filling: messages already below the fair
+    cap are left alone, and every larger message is compressed to the cap.
+    With one oversize message this equals "budget minus everything else".
+
+    Args:
+        messages: The conversation.
+        budget_tokens: Ceiling for the whole context.
+        tokenizer: Token counter.
+        floor: Smallest target ever assigned.
+
+    Returns:
+        Message index -> target tokens, for messages that need compressing.
+    """
+    sizes = {
+        i: tokenizer.count(m.content)
+        for i, m in enumerate(messages)
+        if m.role != messages_lib.Role.SYSTEM
+    }
+    if not sizes:
+        sizes = {i: tokenizer.count(m.content) for i, m in enumerate(messages)}
+        protected = 0
+    else:
+        protected = sum(
+            tokenizer.count(m.content)
+            for m in messages
+            if m.role == messages_lib.Role.SYSTEM
+        )
+    remaining = max(0, budget_tokens - protected)
+    ordered = sorted(sizes, key=lambda i: sizes[i])
+    targets: dict[int, int] = {}
+    for position, index in enumerate(ordered):
+        left = len(ordered) - position
+        cap = remaining // left
+        if sizes[index] <= cap:
+            remaining -= sizes[index]
+            continue
+        for oversize in ordered[position:]:
+            targets[oversize] = max(floor, cap)
+        break
+    return {i: t for i, t in targets.items() if sizes[i] > t}

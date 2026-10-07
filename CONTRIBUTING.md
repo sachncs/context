@@ -18,24 +18,33 @@ make setup
 source .venv/bin/activate
 ```
 
-## Tests
+## The local gate
 
 ```
-pytest -q
-coverage run -m pytest
-coverage report
-
-# Or run the complete local gate:
-make check
+make check     # ruff check + format check, mypy --strict, pytest with a 90% coverage gate
+make format    # apply ruff fixes and formatting
 ```
 
-## Lint / format
+## Code standards
 
-```
-ruff check .
-ruff format --check .
-mypy src/ceng
-```
+We follow the [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
+(80 columns, Google-style docstrings, absolute imports, full type
+annotations) with these project rules:
+
+- **No underscore-prefixed names.** No `_helper`, `_CONSTANT`, `_attr`.
+  Dunders are fine. This deliberately departs from the Google guide; the
+  public API is defined by `__all__` in each package `__init__`, the
+  `internals` package, and the docs. `tests/test_style.py` enforces it.
+- Value types are `@dataclass(frozen=True)` (with `slots=True` unless a base
+  class needs otherwise). Closed sets are `enum.Enum`.
+- Extension points are ABCs with a registry on the class; add behaviour by
+  subclassing and registering, not by adding flags.
+- No thin wrappers, shims or compatibility aliases.
+- No module-level mutable state. Pass a `Runtime`.
+- Catch specific exceptions; every deliberate error derives from `CengError`.
+- Every LLM call goes through `Runtime.complete`.
+- Tests are offline: use `ScriptedBackend` and `MemoryCache`. Add a regression
+  test with every bug fix.
 
 ## Pull request flow
 
@@ -54,4 +63,4 @@ By submitting a pull request, you agree to follow the
 Releases follow semantic versioning. A maintainer creates a `vX.Y.Z` tag after
 CI is green; the release workflow builds and validates the artifacts, creates a
 GitHub release, and publishes to PyPI using trusted publishing. Public API
-changes require a changelog entry and deprecation notes when applicable.
+changes require a changelog entry.
