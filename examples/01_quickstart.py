@@ -8,7 +8,9 @@ from ceng.cache import MemoryCache
 def main() -> None:
     # Swap the backend for Runtime.from_env() to use a real provider.
     runtime = Runtime(
-        backend=ScriptedBackend(default=lambda request: "Key facts: " + "x" * 80),
+        backend=ScriptedBackend(
+            default=lambda request: "Key facts: " + "x" * 80
+        ),
         cache=MemoryCache(),
     )
     document = " ".join(f"Fact {i}: the value is {i * 7}." for i in range(400))
@@ -24,7 +26,9 @@ def main() -> None:
 
     report = smaller.report
     print(f"{report.original_tokens} -> {report.final_tokens} tokens")
-    print(f"steps: {len(report.steps)}, LLM tokens: {report.usage.total_tokens}")
+    print(
+        f"steps: {len(report.steps)}, LLM tokens: {report.usage.total_tokens}"
+    )
     assert smaller.token_count <= 400
 
 

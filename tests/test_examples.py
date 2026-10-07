@@ -3,7 +3,9 @@ import runpy
 
 import pytest
 
-EXAMPLES = sorted((pathlib.Path(__file__).resolve().parents[1] / "examples").glob("*.py"))
+EXAMPLES = sorted(
+    (pathlib.Path(__file__).resolve().parents[1] / "examples").glob("*.py")
+)
 
 
 @pytest.mark.parametrize("path", EXAMPLES, ids=lambda p: p.name)
