@@ -1,10 +1,10 @@
 import asyncio
-import json
 import time
 
 import pytest
 
-from ceng import errors, messages, observability, runtime as runtime_lib
+from ceng import errors, messages, observability
+from ceng import runtime as runtime_lib
 from ceng.backends import scripted
 from ceng.cache import base, sqlite
 

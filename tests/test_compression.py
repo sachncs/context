@@ -4,8 +4,7 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from ceng import Context, Message, Role, errors
-from ceng import compression
+from ceng import Context, Message, Role, compression, errors
 from ceng import runtime as runtime_lib
 from ceng.backends import scripted
 from ceng.cache import base as cache_base
