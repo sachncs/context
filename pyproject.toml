@@ -86,6 +86,8 @@ ignore = [
     "D102", "D105", "D107",  # overrides inherit the base-class docstring
     "ANN401",                # Any is policed by mypy --strict instead
     "RUF012",
+    "B027",                  # optional hooks with no-op defaults are intended
+    "S311",                  # random is used for retry jitter, not security
 ]
 
 [tool.ruff.lint.pydocstyle]
