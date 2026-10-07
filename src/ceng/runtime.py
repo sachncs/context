@@ -305,9 +305,12 @@ class Runtime:
 
         Two situations are retried, each a bounded number of times:
 
-        * The model hit the token cap before producing visible text, which
-          is typical for reasoning models. The cap is multiplied by
-          `LENGTH_GROWTH` for the next attempt (`LENGTH_RETRIES` times).
+        * The model hit the token cap before producing (enough) visible
+          text, which is typical for reasoning models whose hidden thinking
+          consumes the cap. "Not enough" means less than half the cap is
+          visible. The cap is multiplied by `LENGTH_GROWTH` for the next
+          attempt (`LENGTH_RETRIES` times); a still-truncated reply is then
+          returned as is.
         * The model returned empty text for another reason; it is asked
           again `VALIDATION_RETRIES` times.
 
@@ -328,7 +331,13 @@ class Runtime:
                     seconds=time.monotonic() - started,
                 )
             )
-            if completion.text.strip():
+            visible = self.tokenizer.count(completion.text)
+            starved = (
+                completion.truncated
+                and current.max_tokens is not None
+                and visible < current.max_tokens // 2
+            )
+            if completion.text.strip() and not (starved and length_left > 0):
                 return completion
             if (
                 completion.truncated

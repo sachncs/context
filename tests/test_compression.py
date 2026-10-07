@@ -528,3 +528,43 @@ def test_fair_targets_properties(sizes, budget):
         assert sum(after) <= budget  # fits whenever the floor allows it
         cap = max(targets.values())
         assert all(n <= cap for i, n in enumerate(sizes) if i not in targets)
+
+
+class TestShortenPass:
+    def test_overlong_summary_is_rewritten_shorter(self):
+        calls = []
+
+        def responder(request):
+            text = request.messages[-1].content
+            calls.append(
+                "shorten" if "Rewrite the text below" in text else "summarise"
+            )
+            return "w " * 400 if calls[-1] == "summarise" else "short answer"
+
+        rt, backend = make_runtime(responder)
+        out = ctx_of(rt, "word " * 2000).compress(
+            "ppa", budget=120, leaf_tokens=4000
+        )
+        assert calls == ["summarise", "shorten"]
+        assert (
+            out.messages[-1].content == "short answer"
+            and out.token_count <= 120
+        )
+        assert [s.name for s in out.report.steps] == [
+            "leaf 0",
+            "leaf 0 shorten 1",
+        ]
+
+    def test_shorten_is_bounded(self):
+        counter = iter(range(1000))
+        rt, backend = make_runtime(lambda r: "w " * (400 + next(counter)))
+        with pytest.raises(errors.BudgetExceededError):
+            ctx_of(rt, "word " * 2000).compress(
+                "ppa", budget=120, leaf_tokens=4000
+            )
+        assert len(backend.requests) == 1 + 2  # one summary + SHORTEN_ROUNDS
+
+    def test_within_limit_summary_is_left_alone(self):
+        rt, backend = make_runtime(lambda r: "w " * 60)
+        ctx_of(rt, "word " * 2000).compress("ppa", budget=120, leaf_tokens=4000)
+        assert len(backend.requests) == 1

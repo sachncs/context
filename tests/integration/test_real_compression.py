@@ -1,12 +1,11 @@
 """Compression, verification and persistence with a real model."""
 
-import unicodedata
-
 import pytest
 
 from ceng import Context, Message, Role, errors
 from ceng.cache import base as cache_base
 from ceng.compression import Budget, Overflow
+from tests.integration.conftest import fold
 
 FACTS = {
     "budget": (
@@ -44,13 +43,6 @@ def make_document() -> str:
         parts.append(sentence + " ")
     parts.append(FILLER * 14)
     return "".join(parts)
-
-
-def fold(text: str) -> str:
-    """Lower-cases and strips accents/typographic variants for matching."""
-    decomposed = unicodedata.normalize("NFKD", text.replace("\u2011", "-"))
-    plain = "".join(c for c in decomposed if not unicodedata.combining(c))
-    return plain.replace("\u00f8", "o").lower()
 
 
 def recalled(text: str) -> int:

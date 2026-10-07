@@ -5,7 +5,7 @@ from __future__ import annotations
 import dataclasses
 import enum
 from collections.abc import Awaitable, Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, ClassVar
 
 from ceng import errors, prompts
 from ceng.compression import base, fit, report
@@ -77,6 +77,8 @@ class PartitionSummarizeCombine(base.Compressor):
         partitioner: Custom partitioner; defaults to
             `RecursivePartitioner(leaf_tokens)`.
     """
+
+    version: ClassVar[str] = "2"
 
     leaf_tokens: int = 1024
     min_summary_tokens: int = 32
@@ -160,6 +162,8 @@ class PartitionSummarizeCombine(base.Compressor):
                 template=SUMMARIZE,
                 max_tokens=self.completion_cap(target),
                 input_tokens=parts[0].tokens,
+                target_tokens=target,
+                strict=True,
                 target=str(target),
                 text=parts[0].text,
             )
@@ -190,6 +194,7 @@ class PartitionSummarizeCombine(base.Compressor):
                     template=SUMMARIZE,
                     max_tokens=self.completion_cap(leaf_target),
                     input_tokens=part.tokens,
+                    target_tokens=leaf_target,
                     target=str(leaf_target),
                     text=part.text,
                 )
@@ -214,6 +219,8 @@ class PartitionSummarizeCombine(base.Compressor):
             template=COMBINE,
             max_tokens=self.completion_cap(target),
             input_tokens=joined_tokens,
+            target_tokens=target,
+            strict=True,
             count=str(len(summaries)),
             target=str(target),
             sections="\n\n---\n\n".join(summaries),

@@ -29,6 +29,13 @@ what changed so you can port, not how to keep old code running.
 - SQLite cache with TTL, size bound and corruption recovery; cache keys cover
   the full request and prompt/strategy versions.
 - OKF persistence as `Context.save/load` (plus `json`), atomic bundle writes.
+- `ceng.integrations`: Pydantic AI history processor, Google ADK
+  `before_model_callback` and LangGraph node / `pre_model_hook`, built on a
+  framework-neutral `HistoryCompressor`.
+- Real-provider support: `CENG_BASE_URL`, `CENG_OPTIONS`, per-request provider
+  `options`, truncation-aware retries for reasoning models, a shorten pass for
+  over-long summaries, `Runtime.without_llm()`.
+- A real-model integration suite (`tests/integration`).
 - `FilesystemNotesStore` with persisted tags/timestamps, atomic writes and
   cross-process locking.
 - `ceng.evolution` (ACE) with typed curator operations, checkpoint/resume and
@@ -61,6 +68,8 @@ what changed so you can port, not how to keep old code running.
   `ceng.tokens`, `ceng.log`, `ceng.compress`, and the `ceng-bench` command
   (v2 ships no command line; use the Python API).
 - The global backend registry functions (`set_backend`, `get_backend`, ...).
+- `ScriptedBackend` and the simulated `--offline` benchmark mode (fault
+  injection now lives in `tests/faults.py`).
 - AppWorld stub, the `index_only` and `fallback_to_last` options, and the
   `litellm` hard dependency (now the `litellm` extra).
 - Benchmark numbers published with 1.x (invalid; see `BENCHMARKS.md`).

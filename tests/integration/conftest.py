@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import os
 import pathlib
+import unicodedata
 import uuid
 
 import pytest
@@ -36,6 +37,14 @@ MODEL = os.environ.get("CENG_TEST_MODEL", "openai/gpt-oss-20b")
 RATE = float(os.environ.get("CENG_TEST_RATE", "0.6"))
 CACHE_DIR = pathlib.Path(__file__).resolve().parents[2] / ".ceng" / "test-cache"
 
+
+def fold(text: str) -> str:
+    """Lower-cases and strips accents/typographic variants for matching."""
+    decomposed = unicodedata.normalize("NFKD", text.replace("\u2011", "-"))
+    plain = "".join(c for c in decomposed if not unicodedata.combining(c))
+    return plain.replace("\u00f8", "o").lower()
+
+
 requires_key = pytest.mark.skipif(
     not API_KEY, reason="set NVIDIA_API_KEY (or CENG_TEST_API_KEY) to run"
 )
@@ -43,7 +52,7 @@ requires_key = pytest.mark.skipif(
 
 def pytest_collection_modifyitems(items: list[pytest.Item]) -> None:
     for item in items:
-        if "integration" in str(item.fspath):
+        if "integration" in pathlib.Path(str(item.fspath)).parent.parts[-1:]:
             item.add_marker(pytest.mark.integration)
             item.add_marker(requires_key)
 

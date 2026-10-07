@@ -43,6 +43,13 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.10",
 ]
+frameworks = [
+    "pydantic-ai-slim[openai]>=2",
+    "google-adk>=1.10",
+    "litellm>=1.40,<2",
+    "langgraph>=1.0",
+    "langchain-openai>=1.0",
+]
 all = ["litellm>=1.40,<2", "vllm>=0.29.0", "openai>=1.0,<4", "tiktoken>=0.5"]
 
 [project.urls]
@@ -68,6 +75,12 @@ source = ["ceng"]
 
 [tool.coverage.report]
 fail_under = 90
+omit = [
+    # Covered by the framework CI job (needs the heavy framework packages).
+    "src/ceng/integrations/pydantic_ai.py",
+    "src/ceng/integrations/adk.py",
+    "src/ceng/integrations/langgraph.py",
+]
 exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
@@ -94,7 +107,7 @@ convention = "google"
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D", "S101", "ANN", "S311", "N818", "RUF059", "SIM117", "E501"]
-"examples/**" = ["D", "ANN", "S101"]
+"examples/**" = ["D", "ANN", "S101", "E501", "S105"]
 "src/ceng/evolution/prompts.py" = ["E501"]  # verbatim upstream prompt text
 
 [tool.mypy]
@@ -104,5 +117,8 @@ warn_unused_ignores = true
 files = ["src/ceng"]
 
 [[tool.mypy.overrides]]
-module = ["litellm.*", "openai.*", "vllm.*", "tiktoken.*", "yaml.*"]
+module = [
+    "litellm.*", "openai.*", "vllm.*", "tiktoken.*", "yaml.*",
+    "pydantic_ai.*", "google.*", "langchain_core.*", "langgraph.*",
+]
 ignore_missing_imports = true
