@@ -36,6 +36,7 @@ dev = [
     "pytest>=8",
     "pytest-cov>=5",
     "hypothesis>=6",
+    "tomli>=2; python_version < '3.11'",
     "coverage>=7",
     "build>=1",
     "twine>=5",
@@ -57,7 +58,7 @@ Changelog = "https://github.com/sachncs/context/blob/master/CHANGELOG.md"
 where = ["src"]
 
 [tool.setuptools.package-data]
-ceng = ["py.typed", "bench/fixtures/*.jsonl"]
+ceng = ["py.typed", "bench/fixtures/*.jsonl", "bench/seeds/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

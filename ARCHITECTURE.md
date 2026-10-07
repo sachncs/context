@@ -1,217 +1,106 @@
 # Architecture
 
-This document is the maintainer's map of ceng: where each module
-fits, how the four public pipelines share resources, and where to
-extend the package. For per-function reference see the docstrings;
-for runnable usage see the [README](./README.md) and
-[`examples/`](./examples).
+ceng v2 is built around one value type, `Context`, and a set of extension
+points that are abstract base classes with explicit registries.
 
-## Module map
-
-Under [`src/ceng/`](./src/ceng):
-
-| Module | Responsibility | Depends on |
-|---|---|---|
-| `__init__.py` | Top-level exports (`ppa_compress`, `ppa_check`, `set_backend`, OKF primitives, ...) and `__version__`. Re-exports `configure_logging` from `compress.log` so callers can do `ceng.configure_logging(level=logging.INFO)` once at startup. | everything below |
-| `backends.py` | `Backend` Protocol and three adapters (`LiteLLMBackend`, `VLLMBackend`, `OpenAIBackend`) behind `set_backend(name)` selector. Application-owned adapters can use `register_backend`. Also hosts `retry_with_backoff` for transient 5xx / rate-limit recovery. | `litellm`, `vllm`, `openai` (lazy) |
-| `cache.py` | `Cache` — sqlite-on-disk KV store with WAL mode, `__enter__`/`__exit__`, `PRAGMA busy_timeout`, `PRAGMA user_version` migration. Two namespaces (`summarize`, `ppa_check`). | stdlib only |
-| `check.py` | `ppa_check` — macro-fallacy probe. Iteratively queries the model at the population level and at each leaf of a binary tree, then compares answers. Validates the tree (`prior == 0` rejection, scientific notation parsing, iterative flatten). | `backends`, `cache`, `partition`, `tokens` |
-| `compress/` | The PPA compression package. Public via `ceng.compress` and re-exported at top level. | `backends`, `cache`, `okf`, `partition`, `tokens` |
-| `compress/__init__.py` | `ppa_compress`, `compress_to_bundle`, `ppa_compress_to_okf`. The leaf-summary / combine / replace pipeline. Emits INFO logs. | `compress.bundle`, `compress.log`, `compress.prompts` |
-| `compress/bundle.py` | `CompressionBundle` → OKF `Concept[]` mapping. Combined-concept, leaf-concept, index-concept, no-op index-concept builders. | `okf` |
-| `compress/log.py` | `ceng` logger + `configure_logging(level)` opt-in helper. | stdlib only |
-| `compress/prompts.py` | The leaf-summarise and combine prompts and prompt-builder functions. `PROMPT_VERSION` bumps invalidate the cache key. | stdlib only |
-| `compact.py` | `compact_messages` — U-shape compaction that keeps head + tail verbatim and summarises the middle in one backend call. Refuses to drop a system-role message. | `backends`, `cache`, `tokens` |
-| `eval/` | The ACE-shaped benchmark harness. | `backends`, `cache` |
-| `eval/__init__.py` | `DataProcessor` Protocol, `DataSample`, `EvalResult`, `run_eval`, `render_report`, `write_report`. Counts `backend_errors` separately from wrong predictions. | stdlib only |
-| `eval/{finer,formula,ddxplus,appworld}.py` | Per-benchmark processors and (where applicable) seed playbooks. | `playbook`, `playbooks` |
-| `notes.py` | `NotesManager` — filesystem-backed NOTE store with atomic writes, LRU compact, pinned-`_` prefix. | stdlib only |
-| `okf.py` | OKF v0.1 reader / writer. `Concept`, `Frontmatter`, `read_bundle`, `write_bundle`, `find_concept`, progressive-disclosure helpers. | `pyyaml` |
-| `partition.py` | Adaptive text partitioner — sentence → paragraph → word → greedy word split. Hard-caps individual words at `WORD_MAX_BYTES`. | `tokens` |
-| `playbook/` | The ACE evolving-bullet playbook package. | `cache`, `tokens` |
-| `playbook/__init__.py` | `Bullet`, `Playbook`, `parse_playbook`, `render_playbook`, `merge`, `trim_to_token_budget`. | `tokens` |
-| `playbook/prompts.py` | Verbatim ACE Generator / Reflector / Curator prompts and message builders. | stdlib only |
-| `playbook/evolver.py` | The Generator → Reflector → Curator loop. Supports ADD / UPDATE / MERGE / DELETE Curator operations. | `backends`, `cache`, `playbook`, `playbook.prompts` |
-| `playbooks/__init__.py` | Curated seed playbooks for FiNER / Formula / DDXPlus / AppWorld (markdown strings). | stdlib only |
-| `presets.py` | Named `EvolverConfig` instances mirroring the paper's hyperparameter sweeps. | stdlib only |
-| `tokens.py` | `count_tokens` — tiktoken (when installed) or `len(text) // 4` heuristic. `token_budget_split` for sentence-aware budgeting. | `tiktoken` (optional) |
-| `bench.py` | The `ceng bench <benchmark>` CLI and the `finer` / `formula` / `ddxplus` / `appworld` / `smoke` / `all` runner functions. `appworld` raises `NotImplementedError` until the gated dataset is wired. | `backends`, `eval` |
-| `py.typed` | PEP 561 marker so downstream `mypy --strict` sees the inline annotations. | n/a |
-
-## Pipeline diagram
-
-```text
-                       ┌───────────────────────────────┐
-                       │  messages: chat message list  │
-                       └───────────────┬───────────────┘
-                                       │
-            ┌──────────────────────────┴──────────────────────────┐
-            │                                                     │
-            ▼                                                     ▼
-  ┌────────────────────┐                              ┌────────────────────┐
-  │  ppa_compress      │                              │  compact_messages  │
-  │  (longest user msg)│                              │  (U-shape keep)    │
-  └─────────┬──────────┘                              └─────────┬──────────┘
-            ▼                                                     ▼
-  ┌────────────────────┐                              ┌────────────────────┐
-  │  partition_text    │                              │  summarise middle  │
-  └─────────┬──────────┘                              │  (one LLM call)    │
-            ▼                                         └─────────┬──────────┘
-  ┌────────────────────┐                                        │
-  │  summarise_leaf ×N │                                        │
-  │  (cache by sha256) │                                        │
-  └─────────┬──────────┘                                        │
-            ▼                                                     │
-  ┌────────────────────┐                                          │
-  │  combine_summaries │                                          │
-  └─────────┬──────────┘                                          │
-            ▼                                                     ▼
-  ┌────────────────────┐                              ┌────────────────────┐
-  │  CompressionBundle │                              │  CompactionResult  │
-  │  or OKF bundle     │                              │  + Provenance      │
-  └────────────────────┘                              └────────────────────┘
-
-  ACE Evolver (playbook.evolver):
-
-  ┌────────────────────┐  ┌────────────────────┐  ┌────────────────────┐
-  │  Generator         │─▶│  Reflector         │─▶│  Curator           │
-  │  (use playbook)    │  │  (only on FAILED)  │  │  ADD/UPDATE/       │
-  └────────────────────┘  └────────────────────┘  │  MERGE/DELETE      │
-                                                  └─────────┬──────────┘
-                                                            ▼
-                                                  ┌────────────────────┐
-                                                  │  Playbook.merge    │
-                                                  │  (content-hash     │
-                                                  │   dedup, 0.90)     │
-                                                  └────────────────────┘
+```
+Context (frozen)  --compress()-->  Context (frozen, with CompressionReport)
+   |  messages: tuple[Message, ...]
+   |  runtime:  Runtime  ---- backend, cache, tokenizer, observers, prices
+   |  report, metadata
 ```
 
-## Cache topology
+## Layers (dependencies point downward)
 
-All public functions default to the same on-disk root:
-`.ceng/cache/` (sqlite file: `cache.sqlite`). Two namespaces live
-inside it:
-
-* `"summarize"` — leaf summaries, combined summaries, and
-  Generator/Reflector/Curator responses from the Evolver.
-* `"ppa_check"` — population-level and leaf-level answers from
-  `ppa_check`.
-
-Key derivation is `:func:ceng.cache.make_key` — SHA-256 over a
-canonical JSON dump of the prompt components, so two callers
-producing the same inputs always hit the same row.
-
-To share a cache across two pipelines, pass the same `cache_dir=`
-explicitly:
-
-```python
-ppa_compress(messages, budget_tokens=2000, llm="gpt-4o-mini",
-             cache_dir=".ceng/cache")
-compact_messages(messages, llm="gpt-4o-mini",
-                 cache_dir=".ceng/cache")
-```
-
-To isolate (e.g. across two concurrent Evolver runs), pass two
-distinct paths.
-
-## Backend abstraction
-
-Three adapters ship in `ceng.backends`:
-
-| Backend | When to pick it | Trade-offs |
+| Layer | Package / module | Role |
 |---|---|---|
-| `litellm` (default) | One code path across hosted vLLM (OpenAI-compatible HTTP), OpenAI, Anthropic, Bedrock, etc. | Adds `litellm` as a runtime dependency. Retries transient failures with exponential backoff + jitter. |
-| `openai` | Raw `openai.OpenAI` client; no `litellm`. | Smaller dependency surface. Same retry semantics. |
-| `vllm` | In-process `vllm.LLM` for users running vLLM directly on a GPU. | No retry — in-process generation failures are usually programmer error. Requires CUDA + the `vllm` extra. |
-
-All three are wrapped by `retry_with_backoff` (`CENG_RETRY`,
-`CENG_RETRY_BASE_MS` env vars). The retry count and base delay
-are tunable per-backend (`retry_attempts`, `retry_base_ms`) or
-globally via env vars.
+| API | `context` | `Context`: compress, verify, save, load |
+| Strategies | `compression`, `verification` | `Compressor`, `Verifier` ABCs and implementations |
+| Domain | `partition`, `okf`, `stores`, `evolution`, `bench` | Partitioners, OKF model/bundles, notes stores, ACE, benchmarks |
+| Services | `runtime` | `Runtime.complete`: cache, single-flight, validation, accounting |
+| I/O | `backends`, `cache`, `tokenizers` | Providers + resilience, caches, token counting |
+| Foundation | `messages`, `errors`, `usage`, `prompts`, `observability`, `internals` | Value types and helpers |
 
 ## Extension points
 
-### Add a new backend
+Every one is an ABC with a `Registry` owned by the class (never a module
+global). Registering is a decorator; unknown names raise `ConfigError` listing
+the known ones.
 
-Implement the structural `ceng.backends.Backend` protocol and register a
-factory during application startup:
+| ABC | Registry key examples | Implementations |
+|---|---|---|
+| `Compressor` | `ppa`, `hierarchical`, `ushape`, `window`, `truncate`, `extractive`, `offload` | plus `Pipeline` (`a+b`) and `Fallback` (`a\|b`) |
+| `Verifier` | `fits`, `macro_fallacy` | |
+| `Backend` | `litellm`, `openai`, `vllm`, `scripted` | wrapped by `ResilientBackend` |
+| `Cache` | `memory`, `sqlite`, `null` | |
+| `Tokenizer` | `heuristic`, `tiktoken` | |
+| `Partitioner` | `recursive`, `fixed` | |
+| `Codec` | `okf`, `json` | |
+| `NotesStore` | `memory`, `filesystem` | |
+| `CuratorOp` | `ADD`, `UPDATE`, `MERGE`, `DELETE` | |
+| `Benchmark` | `finer`, `formula`, `ddxplus` | |
+| `Observer` | | `LoggingObserver`, `MetricsObserver` |
 
-```python
-import ceng
+Strategies are **frozen dataclasses whose fields are their options**, so
+options are validated at construction, hashable, and visible in `repr`.
 
-class MyBackend:
-    name = "my-backend"
+## The compression contract
 
-    def complete(self, messages, model, **kwargs):
-        return "..."
+`Compressor.compress` is a template method:
 
-ceng.register_backend("my-backend", MyBackend)
-```
+1. If the context already fits, return it unchanged (no LLM calls).
+2. Otherwise call the strategy's `run`.
+3. Enforce the budget: raise `BudgetExceededError`, or hard-truncate when
+   `Budget.overflow` is `TRUNCATE` (the report records `truncated=True`).
+4. Attach a `CompressionReport` (tokens before/after, per-step records,
+   provider usage, estimated cost, duration).
 
-Two methods to implement:
+Strategies that need an LLM call `Compressor.ask`, which builds the request
+from a `PromptTemplate`, routes it through `Runtime.complete`, and records a
+`StepRecord`. Multi-message budgets use max-min fair allocation
+(`compression.fit.fair_targets`).
 
-* `name: str` — the registry key.
-* `complete(messages, model, **kw) -> str` — send the chat
-  messages to the model and return the assistant text.
+## Runtime.complete: the only LLM call path
 
-Wrap `complete()` in `retry_with_backoff` if you want transient failures to
-recover. Registration is process-local and should happen during application
-startup before worker threads select a backend.
+Every LLM call in the library (compression, verification, evolution, bench)
+goes through `Runtime.complete`:
 
-### Add a new ACE preset
+1. Build a `Request` and a cache key from `namespace` + the **full request
+   fingerprint** (model, rendered messages, temperature, max tokens). The
+   namespace carries the strategy name/version and `PromptTemplate.fingerprint`,
+   so editing a prompt or a strategy cannot serve stale answers.
+2. Cache lookup (corrupt entries are treated as misses).
+3. Single-flight: concurrent identical requests share one backend call.
+4. Backend call (resilient: retry, timeout, breaker, concurrency cap), with
+   one regeneration if the model returns empty text.
+5. Cache write, usage and event emission.
 
-Append a new `EvolverConfig` factory to `ceng/presets.py`. Use the
-existing `EvolverConfig` dataclass; the preset just sets the
-hyperparameters you want.
+## Async core, one sync bridge
 
-### Add a new benchmark processor
+All work is `async`. `Context.compress` is `run_sync(acompress(...))`;
+`internals.runner.run_sync` uses `asyncio.run`, or a worker thread when a loop
+is already running (Jupyter). Leaf summaries run concurrently through
+`internals.concurrency.gather_bounded`, which cancels siblings on first failure.
 
-Implement the `DataProcessor` Protocol in `ceng.eval`:
+## Naming rule: no underscore-prefixed names
 
-```python
-from ceng.eval import DataProcessor, DataSample
+Google's style guide uses a leading underscore for non-public names. This
+project deliberately does not: `tests/test_style.py` AST-scans `src/` and
+fails on any function, class, variable, argument or attribute that starts with
+a single underscore (dunders are fine). The public API is delimited instead by:
 
-class MyProcessor:
-    def process_task_data(self, raw_data):
-        return [DataSample(question=r["q"], target=r["a"]) for r in raw_data]
-    def answer_is_correct(self, predicted, ground_truth):
-        return predicted.strip().lower() == ground_truth.strip().lower()
-    def evaluate_accuracy(self, predictions, ground_truths):
-        correct = sum(self.answer_is_correct(p, g)
-                      for p, g in zip(predictions, ground_truths))
-        return correct / len(predictions) if predictions else 0.0
-```
+1. an explicit `__all__` in every package `__init__` (checked by a test),
+2. the `internals` package for helpers that are not API,
+3. documentation.
 
-Then wire it into `ceng.bench` if you want a CLI runner.
+Anything not exported from a package `__init__` or this document is not a
+compatibility promise, even though Python cannot enforce that.
 
-### Add a new OKF concept type
+## Deliberate deviations from the original plan
 
-1. Add a constant string in `ceng.okf` (e.g. `CENG_NEW_TYPE = "new_type"`).
-2. Use it in `Frontmatter(type=CENG_NEW_TYPE)` when building the
-   `Concept`.
-3. Add a progressive-disclosure helper if you want callers to be
-   able to filter on it.
-
-### Add a new ACE Curator operation
-
-Extend `_apply_curator_operations` in `ceng/playbook/evolver.py`
-with a new branch on `op.get("type")`. Each branch mutates the
-playbook in place and returns a fragment for the `excerpt` field
-so stats report what the Curator did.
-
-## Logging
-
-`ceng.compress.log.logger` is the shared logger (name `"ceng"`).
-Callers opt in with:
-
-```python
-import logging
-import ceng
-ceng.configure_logging(level=logging.INFO)
-```
-
-The compression pipeline emits five INFO lines per call:
-`ppa_compress start`, `ppa_compress partitioned`, and
-`ppa_compress done` — plus per-leaf / per-combine log lines if you
-turn on DEBUG. The default level is `WARNING`, so silent-by-default
-behaviour is preserved.
+- `Cache` is synchronous: it wraps local SQLite/dicts, so async buys nothing.
+- No `tighten()` hook: budget enforcement is the base class' overflow policy
+  plus `Hierarchical` for iterative reduction.
+- Playbook bullet ids are deterministic `uuid5` of normalised content (same
+  content, same id), which keeps cache keys reproducible and cannot collide.
+- AppWorld was removed: it was a stub that required external credentials.

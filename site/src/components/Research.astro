@@ -7,7 +7,7 @@ const papers = [
     title: "Partition, Prompt, Aggregate",
     authors: "Wolf, Kleine Buening, Krause, Mendler-Dünner · 2026",
     line: "Macro-fallacy-resistant summarisation — partitioned, summarised in isolation, aggregated.",
-    impl: "ppa_compress · ppa_check",
+    impl: "compress(\"ppa\") · verify(\"macro_fallacy\")",
     url: "https://arxiv.org/abs/2607.15277",
   },
   {
@@ -15,7 +15,7 @@ const papers = [
     title: "Agentic Context Engineering",
     authors: "Zhang, Hu, Upasani et al. · 2026",
     line: "Evolving itemised playbooks, updated by a Generator → Reflector → Curator loop.",
-    impl: "ceng.playbook.Evolver — verbatim prompts, paper defaults",
+    impl: "ceng.evolution.Evolver — verbatim prompts, paper defaults",
     url: "https://arxiv.org/abs/2510.04618",
   },
   {

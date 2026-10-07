@@ -364,6 +364,16 @@ class TestLlmFreeStrategies:
         assert out.token_count <= 100
         with pytest.raises(errors.ConfigError):
             compression.resolve("extractive", edge_bonus=-1)
+        with pytest.raises(errors.ConfigError):
+            compression.resolve("extractive", unit_tokens=0)
+
+    def test_extractive_reduces_text_without_sentence_punctuation(self):
+        rt, _ = make_runtime()
+        c = Context(
+            (Message(Role.USER, " ".join(f"tok{i}" for i in range(900))),), rt
+        )
+        out = c.compress("extractive", budget=200)
+        assert 0 < out.token_count <= 200
 
 
 class TestComposition:
@@ -439,3 +449,82 @@ def test_pipeline_output_within_budget(text, budget):
         "extractive+truncate", budget=Budget(budget, Overflow.TRUNCATE)
     )
     assert out.token_count <= budget
+
+
+class TestFairAllocation:
+    def conversation(self, rt, count=20, words=120):
+        return Context(
+            tuple(
+                Message(Role.USER, f"turn {i}: " + "word " * words)
+                for i in range(count)
+            ),
+            rt,
+        )
+
+    def test_many_midsize_messages_reach_budget_with_ppa(self):
+        rt, backend = make_runtime(lambda r: "short summary")
+        out = self.conversation(rt).compress("ppa", budget=400)
+        assert out.token_count <= 400
+        assert len(out.messages) == 20  # every turn kept, each compressed
+        assert any(s.name.startswith("m0 ") for s in out.report.steps)
+
+    def test_small_messages_are_left_alone(self):
+        rt, _ = make_runtime(lambda r: "s" * 40)
+        small = Message(Role.USER, "tiny note")
+        big = Message(Role.USER, "word " * 2000)
+        out = Context((small, big), rt).compress("ppa", budget=300)
+        assert out.messages[0] == small and out.token_count <= 300
+
+    def test_extractive_handles_many_messages(self):
+        rt, backend = make_runtime()
+        convo = Context(
+            tuple(
+                Message(
+                    Role.USER,
+                    " ".join(
+                        f"Sentence {j} of turn {i} about topic {j % 3}."
+                        for j in range(30)
+                    ),
+                )
+                for i in range(10)
+            ),
+            rt,
+        )
+        out = convo.compress("extractive", budget=300)
+        assert out.token_count <= 300 and backend.requests == []
+
+    def test_system_messages_are_protected(self):
+        rt, _ = make_runtime(lambda r: "s" * 20)
+        system = Message(Role.SYSTEM, "keep me " * 20)
+        out = Context(
+            (system, Message(Role.USER, "word " * 1000)), rt
+        ).compress("ppa", budget=300)
+        assert out.messages[0] == system
+
+    def test_fallback_conversation_example(self):
+        rt, _ = make_runtime(steps=[errors.PermanentBackendError("outage")])
+        out = self.conversation(rt).compress("ppa|extractive", budget=900)
+        assert out.token_count <= 900
+
+
+@settings(max_examples=100, deadline=None)
+@given(
+    sizes=st.lists(
+        st.integers(min_value=1, max_value=500), min_size=1, max_size=15
+    ),
+    budget=st.integers(min_value=1, max_value=3000),
+)
+def test_fair_targets_properties(sizes, budget):
+    from ceng.compression import fit
+
+    tok = HeuristicTokenizer(chars_per_token=1.0)
+    messages = tuple(Message(Role.USER, "x" * n) for n in sizes)
+    targets = fit.fair_targets(messages, budget, tok)
+    after = [targets.get(i, n) for i, n in enumerate(sizes)]
+    assert all(t < sizes[i] for i, t in targets.items())  # only real shrinks
+    if sum(sizes) <= budget:
+        assert targets == {}
+    elif budget >= len(sizes):
+        assert sum(after) <= budget  # fits whenever the floor allows it
+        cap = max(targets.values())
+        assert all(n <= cap for i, n in enumerate(sizes) if i not in targets)

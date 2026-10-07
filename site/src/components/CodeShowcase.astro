@@ -19,23 +19,26 @@ const idleBtn =
 const preCls = "font-mono text-[0.8rem] leading-6 text-slate-400";
 
 const code = {
-  compress: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng <span class="k-token-4">import</span> <span class="k-token-1">ppa_compress</span>
+  compress: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng <span class="k-token-4">import</span> <span class="k-token-1">Context</span>, <span class="k-token-1">Runtime</span>
 
-messages = [
-    {<span class="k-token-3">"role"</span>: <span class="k-token-3">"system"</span>, <span class="k-token-3">"content"</span>: <span class="k-token-3">"You are a careful analyst."</span>},
-    {<span class="k-token-3">"role"</span>: <span class="k-token-3">"user"</span>,   <span class="k-token-3">"content"</span>: <span class="k-token-3">"&lt;very long context…&gt;"</span>},
-]
+context = Context.<span class="k-token-1">from_dicts</span>(
+    [
+        {<span class="k-token-3">"role"</span>: <span class="k-token-3">"system"</span>, <span class="k-token-3">"content"</span>: <span class="k-token-3">"You are a careful analyst."</span>},
+        {<span class="k-token-3">"role"</span>: <span class="k-token-3">"user"</span>,   <span class="k-token-3">"content"</span>: <span class="k-token-3">"&lt;very long context…&gt;"</span>},
+    ],
+    Runtime.<span class="k-token-1">from_env</span>(),
+)
 
-<span class="k-token-2">small</span> = <span class="k-token-1">ppa_compress</span>(
-    messages,
-    budget_tokens=<span class="k-num">2000</span>,    <span class="k-cmt"># whatever fits the ceiling</span>
-    llm=<span class="k-token-3">"gpt-4o-mini"</span>,    <span class="k-cmt"># any litellm model id</span>
-    cache_dir=<span class="k-token-3">".ceng/cache"</span>,
-)</code></pre>`,
+<span class="k-token-2">small</span> = context.<span class="k-token-1">compress</span>(
+    <span class="k-token-3">"ppa"</span>,               <span class="k-cmt"># or ushape, window, extractive, ppa|extractive…</span>
+    budget=<span class="k-num">2000</span>,         <span class="k-cmt"># guaranteed: it fits, or it raises</span>
+)
+<span class="k-token-4">print</span>(small.<span class="k-token-2">report</span>)</code></pre>`,
 
-  verify: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng <span class="k-token-4">import</span> <span class="k-token-1">ppa_check</span>
+  verify: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng <span class="k-token-4">import</span> <span class="k-token-1">Context</span>
 
-verdict = <span class="k-token-1">ppa_check</span>(
+verdict = context.<span class="k-token-1">verify</span>(
+    <span class="k-token-3">"macro_fallacy"</span>,
     question=<span class="k-token-3">"What fraction of users prefer feature X?"</span>,
     population=<span class="k-token-3">"All of our users"</span>,
     tree=[
@@ -45,33 +48,30 @@ verdict = <span class="k-token-1">ppa_check</span>(
         ]},
         {<span class="k-token-3">"description"</span>: <span class="k-token-3">"US users"</span>, <span class="k-token-3">"prior"</span>: <span class="k-num">0.7</span>},
     ],
-    llm=<span class="k-token-3">"gpt-4o-mini"</span>,
 )
 
-<span class="k-token-4">print</span>(verdict.<span class="k-token-2">self_consistent</span>)  <span class="k-cmt"># False ⇒ macro fallacy</span></code></pre>`,
+<span class="k-token-4">print</span>(verdict.<span class="k-token-2">passed</span>)  <span class="k-cmt"># False ⇒ macro fallacy</span></code></pre>`,
 
-  evolve: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng.playbook <span class="k-token-4">import</span> <span class="k-token-1">empty_playbook</span>
-<span class="k-token-4">from</span> ceng.playbook.evolver <span class="k-token-4">import</span> <span class="k-token-1">Evolver</span>
+  evolve: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng.evolution <span class="k-token-4">import</span> <span class="k-token-1">Evolver</span>, <span class="k-token-1">Playbook</span>
 
-ev = <span class="k-token-1">Evolver</span>(llm=<span class="k-token-3">"gpt-4o-mini"</span>, cache_dir=<span class="k-token-3">".ceng/cache"</span>)
-playbook, stats = ev.<span class="k-token-1">run</span>(
-    playbook=<span class="k-token-1">empty_playbook</span>(),
-    queries=train_samples,    <span class="k-cmt"># {"question", "ground_truth"}</span>
-    evaluator=<span class="k-token-4">lambda</span> q, a, s: <span class="k-token-3">"correct"</span> <span class="k-token-4">if</span> a == s[<span class="k-token-3">"ground_truth"</span>] <span class="k-token-4">else</span> <span class="k-token-3">"wrong"</span>,
-    max_iterations=<span class="k-num">5</span>,
+result = <span class="k-token-1">Evolver</span>(runtime).<span class="k-token-1">evolve</span>(
+    <span class="k-token-1">Playbook</span>(),
+    train_samples,           <span class="k-cmt"># Sample(question, target)</span>
+    grader,                  <span class="k-cmt"># decides what counts as correct</span>
+    epochs=<span class="k-num">2</span>,
+    checkpoint=path,         <span class="k-cmt"># resume after a crash</span>
 )
 <span class="k-cmt"># Generator → Reflector → Curator with ADD / UPDATE / MERGE / DELETE</span></code></pre>`,
 
-  compact: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng.compact <span class="k-token-4">import</span> <span class="k-token-1">compact_messages</span>
+  compact: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng <span class="k-token-4">import</span> <span class="k-token-1">Context</span>
 
-small, prov = <span class="k-token-1">compact_messages</span>(
-    long_chat_history,
-    preserve_first=<span class="k-num">2</span>,    <span class="k-cmt"># keep system + first user</span>
-    preserve_last=<span class="k-num">4</span>,     <span class="k-cmt"># keep the most recent turns</span>
-    summarise_middle=<span class="k-token-4">True</span>,  <span class="k-cmt"># one backend call for the strip</span>
-    llm=<span class="k-token-3">"gpt-4o-mini"</span>,
+small = context.<span class="k-token-1">compress</span>(
+    <span class="k-token-3">"ushape"</span>,
+    budget=<span class="k-num">4000</span>,
+    head=<span class="k-num">2</span>,     <span class="k-cmt"># keep system + first user</span>
+    tail=<span class="k-num">4</span>,     <span class="k-cmt"># keep the most recent turns</span>
 )
-<span class="k-token-4">print</span>(prov.<span class="k-token-2">summarised_count</span>)  <span class="k-cmt"># provenance for your logs</span></code></pre>`,
+<span class="k-token-4">print</span>(small.report.<span class="k-token-2">steps</span>)  <span class="k-cmt"># per-step provenance for your logs</span></code></pre>`,
 };
 ---
 
@@ -90,8 +90,8 @@ small, prov = <span class="k-token-1">compact_messages</span>(
         <span class="text-gradient-soft">Every pipeline.</span>
       </h2>
       <p class="mt-6 text-lg leading-relaxed text-slate-400">
-        No builder objects. No context managers. Just named functions with
-        sensible defaults and typed returns.
+        One immutable Context. Named strategies with typed options, a
+        budget that is actually enforced, and a report on every result.
       </p>
     </div>
 
@@ -131,7 +131,7 @@ small, prov = <span class="k-token-1">compact_messages</span>(
         <div data-panel="compress" class="tab-panel is-active">
           <CodeWindow
             file="compress.py"
-            title={'python -c "from ceng import ppa_compress"'}
+            title={'python -c "from ceng import Context"'}
             note="260k tokens in, a golden summary out — leaves summarised in isolation, combined without macro fallacies."
           >
             <Fragment set:html={code.compress} />
@@ -141,7 +141,7 @@ small, prov = <span class="k-token-1">compact_messages</span>(
         <div data-panel="verify" class="tab-panel">
           <CodeWindow
             file="check.py"
-            title={'python -c "from ceng import ppa_check"'}
+            title={'python -c "from ceng.verification import MacroFallacy"'}
             note="Population-level and per-leaf answers are compared automatically. A mismatch is your early warning."
           >
             <Fragment set:html={code.verify} />
@@ -151,7 +151,7 @@ small, prov = <span class="k-token-1">compact_messages</span>(
         <div data-panel="evolve" class="tab-panel">
           <CodeWindow
             file="evolver.py"
-            title="python -m ceng.playbook.evolver"
+            title={'python -c "from ceng.evolution import Evolver"'}
             note="Paper defaults out of the box: 5 reflector rounds, 0.90 dedup, 80k-token playbook budget."
           >
             <Fragment set:html={code.evolve} />
@@ -161,7 +161,7 @@ small, prov = <span class="k-token-1">compact_messages</span>(
         <div data-panel="compact" class="tab-panel">
           <CodeWindow
             file="compact.py"
-            title="python -m ceng.compact"
+            title={'ceng compress chat.json --method ushape --budget 4000'}
             note="The system role is never dropped or altered — a ValueError guards it at the boundary."
           >
             <Fragment set:html={code.compact} />
