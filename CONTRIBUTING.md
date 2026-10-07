@@ -43,8 +43,12 @@ annotations) with these project rules:
 - No module-level mutable state. Pass a `Runtime`.
 - Catch specific exceptions; every deliberate error derives from `CengError`.
 - Every LLM call goes through `Runtime.complete`.
-- Tests are offline: use `ScriptedBackend` and `MemoryCache`. Add a regression
-  test with every bug fix.
+- Unit tests are offline and deterministic. Use `tests/faults.py` only for
+  fault injection (errors, timeouts, truncation); never use a fake model to
+  assert on model behaviour. Anything that depends on what a model returns
+  belongs in `tests/integration/`, which calls a real provider (set
+  `NVIDIA_API_KEY` or `CENG_TEST_API_KEY`; see the README) and is skipped
+  without a key. Add a regression test with every bug fix.
 
 ## Pull request flow
 

@@ -293,7 +293,7 @@ class TestTruncationAndOptions:
             ]
         )
         rt = runtime_lib.Runtime(backend=backend)
-        out = run(rt.complete(USER, source="t", namespace="n", max_tokens=10))
+        out = run(rt.complete(USER, source="t", namespace="n", max_tokens=4))
         assert out.text == "cut off mid" and len(backend.requests) == 1
 
     def test_options_reach_the_request_and_change_the_cache_key(self):
@@ -340,3 +340,13 @@ class TestTruncationAndOptions:
     def test_env_rejects_bad_values(self, env):
         with pytest.raises(errors.ConfigError):
             runtime_lib.Runtime.from_env({"CENG_CACHE_DIR": "", **env})
+
+    def test_short_truncated_text_means_hidden_reasoning_and_is_retried(self):
+        from ceng.backends import base as backend_base
+
+        starved = backend_base.Completion(text="Not", finish_reason="length")
+        backend = scripted.ScriptedBackend([starved, "A proper full answer."])
+        rt = runtime_lib.Runtime(backend=backend)
+        out = run(rt.complete(USER, source="t", namespace="n", max_tokens=100))
+        assert out.text == "A proper full answer."
+        assert [r.max_tokens for r in backend.requests] == [100, 400]

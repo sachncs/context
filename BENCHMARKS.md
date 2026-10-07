@@ -26,13 +26,12 @@ result.write(pathlib.Path("bench/results"))   # .json and .md
 Reports are written to `bench/results/<name>-<timestamp>.{json,md}`. They keep
 **Measured by ceng** and **Cited from the ACE paper** in separate sections.
 
-## What the offline mode proves
+## Verifying that the playbook reaches the model
 
-`bench.offline.wiring_runtime(samples)` builds a scripted model that answers correctly only when a playbook
-is present in the prompt. A non-zero delta therefore proves the playbook
-reaches the model; a zero delta (for an empty playbook arm) proves it does
-not leak in otherwise. It says nothing about real model quality, and its model
-is named `offline-wiring-check` in the report.
+There is no simulated mode. The integration suite runs a baseline arm and a
+seeded arm against a real model and asserts that the seeded arm costs more
+input tokens (the playbook is in the prompt) and that all samples were scored
+without backend errors.
 
 ## Tasks
 

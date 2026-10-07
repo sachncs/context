@@ -14,7 +14,7 @@ Context (frozen)  --compress()-->  Context (frozen, with CompressionReport)
 
 | Layer | Package / module | Role |
 |---|---|---|
-| API | `context` | `Context`: compress, verify, save, load |
+| API | `context`, `integrations` | `Context`: compress, verify, save, load; agent-framework adapters |
 | Strategies | `compression`, `verification` | `Compressor`, `Verifier` ABCs and implementations |
 | Domain | `partition`, `okf`, `stores`, `evolution`, `bench` | Partitioners, OKF model/bundles, notes stores, ACE, benchmarks |
 | Services | `runtime` | `Runtime.complete`: cache, single-flight, validation, accounting |
@@ -31,7 +31,7 @@ the known ones.
 |---|---|---|
 | `Compressor` | `ppa`, `hierarchical`, `ushape`, `window`, `truncate`, `extractive`, `offload` | plus `Pipeline` (`a+b`) and `Fallback` (`a\|b`) |
 | `Verifier` | `fits`, `macro_fallacy` | |
-| `Backend` | `litellm`, `openai`, `vllm`, `scripted` | wrapped by `ResilientBackend` |
+| `Backend` | `litellm`, `openai`, `vllm`, `none` | wrapped by `ResilientBackend` |
 | `Cache` | `memory`, `sqlite`, `null` | |
 | `Tokenizer` | `heuristic`, `tiktoken` | |
 | `Partitioner` | `recursive`, `fixed` | |
@@ -40,6 +40,7 @@ the known ones.
 | `CuratorOp` | `ADD`, `UPDATE`, `MERGE`, `DELETE` | |
 | `Benchmark` | `finer`, `formula`, `ddxplus` | |
 | `Observer` | | `LoggingObserver`, `MetricsObserver` |
+| `HistoryAdapter` | | Pydantic AI, ADK, LangChain/LangGraph messages |
 
 Strategies are **frozen dataclasses whose fields are their options**, so
 options are validated at construction, hashable, and visible in `repr`.
@@ -71,8 +72,10 @@ goes through `Runtime.complete`:
    so editing a prompt or a strategy cannot serve stale answers.
 2. Cache lookup (corrupt entries are treated as misses).
 3. Single-flight: concurrent identical requests share one backend call.
-4. Backend call (resilient: retry, timeout, breaker, concurrency cap), with
-   one regeneration if the model returns empty text.
+4. Backend call (resilient: retry, timeout, breaker, concurrency cap, optional
+   rate limit). Empty or truncated output is retried: a reply cut off by the
+   token cap with less than half of it visible (hidden reasoning) is re-asked
+   with a 4x larger cap, up to 3 times; plain empty text is re-asked once.
 5. Cache write, usage and event emission.
 
 ## Async core, one sync bridge
@@ -81,6 +84,30 @@ All work is `async`. `Context.compress` is `run_sync(acompress(...))`;
 `internals.runner.run_sync` uses `asyncio.run`, or a worker thread when a loop
 is already running (Jupyter). Leaf summaries run concurrently through
 `internals.concurrency.gather_bounded`, which cancels siblings on first failure.
+
+## Model output length
+
+Models routinely overshoot a requested length. `Compressor.ask` therefore
+follows an over-long answer with up to two "rewrite shorter" calls: a 30%
+tolerance for intermediate (leaf) summaries and a hard limit for the final
+stage, so budgets are met by editing instead of cutting.
+
+## Event loops
+
+The sync API runs each call in a fresh event loop, but async clients and
+primitives are bound to the loop that created them. `internals.looplocal`
+gives every running loop its own provider client, semaphore and pacing lock
+(held weakly), which prevents "Event loop is closed" errors on repeated calls.
+
+## Agent-framework integrations
+
+`integrations.history.HistoryCompressor` is framework-neutral: if the history
+fits, it is returned untouched; otherwise it cuts at a turn boundary (never
+between a tool call and its result), flattens the older messages to text,
+compresses them with `ushape` (one transcript, leading system messages kept)
+and falls back to an offline method on provider failure. A `HistoryAdapter`
+maps one framework's messages; `pydantic_ai`, `adk` and `langgraph` supply the
+framework hook around it.
 
 ## Naming rule: no underscore-prefixed names
 
@@ -104,6 +131,9 @@ compatibility promise, even though Python cannot enforce that.
 - Playbook bullet ids are deterministic `uuid5` of normalised content (same
   content, same id), which keeps cache keys reproducible and cannot collide.
 - AppWorld was removed: it was a stub that required external credentials.
+- No test double ships in the package: `ScriptedBackend` lives in
+  `tests/faults.py` for fault injection only, and `Runtime.without_llm()`
+  (`NoBackend`) serves LLM-free use.
 - Cache keys are SHA-256 fingerprint strings (`internals.hashing`), not typed
   `CacheKey`/`CacheEntry` objects; values are small JSON strings.
 - Messages are plain text: multi-part content is flattened on ingest

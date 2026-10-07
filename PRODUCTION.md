@@ -11,7 +11,7 @@ Build one `Runtime` per process and share it across tasks: it owns the cache
 connection, the circuit-breaker state and the concurrency limits, which only
 work as intended when shared. Caches and stores lock internally; the circuit
 breaker assumes one event loop per process. `Runtime.from_env()` reads `CENG_BACKEND`,
-`CENG_MODEL`, `CENG_CACHE_DIR`, `CENG_TIMEOUT_SECONDS`, `CENG_RETRY_ATTEMPTS`,
+`CENG_MODEL`, `CENG_BASE_URL`, `CENG_OPTIONS`, `CENG_CACHE_DIR`, `CENG_TIMEOUT_SECONDS`, `CENG_RETRY_ATTEMPTS`,
 `CENG_CONCURRENCY`, and optionally `CENG_RATE_LIMIT_PER_SECOND` and
 `CENG_DEADLINE_SECONDS`; malformed values raise `ConfigError` instead of being
 ignored. Provider credentials come from the provider's own variables. Never
@@ -19,6 +19,15 @@ put keys in source, prompts, caches, notes or OKF bundles.
 
 Close it on shutdown: `with Runtime.from_env() as runtime:` or `await
 runtime.aclose()`.
+
+## Reasoning models
+
+Reasoning models can exhaust the token cap on hidden thinking and return no
+visible text (`finish_reason="length"`). ceng retries with a 4x larger cap (3
+times) and treats a reply with under half the cap visible as exhausted. To cut
+cost and latency set a low effort for every call, e.g.
+`CENG_OPTIONS='{"reasoning_effort": "low"}'`; options are part of the cache
+key.
 
 ## Failure behaviour
 
