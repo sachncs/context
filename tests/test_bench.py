@@ -4,8 +4,7 @@ import json
 import pytest
 
 from ceng import errors
-from ceng.bench import Arm, Benchmark, DDXPlus, Finer, Formula, Runner, offline
-from ceng.evolution import Playbook
+from ceng.bench import Arm, Benchmark, DDXPlus, Finer, Formula, Runner
 from tests.test_compression import make_runtime
 
 
@@ -105,25 +104,6 @@ class TestDDXPlus:
 
 
 class TestRunner:
-    def test_arms_and_playbook_injection(self):
-        benchmark = Formula()
-        samples = benchmark.load_samples(6)
-        rt = offline.wiring_runtime(samples)
-        arms = (Arm("baseline"), Arm("ceng", benchmark.seed_playbook()))
-        result = asyncio.run(Runner(rt).arun(benchmark, samples, arms))
-        baseline, ceng = result.arms
-        assert baseline.accuracy == 0.0 and ceng.accuracy == 1.0
-        assert result.delta == 1.0 and result.samples == 6
-
-    def test_empty_playbook_arm_equals_baseline(self):
-        """The 'ceng' arm only differs when a playbook is really injected."""
-        benchmark = Formula()
-        samples = benchmark.load_samples(4)
-        rt = offline.wiring_runtime(samples)
-        arms = (Arm("baseline"), Arm("empty", Playbook()))
-        result = asyncio.run(Runner(rt).arun(benchmark, samples, arms))
-        assert result.delta == 0.0
-
     def test_prompt_contains_playbook_only_when_given(self):
         benchmark = DDXPlus()
         sample = benchmark.load_samples(1)[0]
@@ -158,23 +138,3 @@ class TestRunner:
         rt, _ = make_runtime()
         with pytest.raises(errors.ConfigError):
             asyncio.run(Runner(rt).arun(Formula(), [], [Arm("a")]))
-
-    def test_report_files(self, tmp_path):
-        benchmark = Finer()
-        samples = benchmark.load_samples(3)
-        rt = offline.wiring_runtime(samples)
-        result = asyncio.run(
-            Runner(rt).arun(
-                benchmark,
-                samples,
-                [Arm("baseline"), Arm("ceng", benchmark.seed_playbook())],
-            )
-        )
-        markdown = result.write(tmp_path / "out")
-        text = markdown.read_text(encoding="utf-8")
-        assert "Measured by ceng" in text and "Cited from the ACE paper" in text
-        assert "not measured" in text
-        data = json.loads(
-            markdown.with_suffix(".json").read_text(encoding="utf-8")
-        )
-        assert data["benchmark"] == "finer" and len(data["arms"]) == 2

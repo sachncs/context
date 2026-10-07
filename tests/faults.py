@@ -1,4 +1,10 @@
-"""Deterministic backend for tests, examples and offline smoke runs."""
+"""Fault-injection backend for unit tests ONLY.
+
+It replays scripted answers and exceptions so retry, timeout, circuit-breaker,
+single-flight and error-isolation logic can be tested deterministically.
+Everything that depends on real model behaviour is tested against a real
+provider in `tests/integration/` instead.
+"""
 
 from __future__ import annotations
 
@@ -10,10 +16,9 @@ from collections.abc import Callable, Sequence
 from ceng import usage as usage_lib
 from ceng.backends import base
 
-Step = str | BaseException | Callable[[base.Request], str]
+Step = str | BaseException | base.Completion | Callable[[base.Request], str]
 
 
-@base.Backend.registry.register("scripted")
 class ScriptedBackend(base.Backend):
     """Replays scripted responses and records every request.
 
@@ -61,6 +66,8 @@ class ScriptedBackend(base.Backend):
             step = self.pending.popleft() if self.pending else self.default
         if isinstance(step, BaseException):
             raise step
+        if isinstance(step, base.Completion):
+            return step
         text = step(request) if callable(step) else step
         prompt = sum(len(m.content) for m in request.messages) // 4
         return base.Completion(

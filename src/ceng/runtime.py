@@ -21,6 +21,7 @@ from ceng import messages as messages_lib
 from ceng import tokenizers as tokenizers_lib
 from ceng import usage as usage_lib
 from ceng.backends import base as backend_base
+from ceng.backends import none as none_backend
 from ceng.backends import resilient
 from ceng.cache import base as cache_base
 from ceng.cache import sqlite as cache_sqlite
@@ -29,6 +30,8 @@ from ceng.internals import hashing, runner
 DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_CACHE_DIR = ".ceng/cache"
 VALIDATION_RETRIES = 1
+LENGTH_RETRIES = 3
+LENGTH_GROWTH = 4
 
 
 class SingleFlight:
@@ -90,6 +93,8 @@ class Runtime:
         tokenizer: Token counter used for budgeting.
         observers: Event sinks.
         prices: Price table used to compute cost in reports.
+        options: Provider parameters sent with every request, e.g.
+            `{"reasoning_effort": "low"}` for reasoning models.
         concurrency: Maximum parallel LLM calls issued by one operation.
         single_flight: De-duplicator for concurrent identical requests.
     """
@@ -106,6 +111,7 @@ class Runtime:
     prices: usage_lib.PriceTable = dataclasses.field(
         default_factory=usage_lib.PriceTable
     )
+    options: Mapping[str, object] = dataclasses.field(default_factory=dict)
     concurrency: int = 8
     single_flight: SingleFlight = dataclasses.field(
         default_factory=SingleFlight
@@ -120,7 +126,9 @@ class Runtime:
         """Builds a runtime from `CENG_*` environment variables.
 
         Recognised: `CENG_BACKEND` (litellm|openai|vllm), `CENG_MODEL`,
-        `CENG_CACHE_DIR` (empty disables caching), `CENG_TIMEOUT_SECONDS`,
+        `CENG_BASE_URL` (OpenAI-compatible endpoint), `CENG_OPTIONS` (JSON
+        object of provider parameters), `CENG_CACHE_DIR` (empty disables
+        caching), `CENG_TIMEOUT_SECONDS`,
         `CENG_RETRY_ATTEMPTS`, `CENG_CONCURRENCY`, `CENG_RATE_LIMIT_PER_SECOND`
         (optional), `CENG_DEADLINE_SECONDS` (optional total retry budget).
 
@@ -145,11 +153,27 @@ class Runtime:
 
         backend_name = env.get("CENG_BACKEND", "litellm")
         backend_cls = backend_base.Backend.registry.get(backend_name)
+        base_url = env.get("CENG_BASE_URL")
+        try:
+            inner = (
+                backend_cls(base_url=base_url) if base_url else backend_cls()
+            )
+        except TypeError as exc:
+            raise errors.ConfigError(
+                f"backend {backend_name!r} does not support CENG_BASE_URL"
+            ) from exc
+        raw_options = env.get("CENG_OPTIONS", "")
+        try:
+            options = json.loads(raw_options) if raw_options else {}
+        except ValueError as exc:
+            raise errors.ConfigError("CENG_OPTIONS is not valid JSON") from exc
+        if not isinstance(options, dict):
+            raise errors.ConfigError("CENG_OPTIONS must be a JSON object")
         concurrency = int(number("CENG_CONCURRENCY", 8, int))
         rate = env.get("CENG_RATE_LIMIT_PER_SECOND")
         deadline = env.get("CENG_DEADLINE_SECONDS")
         backend = resilient.ResilientBackend(
-            backend_cls(),
+            inner,
             rate_per_second=float(
                 number("CENG_RATE_LIMIT_PER_SECOND", 0.0, float)
             )
@@ -176,7 +200,21 @@ class Runtime:
             model=model,
             cache=cache,
             tokenizer=tokenizers_lib.for_model(model),
+            options=options,
             concurrency=concurrency,
+        )
+
+    @classmethod
+    def without_llm(cls) -> Runtime:
+        """Returns a runtime that can only run LLM-free compression methods.
+
+        Any attempt to call a model fails with `PermanentBackendError`, and
+        nothing is cached.
+        """
+        return cls(
+            backend=none_backend.NoBackend(),
+            cache=cache_base.NullCache(),
+            tokenizer=tokenizers_lib.default_tokenizer(),
         )
 
     def emit(self, event: observability.Event) -> None:
@@ -216,6 +254,7 @@ class Runtime:
             messages=tuple(messages),
             temperature=temperature,
             max_tokens=max_tokens,
+            options=tuple(sorted(self.options.items())),
         )
         key = hashing.fingerprint(namespace, request.fingerprint)
         cached = self.cache.get(key)
@@ -262,26 +301,52 @@ class Runtime:
     async def call_validated(
         self, request: backend_base.Request, source: str
     ) -> backend_base.Completion:
-        """Calls the backend, regenerating once on empty output."""
-        last: errors.ValidationError | None = None
-        for attempt in range(VALIDATION_RETRIES + 1):
+        """Calls the backend, recovering from empty or truncated output.
+
+        Two situations are retried, each a bounded number of times:
+
+        * The model hit the token cap before producing visible text, which
+          is typical for reasoning models. The cap is multiplied by
+          `LENGTH_GROWTH` for the next attempt (`LENGTH_RETRIES` times).
+        * The model returned empty text for another reason; it is asked
+          again `VALIDATION_RETRIES` times.
+
+        Raises:
+            ValidationError: If the model still returns no text.
+        """
+        current = request
+        length_left = LENGTH_RETRIES
+        empty_left = VALIDATION_RETRIES
+        while True:
             started = time.monotonic()
-            completion = await self.backend.complete(request)
-            seconds = time.monotonic() - started
+            completion = await self.backend.complete(current)
             self.emit(
                 observability.BackendCall(
                     source=source,
-                    model=request.model,
+                    model=current.model,
                     usage=completion.usage,
-                    seconds=seconds,
+                    seconds=time.monotonic() - started,
                 )
             )
             if completion.text.strip():
                 return completion
-            last = errors.ValidationError(
-                f"model returned empty text (attempt {attempt + 1})"
+            if (
+                completion.truncated
+                and length_left > 0
+                and current.max_tokens is not None
+            ):
+                length_left -= 1
+                current = dataclasses.replace(
+                    current, max_tokens=current.max_tokens * LENGTH_GROWTH
+                )
+                continue
+            if empty_left > 0 and not completion.truncated:
+                empty_left -= 1
+                continue
+            raise errors.ValidationError(
+                "model returned no text"
+                + (" (token cap reached)" if completion.truncated else "")
             )
-        raise last if last else errors.ValidationError("no completion")
 
     async def aclose(self) -> None:
         """Closes the backend and cache."""

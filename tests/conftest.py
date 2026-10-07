@@ -3,9 +3,9 @@
 import pytest
 
 from ceng import runtime as runtime_lib
-from ceng.backends import scripted
 from ceng.cache import base as cache_base
 from ceng.tokenizers import HeuristicTokenizer
+from tests import faults as scripted
 
 
 @pytest.fixture
