@@ -230,7 +230,9 @@ class TestCodecs:
         Context((Message(Role.USER, "a"),), rt).save(tmp_path / "c")
         message = tmp_path / "c" / "messages" / "0000-user.md"
         message.write_text(
-            message.read_text().replace("role: user", "role: bad")
+            message.read_text(encoding="utf-8").replace(
+                "role: user", "role: bad"
+            )
         )
         with pytest.raises(errors.ValidationError, match="role"):
             Context.load(tmp_path / "c", runtime=rt)

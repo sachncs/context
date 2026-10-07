@@ -171,8 +171,10 @@ class TestRunner:
             )
         )
         markdown = result.write(tmp_path / "out")
-        text = markdown.read_text()
+        text = markdown.read_text(encoding="utf-8")
         assert "Measured by ceng" in text and "Cited from the ACE paper" in text
         assert "not measured" in text
-        data = json.loads(markdown.with_suffix(".json").read_text())
+        data = json.loads(
+            markdown.with_suffix(".json").read_text(encoding="utf-8")
+        )
         assert data["benchmark"] == "finer" and len(data["arms"]) == 2

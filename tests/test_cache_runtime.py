@@ -171,6 +171,27 @@ class TestFromEnv:
         assert rt.model == "m" and rt.concurrency == 3
         assert isinstance(rt.cache, base.NullCache)
 
+    def test_rate_limit_and_deadline_from_env(self):
+        rt = runtime_lib.Runtime.from_env(
+            {
+                "CENG_CACHE_DIR": "",
+                "CENG_RATE_LIMIT_PER_SECOND": "5",
+                "CENG_DEADLINE_SECONDS": "30",
+            }
+        )
+        assert rt.backend.rate_per_second == 5.0 and rt.backend.deadline == 30.0
+        with pytest.raises(errors.ConfigError):
+            runtime_lib.Runtime.from_env(
+                {"CENG_CACHE_DIR": "", "CENG_DEADLINE_SECONDS": "soon"}
+            )
+
+    def test_tokenizer_follows_model(self):
+        pytest.importorskip("tiktoken")
+        rt = runtime_lib.Runtime.from_env(
+            {"CENG_CACHE_DIR": "", "CENG_MODEL": "gpt-4o-mini"}
+        )
+        assert rt.tokenizer.encoding_name == "o200k_base"
+
     def test_sqlite_cache(self, tmp_path):
         rt = runtime_lib.Runtime.from_env({"CENG_CACHE_DIR": str(tmp_path)})
         assert isinstance(rt.cache, sqlite.SqliteCache)
@@ -192,3 +213,48 @@ class TestFromEnv:
     def test_context_manager(self, backend):
         with runtime_lib.Runtime(backend=backend) as rt:
             assert rt.model
+
+
+def test_single_flight_follower_survives_cancelled_leader():
+    """A cancelled leader must not cancel callers that merely shared it."""
+    backend = scripted.ScriptedBackend(delay=0.1)
+    rt = runtime_lib.Runtime(backend=backend)
+
+    async def go():
+        leader = asyncio.ensure_future(
+            rt.complete(USER, source="t", namespace="n")
+        )
+        await asyncio.sleep(0.02)  # leader is now in flight
+        follower = asyncio.ensure_future(
+            rt.complete(USER, source="t", namespace="n")
+        )
+        await asyncio.sleep(0.02)
+        leader.cancel()
+        result = await follower
+        with pytest.raises(asyncio.CancelledError):
+            await leader
+        return result
+
+    assert run(go()).text == "hello"
+
+
+def test_single_flight_cancelling_a_follower_leaves_leader_running():
+    backend = scripted.ScriptedBackend(delay=0.1)
+    rt = runtime_lib.Runtime(backend=backend)
+
+    async def go():
+        leader = asyncio.ensure_future(
+            rt.complete(USER, source="t", namespace="n")
+        )
+        await asyncio.sleep(0.02)
+        follower = asyncio.ensure_future(
+            rt.complete(USER, source="t", namespace="n")
+        )
+        await asyncio.sleep(0.02)
+        follower.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await follower
+        return await leader
+
+    assert run(go()).text == "hello"
+    assert len(backend.requests) == 1

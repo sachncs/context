@@ -21,8 +21,9 @@ what changed so you can port, not how to keep old code running.
 - `Runtime` (backend, cache, tokenizer, observers, price table) replacing the
   global backend singleton; `Runtime.from_env()` with strict parsing.
 - Resilient backends: retries with jitter for transient errors only,
-  `Retry-After`, timeouts, circuit breaker, concurrency caps, error
-  classification; `ScriptedBackend` for tests.
+  `Retry-After`, per-call timeouts, an overall retry deadline, circuit breaker,
+  concurrency caps, an optional rate limit, error classification;
+  `ScriptedBackend` for tests. Tokenizer is chosen from the model name.
 - Concurrent leaf summarisation, single-flight request de-duplication, usage
   and cost accounting, structured events and `MetricsObserver`.
 - SQLite cache with TTL, size bound and corruption recovery; cache keys cover

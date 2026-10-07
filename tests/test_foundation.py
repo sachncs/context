@@ -10,6 +10,7 @@ from ceng.tokenizers import (
     HeuristicTokenizer,
     TiktokenTokenizer,
     default_tokenizer,
+    for_model,
 )
 
 
@@ -77,6 +78,21 @@ class TestTokenizers:
 
     def test_default(self):
         assert default_tokenizer().count("hello") >= 1
+
+    def test_for_model(self):
+        pytest.importorskip("tiktoken")
+        known = for_model("gpt-4o-mini")
+        assert isinstance(known, TiktokenTokenizer)
+        assert known.encoding_name == "o200k_base"
+        unknown = for_model("some-unlisted-model")
+        assert isinstance(unknown, TiktokenTokenizer)
+        assert unknown.encoding_name == "cl100k_base"
+
+    def test_for_model_without_tiktoken(self, monkeypatch):
+        import sys
+
+        monkeypatch.setitem(sys.modules, "tiktoken", None)
+        assert isinstance(for_model("gpt-4o-mini"), HeuristicTokenizer)
 
 
 class TestPrompts:

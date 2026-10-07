@@ -62,7 +62,9 @@ def test_compress_wrapped_messages_stdin_and_output_file(tmp_path):
         stdin=json.dumps({"messages": MESSAGES}),
     )
     assert code == 0 and out == ""
-    assert json.loads(out_path.read_text())[1]["content"].startswith("word0")
+    assert json.loads(out_path.read_text(encoding="utf-8"))[1][
+        "content"
+    ].startswith("word0")
 
 
 def test_compress_to_okf_and_convert_roundtrip(tmp_path):
@@ -92,7 +94,9 @@ def test_compress_to_okf_and_convert_roundtrip(tmp_path):
         "json",
     )
     assert code == 0
-    assert "messages" in json.loads((tmp_path / "c.json").read_text())
+    assert "messages" in json.loads(
+        (tmp_path / "c.json").read_text(encoding="utf-8")
+    )
 
 
 def test_compress_okf_needs_output(tmp_path):

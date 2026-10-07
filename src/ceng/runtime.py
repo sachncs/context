@@ -32,7 +32,11 @@ VALIDATION_RETRIES = 1
 
 
 class SingleFlight:
-    """Collapses concurrent identical work into one execution."""
+    """Collapses concurrent identical work into one execution.
+
+    If the caller that started the work is cancelled, waiting callers are
+    not cancelled with it: one of them takes over and runs the work itself.
+    """
 
     def __init__(self) -> None:
         self.flights: dict[tuple[int, str], asyncio.Future[str]] = {}
@@ -40,19 +44,37 @@ class SingleFlight:
     async def run(self, key: str, work: Callable[[], Awaitable[str]]) -> str:
         """Runs `work` once per concurrent `key`; others await its result."""
         flight_key = (id(asyncio.get_running_loop()), key)
-        existing = self.flights.get(flight_key)
-        if existing is not None:
-            return await asyncio.shield(existing)
+        while True:
+            existing = self.flights.get(flight_key)
+            if existing is None:
+                return await self.lead(flight_key, work)
+            try:
+                return await asyncio.shield(existing)
+            except asyncio.CancelledError:
+                if not existing.cancelled():
+                    raise  # this caller was cancelled, not the leader
+                # The leader was cancelled: loop and take over.
+
+    async def lead(
+        self,
+        flight_key: tuple[int, str],
+        work: Callable[[], Awaitable[str]],
+    ) -> str:
+        """Executes `work` and publishes the outcome to followers."""
         future: asyncio.Future[str] = asyncio.get_running_loop().create_future()
         self.flights[flight_key] = future
         try:
             result = await work()
-            future.set_result(result)
-            return str(result)
+        except asyncio.CancelledError:
+            future.cancel()
+            raise
         except BaseException as exc:
             future.set_exception(exc)
             future.exception()  # mark retrieved so no "never retrieved" noise
             raise
+        else:
+            future.set_result(result)
+            return result
         finally:
             self.flights.pop(flight_key, None)
 
@@ -99,7 +121,8 @@ class Runtime:
 
         Recognised: `CENG_BACKEND` (litellm|openai|vllm), `CENG_MODEL`,
         `CENG_CACHE_DIR` (empty disables caching), `CENG_TIMEOUT_SECONDS`,
-        `CENG_RETRY_ATTEMPTS`, `CENG_CONCURRENCY`.
+        `CENG_RETRY_ATTEMPTS`, `CENG_CONCURRENCY`, `CENG_RATE_LIMIT_PER_SECOND`
+        (optional), `CENG_DEADLINE_SECONDS` (optional total retry budget).
 
         Args:
             environ: Mapping to read instead of `os.environ`.
@@ -123,8 +146,18 @@ class Runtime:
         backend_name = env.get("CENG_BACKEND", "litellm")
         backend_cls = backend_base.Backend.registry.get(backend_name)
         concurrency = int(number("CENG_CONCURRENCY", 8, int))
+        rate = env.get("CENG_RATE_LIMIT_PER_SECOND")
+        deadline = env.get("CENG_DEADLINE_SECONDS")
         backend = resilient.ResilientBackend(
             backend_cls(),
+            rate_per_second=float(
+                number("CENG_RATE_LIMIT_PER_SECOND", 0.0, float)
+            )
+            if rate
+            else None,
+            deadline=float(number("CENG_DEADLINE_SECONDS", 0.0, float))
+            if deadline
+            else None,
             retry=resilient.RetryPolicy(
                 attempts=int(number("CENG_RETRY_ATTEMPTS", 3, int))
             ),
@@ -137,10 +170,12 @@ class Runtime:
             if cache_dir
             else cache_base.NullCache()
         )
+        model = env.get("CENG_MODEL", DEFAULT_MODEL)
         return cls(
             backend=backend,
-            model=env.get("CENG_MODEL", DEFAULT_MODEL),
+            model=model,
             cache=cache,
+            tokenizer=tokenizers_lib.for_model(model),
             concurrency=concurrency,
         )
 

@@ -5,6 +5,7 @@ from ceng.tokenizers.base import (
     TiktokenTokenizer,
     Tokenizer,
     default_tokenizer,
+    for_model,
 )
 
 __all__ = [
@@ -12,4 +13,5 @@ __all__ = [
     "TiktokenTokenizer",
     "Tokenizer",
     "default_tokenizer",
+    "for_model",
 ]
