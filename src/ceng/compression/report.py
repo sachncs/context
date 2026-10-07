@@ -5,6 +5,8 @@ from __future__ import annotations
 import dataclasses
 import enum
 import threading
+from collections.abc import Mapping
+from typing import Any
 
 from ceng import errors
 from ceng import usage as usage_lib
@@ -59,6 +61,39 @@ class StepRecord:
     usage: usage_lib.Usage = dataclasses.field(default_factory=usage_lib.Usage)
     seconds: float = 0.0
 
+    def to_mapping(self) -> dict[str, object]:
+        """Returns a JSON-serialisable mapping."""
+        return {
+            "name": self.name,
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "cached": self.cached,
+            "prompt_tokens": self.usage.prompt_tokens,
+            "completion_tokens": self.usage.completion_tokens,
+            "seconds": self.seconds,
+        }
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> StepRecord:
+        """Rebuilds a record from `to_mapping` output.
+
+        Raises:
+            ValidationError: If a field is missing or mistyped.
+        """
+        try:
+            return cls(
+                name=str(data["name"]),
+                input_tokens=int(data["input_tokens"]),
+                output_tokens=int(data["output_tokens"]),
+                cached=bool(data["cached"]),
+                usage=usage_lib.Usage(
+                    int(data["prompt_tokens"]), int(data["completion_tokens"])
+                ),
+                seconds=float(data["seconds"]),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise errors.ValidationError(f"invalid step record: {exc}") from exc
+
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class CompressionReport:
@@ -85,6 +120,44 @@ class CompressionReport:
     cost_usd: float = 0.0
     truncated: bool = False
     seconds: float = 0.0
+
+    def to_mapping(self) -> dict[str, object]:
+        """Returns a JSON-serialisable mapping."""
+        return {
+            "method": self.method,
+            "version": self.version,
+            "budget": self.budget,
+            "original_tokens": self.original_tokens,
+            "final_tokens": self.final_tokens,
+            "steps": [step.to_mapping() for step in self.steps],
+            "cost_usd": self.cost_usd,
+            "truncated": self.truncated,
+            "seconds": self.seconds,
+        }
+
+    @classmethod
+    def from_mapping(cls, data: Mapping[str, Any]) -> CompressionReport:
+        """Rebuilds a report from `to_mapping` output.
+
+        Raises:
+            ValidationError: If a field is missing or mistyped.
+        """
+        try:
+            return cls(
+                method=str(data["method"]),
+                version=str(data["version"]),
+                budget=int(data["budget"]),
+                original_tokens=int(data["original_tokens"]),
+                final_tokens=int(data["final_tokens"]),
+                steps=tuple(
+                    StepRecord.from_mapping(step) for step in data["steps"]
+                ),
+                cost_usd=float(data["cost_usd"]),
+                truncated=bool(data["truncated"]),
+                seconds=float(data["seconds"]),
+            )
+        except (KeyError, TypeError, ValueError) as exc:
+            raise errors.ValidationError(f"invalid report: {exc}") from exc
 
     @property
     def usage(self) -> usage_lib.Usage:

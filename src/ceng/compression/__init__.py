@@ -8,6 +8,7 @@ from ceng import errors
 from ceng.compression.base import Compressor
 from ceng.compression.extractive import Extractive
 from ceng.compression.hierarchical import Hierarchical
+from ceng.compression.offload import Offload
 from ceng.compression.pipeline import Fallback, Pipeline
 from ceng.compression.ppa import CombineMode, PartitionSummarizeCombine
 from ceng.compression.report import (
@@ -95,6 +96,7 @@ __all__ = [
     "Fallback",
     "Hierarchical",
     "MiddleMode",
+    "Offload",
     "Overflow",
     "PartitionSummarizeCombine",
     "Pipeline",

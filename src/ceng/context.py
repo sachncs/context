@@ -3,14 +3,16 @@
 from __future__ import annotations
 
 import dataclasses
+import pathlib
 from collections.abc import Mapping, Sequence
 from types import MappingProxyType
 
-from ceng import compression, errors
+from ceng import compression, errors, persistence, verification
 from ceng import messages as messages_lib
 from ceng import runtime as runtime_lib
 from ceng.compression import report as report_lib
 from ceng.internals import runner
+from ceng.okf import codec as okf_codec  # noqa: F401 - registers "okf"
 
 
 @dataclasses.dataclass(frozen=True, slots=True, eq=False)
@@ -116,3 +118,80 @@ class Context:
     ) -> Context:
         """Synchronous form of `acompress`; see there for details."""
         return runner.run_sync(self.acompress(method, budget=budget, **options))
+
+    async def averify(
+        self,
+        method: str | verification.Verifier = "fits",
+        **options: object,
+    ) -> verification.Verdict:
+        """Runs a verification against this context.
+
+        Args:
+            method: Registered verifier name (`fits`, `macro_fallacy`) or a
+                configured `Verifier`.
+            **options: Verifier options; see `verification.resolve`.
+
+        Returns:
+            The verifier's verdict (a `Verdict` subclass).
+
+        Raises:
+            ConfigError: For unknown methods or invalid options.
+            CompressionError: If the verifier's LLM calls fail.
+        """
+        return await verification.resolve(method, **options).verify(self)
+
+    def verify(
+        self,
+        method: str | verification.Verifier = "fits",
+        **options: object,
+    ) -> verification.Verdict:
+        """Synchronous form of `averify`; see there for details."""
+        return runner.run_sync(self.averify(method, **options))
+
+    def snapshot(self) -> persistence.Snapshot:
+        """Returns the persistable parts of this context."""
+        return persistence.Snapshot(self.messages, self.report, self.metadata)
+
+    def save(self, path: str | pathlib.Path, format: str = "okf") -> None:
+        """Writes this context to `path`.
+
+        Args:
+            path: Destination (a directory for `okf`, a file for `json`).
+            format: Registered codec name.
+
+        Raises:
+            ConfigError: For unknown formats.
+        """
+        persistence.Codec.registry.get(format)().write(
+            self.snapshot(), pathlib.Path(path)
+        )
+
+    @classmethod
+    def load(
+        cls,
+        path: str | pathlib.Path,
+        format: str = "okf",
+        runtime: runtime_lib.Runtime | None = None,
+    ) -> Context:
+        """Reads a context saved by `save`.
+
+        Args:
+            path: Source written by `save`.
+            format: Registered codec name.
+            runtime: Runtime to attach; defaults to `Runtime.from_env()`.
+
+        Raises:
+            ConfigError: For unknown formats.
+            ValidationError: If the content is malformed.
+        """
+        snapshot = persistence.Codec.registry.get(format)().read(
+            pathlib.Path(path)
+        )
+        base = (
+            cls(snapshot.messages, runtime)
+            if runtime
+            else cls(snapshot.messages)
+        )
+        return dataclasses.replace(
+            base, report=snapshot.report, metadata=snapshot.metadata
+        )
