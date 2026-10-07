@@ -45,9 +45,6 @@ dev = [
 ]
 all = ["litellm>=1.40,<2", "vllm>=0.29.0", "openai>=1.0,<4", "tiktoken>=0.5"]
 
-[project.scripts]
-ceng = "ceng.cli:main"
-
 [project.urls]
 Homepage = "https://github.com/sachncs/context"
 Issues = "https://github.com/sachncs/context/issues"

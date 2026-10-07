@@ -85,17 +85,6 @@ Context.load("ctx/", runtime=runtime) # round-trips messages, report and metadat
 `ceng.evolution` implements ACE playbooks (Generator, Reflector, Curator) and
 `ceng.bench` measures them; see [BENCHMARKS.md](BENCHMARKS.md).
 
-## Command line
-
-```bash
-ceng compress chat.json --method "ushape+ppa" --budget 4000 -o small.json
-ceng verify chat.json --method fits --option tokens=4000    # exit 1 if it fails
-ceng convert ctx/ ctx.json --from okf --to json
-ceng bench formula --offline        # wiring check, no network
-```
-
-Exit codes: 0 ok, 1 failed verification, 2 usage/config error, 3 runtime error.
-
 ## Configuration
 
 `Runtime` is the single, explicit bundle of services (backend, cache,
