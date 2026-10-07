@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "ceng-context"
-version = "1.0.0"
+version = "2.0.0.dev0"
 description = "Partition-Prompt-Aggregate context engineering for LLMs."
 readme = "README.md"
 license = "Apache-2.0"
@@ -13,7 +13,7 @@ authors = [{ name = "Sachin" }]
 maintainers = [{ name = "Sachin", email = "sachncs@gmail.com" }]
 keywords = ["llm", "context-engineering", "compression", "vllm", "litellm"]
 classifiers = [
-    "Development Status :: 5 - Production/Stable",
+    "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3 :: Only",
@@ -24,27 +24,28 @@ classifiers = [
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
 dependencies = [
-    "litellm>=1.40",
-    "pyyaml>=6.0.3",
+    "pyyaml>=6.0.3,<7",
 ]
 
 [project.optional-dependencies]
+litellm = ["litellm>=1.40,<2"]
 vllm = ["vllm>=0.29.0"]
-openai = ["openai>=3.16.2"]
+openai = ["openai>=1.0,<3"]
 tokenize = ["tiktoken>=0.5"]
 dev = [
     "pytest>=8",
-    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=5",
+    "hypothesis>=6",
     "coverage>=7",
     "build>=1",
     "twine>=5",
     "ruff>=0.6",
     "mypy>=1.10",
 ]
-all = ["vllm>=0.29.0", "openai>=3.16.2", "tiktoken>=0.5"]
+all = ["litellm>=1.40,<2", "vllm>=0.29.0", "openai>=1.0,<3", "tiktoken>=0.5"]
 
 [project.scripts]
-ceng-bench = "ceng.bench:main"
+ceng = "ceng.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/sachncs/context"
@@ -56,7 +57,7 @@ Changelog = "https://github.com/sachncs/context/blob/master/CHANGELOG.md"
 where = ["src"]
 
 [tool.setuptools.package-data]
-ceng = ["py.typed"]
+ceng = ["py.typed", "bench/fixtures/*.jsonl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -67,35 +68,38 @@ branch = true
 source = ["ceng"]
 
 [tool.coverage.report]
-fail_under = 80
+fail_under = 90
 exclude_lines = [
     "pragma: no cover",
-    "raise NotImplementedError",
     "if TYPE_CHECKING:",
+    "@abc.abstractmethod",
 ]
 
 [tool.ruff]
-line-length = 100
+line-length = 80
 target-version = "py310"
-extend-exclude = ["bench", ".ceng"]
 
 [tool.ruff.lint]
-select = ["E", "F", "W", "I", "B", "UP", "RUF"]
+select = ["E", "F", "W", "I", "B", "UP", "RUF", "D", "N", "ANN", "S", "SIM"]
 ignore = [
-    "E501",  # line length is governed by [tool.ruff] line-length
-    "B008",  # default-argument calls in dataclass fields are intentional
-    "B905",  # zip() without strict= is fine for our use
-    "E741",  # ambiguous variable names like `l` are noise in this codebase
-    "RUF012",  # mutable class attributes annotated with ClassVar are noisy
-    "RUF022",  # __all__ is grouped by section for readability, not sorted
-    "RUF043",  # pytest.raises(match=...) patterns are fine
-    "RUF059",  # unpacked-but-unused in tests is intentional
+    "D203", "D213",          # pick google-compatible blank-line rules
+    "D102", "D105", "D107",  # overrides inherit the base-class docstring
+    "ANN401",                # Any is policed by mypy --strict instead
+    "RUF012",
 ]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["D", "S101", "ANN", "S311"]
 
 [tool.mypy]
 python_version = "3.10"
-strict_optional = true
-disallow_untyped_defs = false
-ignore_missing_imports = true
+strict = true
 warn_unused_ignores = true
-warn_redundant_casts = true
+files = ["src/ceng"]
+
+[[tool.mypy.overrides]]
+module = ["litellm.*", "openai.*", "vllm.*", "tiktoken.*", "yaml.*"]
+ignore_missing_imports = true
