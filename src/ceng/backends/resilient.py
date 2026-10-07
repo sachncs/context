@@ -99,17 +99,43 @@ class ResilientBackend(base.Backend):
         timeout: float = 60.0,
         breaker: CircuitBreaker | None = None,
         max_concurrency: int = 8,
+        rate_per_second: float | None = None,
+        deadline: float | None = None,
         observers: tuple[observability.Observer, ...] = (),
         sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
         rng: random.Random | None = None,
+        clock: Callable[[], float] = time.monotonic,
     ) -> None:
         """Wraps `inner`.
 
+        Args:
+            inner: Backend to protect.
+            retry: Retry policy (default: 3 attempts).
+            timeout: Per-call time limit in seconds.
+            breaker: Circuit breaker (default: opens after 5 failures).
+            max_concurrency: Maximum simultaneous calls.
+            rate_per_second: Optional ceiling on call starts per second.
+            deadline: Optional total seconds allowed across all retries of
+                one request; a retry that would overrun it is not attempted.
+            observers: Event sinks.
+            sleep: Awaitable sleep (injectable for tests).
+            rng: Jitter source.
+            clock: Monotonic clock (injectable for tests).
+
         Raises:
-            ConfigError: If timeout or max_concurrency is not positive.
+            ConfigError: If a limit is not positive.
         """
         if timeout <= 0 or max_concurrency < 1:
             raise errors.ConfigError("timeout and max_concurrency must be > 0")
+        if rate_per_second is not None and rate_per_second <= 0:
+            raise errors.ConfigError("rate_per_second must be > 0")
+        if deadline is not None and deadline <= 0:
+            raise errors.ConfigError("deadline must be > 0")
+        self.rate_per_second = rate_per_second
+        self.deadline = deadline
+        self.clock = clock
+        self.next_start = 0.0
+        self.pacing: dict[int, asyncio.Lock] = {}
         self.inner = inner
         self.retry = retry or RetryPolicy()
         self.timeout = timeout
@@ -127,10 +153,26 @@ class ResilientBackend(base.Backend):
             self.semaphores[loop_id] = asyncio.Semaphore(self.max_concurrency)
         return self.semaphores[loop_id]
 
+    async def pace(self) -> None:
+        """Spaces call starts to honour `rate_per_second`."""
+        if self.rate_per_second is None:
+            return
+        loop_id = id(asyncio.get_running_loop())
+        lock = self.pacing.setdefault(loop_id, asyncio.Lock())
+        async with lock:
+            now = self.clock()
+            wait = self.next_start - now
+            self.next_start = (
+                max(now, self.next_start) + 1.0 / self.rate_per_second
+            )
+            if wait > 0:
+                await self.sleep(wait)
+
     async def attempt(self, request: base.Request) -> base.Completion:
         """Performs one guarded call with timeout and breaker accounting."""
         if not self.breaker.allow():
             raise errors.CircuitOpenError("circuit breaker is open")
+        await self.pace()
         try:
             async with self.semaphore():
                 result = await asyncio.wait_for(
@@ -149,6 +191,7 @@ class ResilientBackend(base.Backend):
 
     async def complete(self, request: base.Request) -> base.Completion:
         last: errors.TransientBackendError | None = None
+        started = self.clock()
         for attempt in range(1, self.retry.attempts + 1):
             try:
                 return await self.attempt(request)
@@ -159,6 +202,11 @@ class ResilientBackend(base.Backend):
                 if attempt == self.retry.attempts:
                     break
                 delay = self.retry.delay(attempt, self.rng, exc.retry_after)
+                if (
+                    self.deadline is not None
+                    and self.clock() - started + delay > self.deadline
+                ):
+                    break
                 observability.emit(
                     self.observers,
                     observability.RetryScheduled(

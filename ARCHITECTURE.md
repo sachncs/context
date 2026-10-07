@@ -104,3 +104,11 @@ compatibility promise, even though Python cannot enforce that.
 - Playbook bullet ids are deterministic `uuid5` of normalised content (same
   content, same id), which keeps cache keys reproducible and cannot collide.
 - AppWorld was removed: it was a stub that required external credentials.
+- Cache keys are SHA-256 fingerprint strings (`internals.hashing`), not typed
+  `CacheKey`/`CacheEntry` objects; values are small JSON strings.
+- Messages are plain text: multi-part content is flattened on ingest
+  (`Message.from_mapping`), so there is no `ContentPart` type.
+- `Observer` has one `handle(event)` method over typed `Event` subclasses
+  rather than separate `on_*` methods.
+- Output validation rejects empty completions (with one regeneration); length
+  is bounded by the provider-enforced `max_tokens`, not re-validated.

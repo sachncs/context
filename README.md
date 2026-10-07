@@ -110,6 +110,8 @@ tokenizer, observers, price table). There are no global singletons.
 | `CENG_TIMEOUT_SECONDS` | `60` | Per-call timeout |
 | `CENG_RETRY_ATTEMPTS` | `3` | Attempts for transient failures |
 | `CENG_CONCURRENCY` | `8` | Parallel LLM calls |
+| `CENG_RATE_LIMIT_PER_SECOND` | unset | Ceiling on LLM calls started per second |
+| `CENG_DEADLINE_SECONDS` | unset | Total time allowed for one request across retries |
 
 Resilience is built in: retries with jittered backoff for transient errors
 only, circuit breaker, timeouts, bounded concurrency, single-flight

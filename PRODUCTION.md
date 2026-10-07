@@ -11,8 +11,9 @@ Build one `Runtime` per process and share it across tasks: it owns the cache
 connection, the circuit-breaker state and the concurrency limits, which only
 work as intended when shared. Caches and stores lock internally; the circuit
 breaker assumes one event loop per process. `Runtime.from_env()` reads `CENG_BACKEND`,
-`CENG_MODEL`, `CENG_CACHE_DIR`, `CENG_TIMEOUT_SECONDS`, `CENG_RETRY_ATTEMPTS`
-and `CENG_CONCURRENCY`; malformed values raise `ConfigError` instead of being
+`CENG_MODEL`, `CENG_CACHE_DIR`, `CENG_TIMEOUT_SECONDS`, `CENG_RETRY_ATTEMPTS`,
+`CENG_CONCURRENCY`, and optionally `CENG_RATE_LIMIT_PER_SECOND` and
+`CENG_DEADLINE_SECONDS`; malformed values raise `ConfigError` instead of being
 ignored. Provider credentials come from the provider's own variables. Never
 put keys in source, prompts, caches, notes or OKF bundles.
 
@@ -23,7 +24,7 @@ runtime.aclose()`.
 
 | Failure | Behaviour |
 |---|---|
-| Timeout, 5xx, 429, connection error | Retried with exponential backoff and full jitter (`Retry-After` honoured), up to `CENG_RETRY_ATTEMPTS` |
+| Timeout, 5xx, 429, connection error | Retried with exponential backoff and full jitter (`Retry-After` honoured), up to `CENG_RETRY_ATTEMPTS` and the optional `CENG_DEADLINE_SECONDS` budget |
 | Auth, bad request, unknown error | Never retried; `PermanentBackendError` |
 | Repeated failures | Circuit breaker opens, calls fail fast with `CircuitOpenError`, half-opens after a cool-down |
 | Empty model output | One regeneration, then `ValidationError` |

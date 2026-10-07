@@ -129,3 +129,57 @@ def test_request_fingerprint_sensitivity():
     assert a.fingerprint != base.Request("m", USER, temperature=0.5).fingerprint
     assert a.fingerprint != base.Request("n", USER).fingerprint
     assert a.fingerprint != base.Request("m", USER, max_tokens=5).fingerprint
+
+
+class TopJitter(random.Random):
+    """Deterministic jitter: always the ceiling of the backoff window."""
+
+    def uniform(self, a, b):
+        return b
+
+
+def test_rate_limit_spaces_call_starts():
+    waits = []
+
+    async def record(seconds):
+        waits.append(seconds)
+
+    inner = scripted.ScriptedBackend()
+    backend = make(inner, rate_per_second=2.0, sleep=record, clock=lambda: 0.0)
+
+    async def go():
+        for _ in range(3):
+            await backend.complete(REQ)
+
+    run(go())
+    assert waits == [0.5, 1.0]
+    assert len(inner.requests) == 3
+
+
+def test_deadline_stops_retrying():
+    now = [0.0]
+
+    async def advance(seconds):
+        now[0] += seconds
+
+    inner = scripted.ScriptedBackend([errors.TransientBackendError("t")] * 10)
+    backend = make(
+        inner,
+        retry=resilient.RetryPolicy(attempts=10, base_delay=1.0),
+        deadline=2.5,
+        sleep=advance,
+        clock=lambda: now[0],
+        rng=TopJitter(),
+        breaker=resilient.CircuitBreaker(100),
+    )
+    with pytest.raises(errors.TransientBackendError):
+        run(backend.complete(REQ))
+    # attempt 1 -> wait 1s; attempt 2 -> a 2s wait would reach 3s > 2.5s: stop
+    assert len(inner.requests) == 2 and now[0] == 1.0
+
+
+def test_rate_and_deadline_validation():
+    with pytest.raises(errors.ConfigError):
+        make(scripted.ScriptedBackend(), rate_per_second=0)
+    with pytest.raises(errors.ConfigError):
+        make(scripted.ScriptedBackend(), deadline=0)

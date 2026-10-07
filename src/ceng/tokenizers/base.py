@@ -99,3 +99,23 @@ def default_tokenizer() -> Tokenizer:
         return TiktokenTokenizer()
     except errors.ConfigError:
         return HeuristicTokenizer()
+
+
+def for_model(model: str) -> Tokenizer:
+    """Returns the best available tokenizer for `model`.
+
+    Uses the tiktoken encoding registered for the model when tiktoken is
+    installed and knows the model; otherwise falls back to
+    `default_tokenizer()` (tiktoken's `cl100k_base`, or the heuristic).
+
+    Args:
+        model: Model identifier, e.g. "gpt-4o-mini".
+    """
+    try:
+        import tiktoken
+    except ImportError:
+        return HeuristicTokenizer()
+    try:
+        return TiktokenTokenizer(tiktoken.encoding_for_model(model).name)
+    except KeyError:
+        return default_tokenizer()
