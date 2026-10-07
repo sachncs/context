@@ -132,3 +132,23 @@ def test_retry_policy_against_real_timeout():
     )
     with pytest.raises(errors.BackendTimeoutError):
         asyncio.run(backend.complete(ask("hi", max_tokens=20)))
+
+
+def test_litellm_backend_reaches_the_real_provider():
+    pytest.importorskip("litellm")
+    from ceng.backends import LiteLLMBackend
+
+    backend = LiteLLMBackend(
+        base_url=conftest.BASE_URL, api_key=conftest.API_KEY
+    )
+    request = base.Request(
+        f"openai/{conftest.MODEL}",
+        (messages.Message(USER, "Reply with exactly the word: pong"),),
+        max_tokens=400,
+        options=(("reasoning_effort", "low"),),
+    )
+    out = asyncio.run(backend.complete(request))
+    assert "pong" in out.text.lower() and out.usage.total_tokens > 0
+    bad = LiteLLMBackend(base_url=conftest.BASE_URL, api_key="nvapi-invalid")
+    with pytest.raises(errors.PermanentBackendError):
+        asyncio.run(bad.complete(request))
