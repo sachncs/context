@@ -4,8 +4,8 @@ import logging
 import pytest
 
 from ceng import errors, messages, observability, prompts, usage
-from ceng.internals import hashing, registry, runner
 from ceng.backends import classify
+from ceng.internals import hashing, registry, runner
 from ceng.tokenizers import (
     HeuristicTokenizer,
     TiktokenTokenizer,

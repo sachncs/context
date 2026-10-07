@@ -3,12 +3,10 @@ import pathlib
 
 import pytest
 
-from ceng import Context, Message, Role, errors
-from ceng import persistence
+from ceng import Context, Message, Role, errors, persistence
 from ceng.compression import report as report_lib
-from ceng.okf import Bundle, Concept, Frontmatter
+from ceng.okf import Bundle, Concept, Frontmatter, model
 from ceng.okf import codec as okf_codec
-from ceng.okf import model
 from tests.test_compression import ctx_of, make_runtime
 
 

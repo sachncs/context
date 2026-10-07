@@ -1,0 +1,20 @@
+{"id": "finer-test-0", "tokens": ["Apple", "Inc.", "reported", "record", "sales", "."], "labels": ["B-ORG", "I-ORG", "O", "O", "O", "O"]}
+{"id": "finer-test-1", "tokens": ["Tim", "Cook", "is", "the", "CEO", "."], "labels": ["B-PER", "I-PER", "O", "O", "O", "O"]}
+{"id": "finer-test-2", "tokens": ["Microsoft", "is", "based", "in", "Redmond", "."], "labels": ["B-ORG", "O", "O", "O", "B-LOC", "O"]}
+{"id": "finer-test-3", "tokens": ["He", "joined", "Goldman", "Sachs", "in", "2010", "."], "labels": ["O", "O", "B-ORG", "I-ORG", "O", "O", "O"]}
+{"id": "finer-test-4", "tokens": ["The", "report", "covers", "Q1", "2024", "earnings", "."], "labels": ["O", "O", "O", "O", "O", "O", "O"]}
+{"id": "finer-test-5", "tokens": ["Apple", "and", "Samsung", "compete", "globally", "."], "labels": ["B-ORG", "O", "B-ORG", "O", "O", "O"]}
+{"id": "finer-test-6", "tokens": ["London", "is", "in", "the", "UK", "."], "labels": ["B-LOC", "O", "O", "O", "B-LOC", "O"]}
+{"id": "finer-test-7", "tokens": ["John", "Smith", "works", "at", "Google", "."], "labels": ["B-PER", "I-PER", "O", "O", "B-ORG", "O"]}
+{"id": "finer-test-8", "tokens": ["Berlin", "and", "Paris", "hosted", "the", "summit", "."], "labels": ["B-LOC", "O", "B-LOC", "O", "O", "O", "O"]}
+{"id": "finer-test-9", "tokens": ["Tesla", "Motors", "announced", "earnings", "."], "labels": ["B-ORG", "I-ORG", "O", "O", "O"]}
+{"id": "finer-test-10", "tokens": ["Maria", "lives", "in", "Madrid", "and", "works", "at", "BBVA", "."], "labels": ["B-PER", "O", "O", "B-LOC", "O", "O", "O", "B-ORG", "O"]}
+{"id": "finer-test-11", "tokens": ["Tokyo", "is", "the", "capital", "of", "Japan", "."], "labels": ["B-LOC", "O", "O", "O", "O", "B-LOC", "O"]}
+{"id": "finer-test-12", "tokens": ["Meta", "Platforms", "owns", "Facebook", "and", "Instagram", "."], "labels": ["B-ORG", "I-ORG", "O", "B-ORG", "O", "B-ORG", "O"]}
+{"id": "finer-test-13", "tokens": ["Elon", "Musk", "founded", "SpaceX", "in", "2002", "."], "labels": ["B-PER", "I-PER", "O", "B-ORG", "O", "O", "O"]}
+{"id": "finer-test-14", "tokens": ["Amazon", "is", "headquartered", "in", "Seattle", "."], "labels": ["B-ORG", "O", "O", "O", "B-LOC", "O"]}
+{"id": "finer-test-15", "tokens": ["Satya", "Nadella", "leads", "Microsoft", "since", "2014", "."], "labels": ["B-PER", "I-PER", "O", "B-ORG", "O", "O", "O"]}
+{"id": "finer-test-16", "tokens": ["Paris", "is", "a", "city", "in", "France", "."], "labels": ["B-LOC", "O", "O", "O", "O", "B-LOC", "O"]}
+{"id": "finer-test-17", "tokens": ["IBM", "is", "headquartered", "in", "Armonk", "New", "York", "."], "labels": ["B-ORG", "O", "O", "O", "B-LOC", "I-LOC", "I-LOC", "O"]}
+{"id": "finer-test-18", "tokens": ["Sundar", "Pichai", "is", "CEO", "of", "Alphabet", "."], "labels": ["B-PER", "I-PER", "O", "O", "O", "B-ORG", "O"]}
+{"id": "finer-test-19", "tokens": ["Toyota", "is", "headquartered", "in", "Toyota", "City", "."], "labels": ["B-ORG", "O", "O", "O", "B-LOC", "I-LOC", "O"]}
