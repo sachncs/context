@@ -1,0 +1,269 @@
+"""Runtime: the explicit, injectable bundle of services ceng operates with.
+
+Replaces process-global singletons. Every LLM call in the library flows
+through `Runtime.complete`, which is the single implementation of
+cache-lookup, single-flight de-duplication, response validation, usage
+accounting and event emission.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import dataclasses
+import json
+import os
+import time
+from collections.abc import Awaitable, Callable, Mapping, Sequence
+from types import TracebackType
+
+from ceng import errors, observability
+from ceng import messages as messages_lib
+from ceng import tokenizers as tokenizers_lib
+from ceng import usage as usage_lib
+from ceng.backends import base as backend_base
+from ceng.backends import resilient
+from ceng.cache import base as cache_base
+from ceng.cache import sqlite as cache_sqlite
+from ceng.internals import hashing, runner
+
+DEFAULT_MODEL = "gpt-4o-mini"
+DEFAULT_CACHE_DIR = ".ceng/cache"
+VALIDATION_RETRIES = 1
+
+
+class SingleFlight:
+    """Collapses concurrent identical work into one execution."""
+
+    def __init__(self) -> None:
+        self.flights: dict[tuple[int, str], asyncio.Future[str]] = {}
+
+    async def run(self, key: str, work: Callable[[], Awaitable[str]]) -> str:
+        """Runs `work` once per concurrent `key`; others await its result."""
+        flight_key = (id(asyncio.get_running_loop()), key)
+        existing = self.flights.get(flight_key)
+        if existing is not None:
+            return await asyncio.shield(existing)
+        future: asyncio.Future[str] = asyncio.get_running_loop().create_future()
+        self.flights[flight_key] = future
+        try:
+            result = await work()
+            future.set_result(result)
+            return str(result)
+        except BaseException as exc:
+            future.set_exception(exc)
+            future.exception()  # mark retrieved so no "never retrieved" noise
+            raise
+        finally:
+            self.flights.pop(flight_key, None)
+
+
+@dataclasses.dataclass(frozen=True, slots=True, eq=False)
+class Runtime:
+    """Services shared by every operation on a `Context`.
+
+    Attributes:
+        backend: LLM provider (typically a `ResilientBackend`).
+        model: Default model name for requests.
+        cache: Completion cache.
+        tokenizer: Token counter used for budgeting.
+        observers: Event sinks.
+        prices: Price table used to compute cost in reports.
+        concurrency: Maximum parallel LLM calls issued by one operation.
+        single_flight: De-duplicator for concurrent identical requests.
+    """
+
+    backend: backend_base.Backend
+    model: str = DEFAULT_MODEL
+    cache: cache_base.Cache = dataclasses.field(
+        default_factory=cache_base.MemoryCache
+    )
+    tokenizer: tokenizers_lib.Tokenizer = dataclasses.field(
+        default_factory=tokenizers_lib.default_tokenizer
+    )
+    observers: tuple[observability.Observer, ...] = ()
+    prices: usage_lib.PriceTable = dataclasses.field(
+        default_factory=usage_lib.PriceTable
+    )
+    concurrency: int = 8
+    single_flight: SingleFlight = dataclasses.field(
+        default_factory=SingleFlight
+    )
+
+    def __post_init__(self) -> None:
+        if self.concurrency < 1:
+            raise errors.ConfigError("concurrency must be >= 1")
+
+    @classmethod
+    def from_env(cls, environ: Mapping[str, str] | None = None) -> Runtime:
+        """Builds a runtime from `CENG_*` environment variables.
+
+        Recognised: `CENG_BACKEND` (litellm|openai|vllm), `CENG_MODEL`,
+        `CENG_CACHE_DIR` (empty disables caching), `CENG_TIMEOUT_SECONDS`,
+        `CENG_RETRY_ATTEMPTS`, `CENG_CONCURRENCY`.
+
+        Args:
+            environ: Mapping to read instead of `os.environ`.
+
+        Raises:
+            ConfigError: For unknown backends or unparseable numbers.
+        """
+        env = os.environ if environ is None else environ
+
+        def number(name: str, default: float, kind: type) -> float:
+            raw = env.get(name)
+            if raw is None or raw == "":
+                return default
+            try:
+                return kind(raw)  # type: ignore[no-any-return]
+            except ValueError as exc:
+                raise errors.ConfigError(
+                    f"{name}={raw!r} is not valid"
+                ) from exc
+
+        backend_name = env.get("CENG_BACKEND", "litellm")
+        backend_cls = backend_base.Backend.registry.get(backend_name)
+        concurrency = int(number("CENG_CONCURRENCY", 8, int))
+        backend = resilient.ResilientBackend(
+            backend_cls(),
+            retry=resilient.RetryPolicy(
+                attempts=int(number("CENG_RETRY_ATTEMPTS", 3, int))
+            ),
+            timeout=float(number("CENG_TIMEOUT_SECONDS", 60.0, float)),
+            max_concurrency=concurrency,
+        )
+        cache_dir = env.get("CENG_CACHE_DIR", DEFAULT_CACHE_DIR)
+        cache: cache_base.Cache = (
+            cache_sqlite.SqliteCache(cache_dir)
+            if cache_dir
+            else cache_base.NullCache()
+        )
+        return cls(
+            backend=backend,
+            model=env.get("CENG_MODEL", DEFAULT_MODEL),
+            cache=cache,
+            concurrency=concurrency,
+        )
+
+    def emit(self, event: observability.Event) -> None:
+        """Delivers an event to this runtime's observers."""
+        observability.emit(self.observers, event)
+
+    async def complete(
+        self,
+        messages: Sequence[messages_lib.Message],
+        *,
+        source: str,
+        namespace: str,
+        max_tokens: int | None = None,
+        temperature: float = 0.0,
+        model: str | None = None,
+    ) -> backend_base.Completion:
+        """Completes `messages` through cache, dedup and the backend.
+
+        Args:
+            messages: Conversation to complete.
+            source: Component name for emitted events.
+            namespace: Cache namespace; include the prompt fingerprint and
+                strategy version so changes never hit stale entries.
+            max_tokens: Completion cap.
+            temperature: Sampling temperature.
+            model: Model override (defaults to `self.model`).
+
+        Returns:
+            The completion (`cached=True` when served from the cache).
+
+        Raises:
+            BackendError: If the backend fails after its retry policy.
+            ValidationError: If the model returns empty text repeatedly.
+        """
+        request = backend_base.Request(
+            model=model or self.model,
+            messages=tuple(messages),
+            temperature=temperature,
+            max_tokens=max_tokens,
+        )
+        key = hashing.fingerprint(namespace, request.fingerprint)
+        cached = self.cache.get(key)
+        if cached is not None:
+            try:
+                data = json.loads(cached)
+                self.emit(observability.CacheLookup(source=source, hit=True))
+                return backend_base.Completion(
+                    text=data["text"],
+                    usage=usage_lib.Usage(
+                        data.get("prompt", 0), data.get("completion", 0)
+                    ),
+                    model=request.model,
+                    cached=True,
+                )
+            except (ValueError, KeyError, TypeError):
+                self.cache.delete(key)
+        self.emit(observability.CacheLookup(source=source, hit=False))
+
+        holder: list[backend_base.Completion] = []
+
+        async def work() -> str:
+            completion = await self.call_validated(request, source)
+            holder.append(completion)
+            self.cache.set(
+                key,
+                json.dumps(
+                    {
+                        "text": completion.text,
+                        "prompt": completion.usage.prompt_tokens,
+                        "completion": completion.usage.completion_tokens,
+                    }
+                ),
+            )
+            return completion.text
+
+        text = await self.single_flight.run(key, work)
+        if holder:
+            return holder[0]
+        return backend_base.Completion(
+            text=text, model=request.model, cached=True
+        )
+
+    async def call_validated(
+        self, request: backend_base.Request, source: str
+    ) -> backend_base.Completion:
+        """Calls the backend, regenerating once on empty output."""
+        last: errors.ValidationError | None = None
+        for attempt in range(VALIDATION_RETRIES + 1):
+            started = time.monotonic()
+            completion = await self.backend.complete(request)
+            seconds = time.monotonic() - started
+            self.emit(
+                observability.BackendCall(
+                    source=source,
+                    model=request.model,
+                    usage=completion.usage,
+                    seconds=seconds,
+                )
+            )
+            if completion.text.strip():
+                return completion
+            last = errors.ValidationError(
+                f"model returned empty text (attempt {attempt + 1})"
+            )
+        raise last if last else errors.ValidationError("no completion")
+
+    async def aclose(self) -> None:
+        """Closes the backend and cache."""
+        await self.backend.aclose()
+        self.cache.close()
+
+    def close(self) -> None:
+        """Synchronous variant of `aclose`."""
+        runner.run_sync(self.aclose())
+
+    def __enter__(self) -> Runtime:
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        self.close()
