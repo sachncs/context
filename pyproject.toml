@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "foveate"
-version = "0.1.0"
+version = "0.2.0"
 description = "Partition-Prompt-Aggregate context engineering for LLMs."
 readme = "README.md"
 license = "Apache-2.0"
@@ -59,10 +59,10 @@ frameworks = [
 all = ["litellm>=1.40,<2", "vllm>=0.29.0", "openai>=1.0,<4", "tiktoken>=0.5"]
 
 [project.urls]
-Homepage = "https://github.com/sachncs/context"
-Issues = "https://github.com/sachncs/context/issues"
-Documentation = "https://sachncs.github.io/context"
-Changelog = "https://github.com/sachncs/context/blob/master/CHANGELOG.md"
+Homepage = "https://github.com/sachncs/foveate"
+Issues = "https://github.com/sachncs/foveate/issues"
+Documentation = "https://sachncs.github.io/foveate"
+Changelog = "https://github.com/sachncs/foveate/blob/master/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 include = ["foveate*"]

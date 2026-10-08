@@ -16,13 +16,13 @@ const current = Astro.props.current ?? '';
     </a>
     <nav aria-label="Main">
       {links.map((l) => <a href={l.href} aria-current={current === l.label ? 'page' : undefined}>{l.label}</a>)}
-      <a href="https://github.com/sachncs/context" rel="noopener">GitHub</a>
+      <a href="https://github.com/sachncs/foveate" rel="noopener">GitHub</a>
     </nav>
     <details class="menu">
       <summary aria-label="Menu">Menu</summary>
       <div class="sheet">
         {links.map((l) => <a href={l.href}>{l.label}</a>)}
-        <a href="https://github.com/sachncs/context" rel="noopener">GitHub</a>
+        <a href="https://github.com/sachncs/foveate" rel="noopener">GitHub</a>
       </div>
     </details>
     <button id="theme" class="theme" type="button" aria-label="Switch colour theme">

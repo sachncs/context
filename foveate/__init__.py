@@ -34,7 +34,7 @@ from foveate.memory import Memory
 from foveate.messages import Message, Role
 from foveate.runtime import Runtime
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "Answer",

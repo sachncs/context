@@ -2,7 +2,7 @@
 // files read correctly on GitHub and on the site.
 import path from 'node:path';
 
-const REPO = 'https://github.com/sachncs/context/blob/master/';
+const REPO = 'https://github.com/sachncs/foveate/blob/master/';
 
 export function docsLinks({ base }) {
   return () => (tree, file) => {

@@ -1,6 +1,6 @@
 ---
 title: Roadmap
-description: What ships in 0.1.0, what is being built, and what is being considered.
+description: What ships in 0.2.0, what is being built, and what is being considered.
 items:
 - title: Page-level selection and foveation
   status: shipping
@@ -124,7 +124,7 @@ items:
 
 Status of each item. The list is the same one shown on the site's Coming next page.
 
-## Shipping in 0.1.0
+## Shipping in 0.2.0
 
 * **Page-level selection and foveation.** Load PDF, DOCX, HTML, Markdown or text, rank pages with BM25, embeddings or both, and send each page at the detail it deserves.
 * **Verified citations and abstention.** Every answer cites document, page and quote. Quotes are checked against the page; unsupported answers are retried, flagged or turned into not-found.

@@ -3,14 +3,14 @@
 ## Questions
 
 For usage questions and "how do I…?" discussions, please use
-[GitHub Discussions](https://github.com/sachncs/context/discussions)
+[GitHub Discussions](https://github.com/sachncs/foveate/discussions)
 if enabled, or open a question in the
-[issue tracker](https://github.com/sachncs/context/issues) with the
+[issue tracker](https://github.com/sachncs/foveate/issues) with the
 `question` label.
 
 ## Bug reports
 
-Open a [bug report](https://github.com/sachncs/context/issues/new?template=bug.yml).
+Open a [bug report](https://github.com/sachncs/foveate/issues/new?template=bug.yml).
 
 ## Security issues
 

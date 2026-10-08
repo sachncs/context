@@ -6,7 +6,7 @@ const base = import.meta.env.BASE_URL;
 const entry = await getEntry('docs', 'docs/roadmap');
 const items = entry?.data.items ?? [];
 const groups = [
-  { status: 'shipping', title: 'Shipping in 0.1.0', note: 'Available now.' },
+  { status: 'shipping', title: 'Shipping in 0.2.0', note: 'Available now.' },
   { status: 'building', title: 'Being built now', note: 'In progress. Expect these in the next releases.' },
   { status: 'planned', title: 'Planned', note: 'Decided, not started.' },
   { status: 'exploring', title: 'Exploring', note: 'Under consideration. Tell us if you need one.' },
@@ -15,14 +15,14 @@ const label: Record<string, string> = { shipping: 'Shipping', building: 'Being b
 ---
 <Landing
   title="Coming next: the Foveate roadmap"
-  description="What ships in Foveate 0.1.0, what is being built, what is planned, and what is under consideration."
+  description="What ships in Foveate 0.2.0, what is being built, what is planned, and what is under consideration."
   current="Coming next"
 >
   <section class="block head">
     <div class="wrap">
       <p class="eyebrow">Roadmap</p>
       <h1>Coming next</h1>
-      <p class="lede">What is available, what we are building, and what we are still deciding. Each item says why it matters and links to the research or playbook behind it. This page is generated from <a href="https://github.com/sachncs/context/blob/master/docs/roadmap.md">docs/roadmap.md</a>, so it cannot drift from the repository.</p>
+      <p class="lede">What is available, what we are building, and what we are still deciding. Each item says why it matters and links to the research or playbook behind it. This page is generated from <a href="https://github.com/sachncs/foveate/blob/master/docs/roadmap.md">docs/roadmap.md</a>, so it cannot drift from the repository.</p>
     </div>
   </section>
   {groups.map((g) => (
@@ -51,7 +51,7 @@ const label: Record<string, string> = { shipping: 'Shipping', building: 'Being b
     <div class="wrap">
       <h2>Want something moved up?</h2>
       <p class="lede">Open an issue and say what you are trying to do. Real use cases decide the order.</p>
-      <div class="cta"><a class="btn primary" href="https://github.com/sachncs/context/issues/new?template=feature_request.yml">Suggest or vote</a></div>
+      <div class="cta"><a class="btn primary" href="https://github.com/sachncs/foveate/issues/new?template=feature_request.yml">Suggest or vote</a></div>
     </div>
   </section>
 </Landing>
