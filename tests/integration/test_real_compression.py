@@ -2,9 +2,9 @@
 
 import pytest
 
-from ceng import Context, Message, Role, errors
-from ceng.cache import base as cache_base
-from ceng.compression import Budget, Overflow
+from foveate import Context, Message, Role, errors
+from foveate.cache import base as cache_base
+from foveate.compression import Budget, Overflow
 from tests.integration.conftest import fold
 
 FACTS = {
@@ -127,7 +127,7 @@ def test_fallback_degrades_to_offline_when_the_provider_is_unreachable(
         cache=cache_base.NullCache(),
     )
     ctx = dataclasses.replace(document_context, runtime=broken)
-    with pytest.raises(errors.CengError):
+    with pytest.raises(errors.FoveateError):
         ctx.compress("ppa", budget=450)
     out = ctx.compress("ppa|extractive", budget=450)
     assert out.token_count <= 450
@@ -135,13 +135,13 @@ def test_fallback_degrades_to_offline_when_the_provider_is_unreachable(
 
 
 def test_llm_free_methods_need_no_provider():
-    from ceng import Runtime
+    from foveate import Runtime
 
     ctx = Context((Message(Role.USER, make_document()),), Runtime.without_llm())
     for method in ("truncate", "extractive", "window+extractive"):
         out = ctx.compress(method, budget=300)
         assert out.token_count <= 300, method
-    with pytest.raises(errors.CengError):
+    with pytest.raises(errors.FoveateError):
         ctx.compress("ppa", budget=300)
 
 

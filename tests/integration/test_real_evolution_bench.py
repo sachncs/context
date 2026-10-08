@@ -3,8 +3,8 @@
 import asyncio
 import pathlib
 
-from ceng.bench import Arm, Formula, Runner
-from ceng.evolution import Evolver, EvolverConfig, Playbook
+from foveate.bench import Arm, Formula, Runner
+from foveate.evolution import Evolver, EvolverConfig, Playbook
 
 
 def test_evolver_learns_from_real_model_feedback(runtime, tmp_path):
@@ -39,7 +39,8 @@ def test_playbook_is_really_injected_into_the_prompt(runtime):
     # Real evidence the seed playbook reached the model: it costs more input.
     assert seeded.usage.prompt_tokens > baseline.usage.prompt_tokens
     assert (
-        result.cited_ace == 85.5 and "Measured by ceng" in result.to_markdown()
+        result.cited_ace == 85.5
+        and "Measured by foveate" in result.to_markdown()
     )
 
 

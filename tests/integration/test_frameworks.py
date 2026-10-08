@@ -1,4 +1,4 @@
-"""ceng inside real agent frameworks, talking to a real model.
+"""foveate inside real agent frameworks, talking to a real model.
 
 Each test builds a conversation whose *old* turns hold a secret, runs a real
 agent whose history hook compresses those turns, and checks that (a) the hook
@@ -36,8 +36,8 @@ QUESTION = "What is the team locker number? Reply with the code only."
 
 @pytest.fixture(scope="module")
 def runtime():
-    from ceng import runtime as runtime_lib
-    from ceng.cache import sqlite as cache_sqlite
+    from foveate import runtime as runtime_lib
+    from foveate.cache import sqlite as cache_sqlite
 
     rt = runtime_lib.Runtime(
         backend=conftest.make_backend(),
@@ -58,7 +58,7 @@ def test_pydantic_ai_agent_with_history_processor(runtime):
     from pydantic_ai.models.openai import OpenAIChatModel
     from pydantic_ai.providers.openai import OpenAIProvider
 
-    from ceng.integrations import pydantic_ai as ceng_pai
+    from foveate.integrations import pydantic_ai as foveate_pai
 
     model = OpenAIChatModel(
         conftest.MODEL,
@@ -66,7 +66,7 @@ def test_pydantic_ai_agent_with_history_processor(runtime):
             base_url=conftest.BASE_URL, api_key=conftest.API_KEY
         ),
     )
-    processor = ceng_pai.history_processor(runtime, budget=450, keep_last=2)
+    processor = foveate_pai.history_processor(runtime, budget=450, keep_last=2)
     agent = Agent(
         model,
         capabilities=[ProcessHistory(processor)],
@@ -96,9 +96,9 @@ def test_adk_agent_with_before_model_callback(runtime):
     from google.adk.sessions import InMemorySessionService
     from google.genai import types
 
-    from ceng.integrations import adk as ceng_adk
+    from foveate.integrations import adk as foveate_adk
 
-    callback = ceng_adk.model_callback(runtime, budget=450, keep_last=2)
+    callback = foveate_adk.model_callback(runtime, budget=450, keep_last=2)
     agent = LlmAgent(
         name="assistant",
         model=LiteLlm(
@@ -115,7 +115,7 @@ def test_adk_agent_with_before_model_callback(runtime):
     async def go() -> str:
         sessions = InMemorySessionService()
         session = await sessions.create_session(
-            app_name="ceng-test", user_id="u", session_id="s"
+            app_name="foveate-test", user_id="u", session_id="s"
         )
         for kind, text in OLD_TURNS:
             content = types.Content(
@@ -130,7 +130,7 @@ def test_adk_agent_with_before_model_callback(runtime):
                 ),
             )
         runner = Runner(
-            agent=agent, app_name="ceng-test", session_service=sessions
+            agent=agent, app_name="foveate-test", session_service=sessions
         )
         answer = ""
         async for event in runner.run_async(
@@ -161,9 +161,9 @@ def test_langgraph_react_agent_with_pre_model_hook(runtime):
     from langchain_openai import ChatOpenAI
     from langgraph.prebuilt import create_react_agent
 
-    from ceng.integrations import langgraph as ceng_lg
+    from foveate.integrations import langgraph as foveate_lg
 
-    node = ceng_lg.compression_node(runtime, budget=450, keep_last=2)
+    node = foveate_lg.compression_node(runtime, budget=450, keep_last=2)
     model = ChatOpenAI(
         model=conftest.MODEL,
         base_url=conftest.BASE_URL,
@@ -191,9 +191,9 @@ def test_langgraph_node_can_persist_the_compressed_history(runtime):
     from langchain_core.messages import AIMessage, HumanMessage
     from langgraph.graph import END, START, MessagesState, StateGraph
 
-    from ceng.integrations import langgraph as ceng_lg
+    from foveate.integrations import langgraph as foveate_lg
 
-    node = ceng_lg.compression_node(
+    node = foveate_lg.compression_node(
         runtime, budget=450, keep_last=2, persist=True
     )
     builder = StateGraph(MessagesState)

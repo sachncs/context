@@ -19,7 +19,7 @@ const idleBtn =
 const preCls = "font-mono text-[0.8rem] leading-6 text-slate-400";
 
 const code = {
-  compress: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng <span class="k-token-4">import</span> <span class="k-token-1">Context</span>, <span class="k-token-1">Runtime</span>
+  compress: `<pre class="${preCls}"><code><span class="k-token-4">from</span> foveate <span class="k-token-4">import</span> <span class="k-token-1">Context</span>, <span class="k-token-1">Runtime</span>
 
 context = Context.<span class="k-token-1">from_dicts</span>(
     [
@@ -35,7 +35,7 @@ context = Context.<span class="k-token-1">from_dicts</span>(
 )
 <span class="k-token-4">print</span>(small.<span class="k-token-2">report</span>)</code></pre>`,
 
-  verify: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng <span class="k-token-4">import</span> <span class="k-token-1">Context</span>
+  verify: `<pre class="${preCls}"><code><span class="k-token-4">from</span> foveate <span class="k-token-4">import</span> <span class="k-token-1">Context</span>
 
 verdict = context.<span class="k-token-1">verify</span>(
     <span class="k-token-3">"macro_fallacy"</span>,
@@ -52,7 +52,7 @@ verdict = context.<span class="k-token-1">verify</span>(
 
 <span class="k-token-4">print</span>(verdict.<span class="k-token-2">passed</span>)  <span class="k-cmt"># False ⇒ macro fallacy</span></code></pre>`,
 
-  evolve: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng.evolution <span class="k-token-4">import</span> <span class="k-token-1">Evolver</span>, <span class="k-token-1">Playbook</span>
+  evolve: `<pre class="${preCls}"><code><span class="k-token-4">from</span> foveate.evolution <span class="k-token-4">import</span> <span class="k-token-1">Evolver</span>, <span class="k-token-1">Playbook</span>
 
 result = <span class="k-token-1">Evolver</span>(runtime).<span class="k-token-1">evolve</span>(
     <span class="k-token-1">Playbook</span>(),
@@ -63,7 +63,7 @@ result = <span class="k-token-1">Evolver</span>(runtime).<span class="k-token-1"
 )
 <span class="k-cmt"># Generator → Reflector → Curator with ADD / UPDATE / MERGE / DELETE</span></code></pre>`,
 
-  compact: `<pre class="${preCls}"><code><span class="k-token-4">from</span> ceng <span class="k-token-4">import</span> <span class="k-token-1">Context</span>
+  compact: `<pre class="${preCls}"><code><span class="k-token-4">from</span> foveate <span class="k-token-4">import</span> <span class="k-token-1">Context</span>
 
 small = context.<span class="k-token-1">compress</span>(
     <span class="k-token-3">"ushape"</span>,
@@ -131,7 +131,7 @@ small = context.<span class="k-token-1">compress</span>(
         <div data-panel="compress" class="tab-panel is-active">
           <CodeWindow
             file="compress.py"
-            title={'python -c "from ceng import Context"'}
+            title={'python -c "from foveate import Context"'}
             note="260k tokens in, a golden summary out — leaves summarised in isolation, combined without macro fallacies."
           >
             <Fragment set:html={code.compress} />
@@ -141,7 +141,7 @@ small = context.<span class="k-token-1">compress</span>(
         <div data-panel="verify" class="tab-panel">
           <CodeWindow
             file="check.py"
-            title={'python -c "from ceng.verification import MacroFallacy"'}
+            title={'python -c "from foveate.verification import MacroFallacy"'}
             note="Population-level and per-leaf answers are compared automatically. A mismatch is your early warning."
           >
             <Fragment set:html={code.verify} />
@@ -151,7 +151,7 @@ small = context.<span class="k-token-1">compress</span>(
         <div data-panel="evolve" class="tab-panel">
           <CodeWindow
             file="evolver.py"
-            title={'python -c "from ceng.evolution import Evolver"'}
+            title={'python -c "from foveate.evolution import Evolver"'}
             note="Paper defaults out of the box: 5 reflector rounds, 0.90 dedup, 80k-token playbook budget."
           >
             <Fragment set:html={code.evolve} />
@@ -161,7 +161,7 @@ small = context.<span class="k-token-1">compress</span>(
         <div data-panel="compact" class="tab-panel">
           <CodeWindow
             file="compact.py"
-            title={'python -c "from ceng import Context"'}
+            title={'python -c "from foveate import Context"'}
             note="The system role is never dropped or altered — a ValueError guards it at the boundary."
           >
             <Fragment set:html={code.compact} />

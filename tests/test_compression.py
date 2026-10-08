@@ -4,11 +4,11 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from ceng import Context, Message, Role, compression, errors
-from ceng import runtime as runtime_lib
-from ceng.cache import base as cache_base
-from ceng.compression import Budget, Overflow
-from ceng.tokenizers import HeuristicTokenizer
+from foveate import Context, Message, Role, compression, errors
+from foveate import runtime as runtime_lib
+from foveate.cache import base as cache_base
+from foveate.compression import Budget, Overflow
+from foveate.tokenizers import HeuristicTokenizer
 from tests import faults as scripted
 
 
@@ -102,7 +102,7 @@ class TestBudgetAndReport:
             c.compress("truncate", budget=Budget(1, Overflow.RAISE))
 
     def test_report_usage_and_cost(self):
-        from ceng import usage
+        from foveate import usage
 
         rt, _ = make_runtime(
             prices=usage.PriceTable({"gpt-4o-mini": usage.Price(1e6, 1e6)})
@@ -192,7 +192,7 @@ class TestPpa:
             ctx_of(rt).compress("ppa", budget=100, leaf_tokens=16, max_leaves=2)
 
     def test_prompt_change_invalidates_cache(self):
-        from ceng.compression import ppa
+        from foveate.compression import ppa
 
         rt, backend = make_runtime()
         c = ctx_of(rt, "word " * 400)
@@ -515,7 +515,7 @@ class TestFairAllocation:
     budget=st.integers(min_value=1, max_value=3000),
 )
 def test_fair_targets_properties(sizes, budget):
-    from ceng.compression import fit
+    from foveate.compression import fit
 
     tok = HeuristicTokenizer(chars_per_token=1.0)
     messages = tuple(Message(Role.USER, "x" * n) for n in sizes)

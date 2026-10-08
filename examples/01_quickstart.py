@@ -2,7 +2,7 @@
 
 import common
 
-from ceng import Context, Message, Role
+from foveate import Context, Message, Role
 
 
 def main() -> None:

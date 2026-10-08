@@ -5,8 +5,8 @@ from pathlib import Path
 
 import common
 
-from ceng import Context, Message, Role, Runtime
-from ceng.backends import OpenAIBackend, ResilientBackend, RetryPolicy
+from foveate import Context, Message, Role, Runtime
+from foveate.backends import OpenAIBackend, ResilientBackend, RetryPolicy
 
 
 def main() -> None:

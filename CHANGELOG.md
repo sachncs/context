@@ -29,17 +29,17 @@ what changed so you can port, not how to keep old code running.
 - SQLite cache with TTL, size bound and corruption recovery; cache keys cover
   the full request and prompt/strategy versions.
 - OKF persistence as `Context.save/load` (plus `json`), atomic bundle writes.
-- `ceng.integrations`: Pydantic AI history processor, Google ADK
+- `foveate.integrations`: Pydantic AI history processor, Google ADK
   `before_model_callback` and LangGraph node / `pre_model_hook`, built on a
   framework-neutral `HistoryCompressor`.
-- Real-provider support: `CENG_BASE_URL`, `CENG_OPTIONS`, per-request provider
+- Real-provider support: `FOVEATE_BASE_URL`, `FOVEATE_OPTIONS`, per-request provider
   `options`, truncation-aware retries for reasoning models, a shorten pass for
   over-long summaries, `Runtime.without_llm()`.
 - A real-model integration suite (`tests/integration`).
 - `FilesystemNotesStore` with persisted tags/timestamps, atomic writes and
   cross-process locking.
-- `ceng.evolution` (ACE) with typed curator operations, checkpoint/resume and
-  per-step error isolation; `ceng.bench` with a real playbook-injecting arm.
+- `foveate.evolution` (ACE) with typed curator operations, checkpoint/resume and
+  per-step error isolation; `foveate.bench` with a real playbook-injecting arm.
 - Strict typing (`mypy --strict`), Google-style docstrings, a no-underscore
   naming gate, property-based tests, a 90% coverage gate, CI on Linux, macOS
   and Windows.
@@ -47,7 +47,7 @@ what changed so you can port, not how to keep old code running.
 ### Fixed (defects in 1.x)
 
 - `budget_tokens` was never enforced.
-- The benchmark "ceng" arm contained no playbook (it measured the baseline
+- The benchmark "foveate" arm contained no playbook (it measured the baseline
   against itself); benchmark fixtures were missing from the wheel.
 - Evolver cache keys ignored the question/playbook and curator bullet ids
   collided across steps; `curator_frequency` only gated trimming; reflection was
@@ -63,9 +63,9 @@ what changed so you can port, not how to keep old code running.
 ### Removed
 
 - `ppa_compress`, `compress_to_bundle`, `ppa_compress_to_okf`,
-  `compact_messages`, `ppa_check`, `NotesManager`, `ceng.notes`,
-  `ceng.compact`, `ceng.check`, `ceng.presets`, `ceng.playbooks`, `ceng.eval`,
-  `ceng.tokens`, `ceng.log`, `ceng.compress`, and the `ceng-bench` command
+  `compact_messages`, `ppa_check`, `NotesManager`, `foveate.notes`,
+  `foveate.compact`, `foveate.check`, `foveate.presets`, `foveate.playbooks`, `foveate.eval`,
+  `foveate.tokens`, `foveate.log`, `foveate.compress`, and the `foveate-bench` command
   (v2 ships no command line; use the Python API).
 - The global backend registry functions (`set_backend`, `get_backend`, ...).
 - `ScriptedBackend` and the simulated `--offline` benchmark mode (fault

@@ -4,14 +4,14 @@ import pytest
 from hypothesis import given, settings
 from hypothesis import strategies as st
 
-from ceng import errors
-from ceng.internals import concurrency
-from ceng.partition import (
+from foveate import errors
+from foveate.internals import concurrency
+from foveate.partition import (
     FixedWindowPartitioner,
     Partitioner,
     RecursivePartitioner,
 )
-from ceng.tokenizers import HeuristicTokenizer
+from foveate.tokenizers import HeuristicTokenizer
 
 TOK = HeuristicTokenizer()
 

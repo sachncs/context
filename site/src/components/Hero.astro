@@ -1,21 +1,21 @@
 ---
 import Icons from "./Icons.astro";
 const gh = "https://github.com/sachncs/context";
-const pypi = "https://pypi.org/project/ceng-context/";
-const cmd = "pip install ceng-context";
+const pypi = "https://pypi.org/project/foveate/";
+const cmd = "pip install foveate";
 ---
 <section id="top" class="hero relative overflow-hidden pt-32 pb-20 sm:pt-44 sm:pb-28">
   <div aria-hidden="true" class="pointer-events-none absolute inset-0"><div class="glow-a -top-64 left-1/2 -ml-[420px] opacity-70"></div><div class="bg-grid absolute inset-0"></div></div>
   <div class="relative mx-auto max-w-6xl px-5 sm:px-6 lg:px-8"><div class="grid items-center gap-16 lg:grid-cols-[.92fr_1.08fr] lg:gap-20">
     <div><div class="hero-in inline-flex items-center gap-2 rounded-full border border-brand-400/25 bg-brand-500/[.08] px-3.5 py-2 text-[.76rem] font-semibold tracking-[.08em] text-brand-200 uppercase" style="--hero-delay:0ms"><span class="h-1.5 w-1.5 rounded-full bg-cyan-glow"></span>Open-source Python toolkit</div>
       <h1 class="hero-in mt-7 max-w-xl text-balance text-[3.4rem] leading-[.98] font-semibold tracking-[-.055em] text-white sm:text-7xl" style="--hero-delay:80ms">Make long context <span class="text-gradient">work harder.</span></h1>
-      <p class="hero-in mt-7 max-w-xl text-[1.08rem] leading-8 text-slate-400 sm:text-xl" style="--hero-delay:160ms">ceng gives your LLM applications a small, dependable set of tools for compressing, checking, and storing context — without taking over your stack.</p>
+      <p class="hero-in mt-7 max-w-xl text-[1.08rem] leading-8 text-slate-400 sm:text-xl" style="--hero-delay:160ms">foveate gives your LLM applications a small, dependable set of tools for compressing, checking, and storing context — without taking over your stack.</p>
       <div class="hero-in mt-9 flex flex-col gap-3 sm:flex-row" style="--hero-delay:240ms"><a href={pypi} target="_blank" rel="noreferrer" class="btn btn-primary px-6 py-3.5 text-[.92rem]">Install from PyPI <Icons name="arrow-right" class="h-4 w-4" /></a><a href={gh} target="_blank" rel="noreferrer" class="btn btn-ghost px-6 py-3.5 text-[.92rem]"><Icons name="github" class="h-4 w-4" strokeWidth={0} /> View source</a></div>
       <button data-copy={cmd} class="hero-in mt-6 flex items-center gap-3 font-mono text-[.82rem] text-slate-500 transition-colors hover:text-slate-200" style="--hero-delay:320ms" aria-label="Copy install command"><span class="text-brand-300">$</span><span>{cmd}</span><Icons name="copy" class="h-3.5 w-3.5" /><span class="copy-feedback" aria-hidden="true">Copied</span></button>
     </div>
     <div class="hero-in" style="--hero-delay:180ms"><div class="product-panel overflow-hidden rounded-[1.5rem] border border-white/12 bg-[#0a0d18]/95 shadow-[0_40px_100px_-35px_rgba(77,125,255,.38)]">
       <div class="flex items-center justify-between border-b border-white/8 px-5 py-4"><div class="flex items-center gap-2"><span class="h-2.5 w-2.5 rounded-full bg-[#ff605c]"></span><span class="h-2.5 w-2.5 rounded-full bg-[#ffbd44]"></span><span class="h-2.5 w-2.5 rounded-full bg-[#00ca4e]"></span></div><span class="font-mono text-[.7rem] text-slate-500">context_pipeline.py</span></div>
-      <div class="grid gap-0 md:grid-cols-[1.1fr_.9fr]"><div class="code-scroll overflow-x-auto border-b border-white/8 p-6 font-mono text-[.78rem] leading-7 md:border-r md:border-b-0"><pre class="text-slate-400"><code><span class="k-token-4">from</span> ceng <span class="k-token-4">import</span> <span class="k-token-1">Context</span>, <span class="k-token-1">Runtime</span>
+      <div class="grid gap-0 md:grid-cols-[1.1fr_.9fr]"><div class="code-scroll overflow-x-auto border-b border-white/8 p-6 font-mono text-[.78rem] leading-7 md:border-r md:border-b-0"><pre class="text-slate-400"><code><span class="k-token-4">from</span> foveate <span class="k-token-4">import</span> <span class="k-token-1">Context</span>, <span class="k-token-1">Runtime</span>
 
 context = Context.<span class="k-token-1">from_dicts</span>(<span class="k-token-1">load_history</span>(), Runtime.<span class="k-token-1">from_env</span>())
 

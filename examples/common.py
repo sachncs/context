@@ -3,14 +3,14 @@
 Examples that call a model read their configuration from the environment
 (see the README). For a quick try with an OpenAI-compatible endpoint:
 
-    export CENG_BACKEND=openai
-    export CENG_BASE_URL=https://integrate.api.nvidia.com/v1
-    export CENG_MODEL=openai/gpt-oss-20b
-    export CENG_OPTIONS='{"reasoning_effort": "low"}'
+    export FOVEATE_BACKEND=openai
+    export FOVEATE_BASE_URL=https://integrate.api.nvidia.com/v1
+    export FOVEATE_MODEL=openai/gpt-oss-20b
+    export FOVEATE_OPTIONS='{"reasoning_effort": "low"}'
     export OPENAI_API_KEY=<your key>
 """
 
-from ceng import Runtime
+from foveate import Runtime
 
 
 def long_document(facts: int = 6) -> str:
@@ -29,5 +29,5 @@ def long_document(facts: int = 6) -> str:
 
 
 def model_runtime() -> Runtime:
-    """Returns a runtime configured from `CENG_*` environment variables."""
+    """Returns a runtime configured from `FOVEATE_*` environment variables."""
     return Runtime.from_env()

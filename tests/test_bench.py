@@ -3,8 +3,8 @@ import json
 
 import pytest
 
-from ceng import errors
-from ceng.bench import Arm, Benchmark, DDXPlus, Finer, Formula, Runner
+from foveate import errors
+from foveate.bench import Arm, Benchmark, DDXPlus, Finer, Formula, Runner
 from tests.test_compression import make_runtime
 
 
@@ -41,7 +41,7 @@ class TestFixturesAndSeeds:
     def test_fixtures_are_in_package_data(self):
         import importlib.resources
 
-        root = importlib.resources.files("ceng.bench")
+        root = importlib.resources.files("foveate.bench")
         for name in ("finer", "formula", "ddxplus"):
             assert root.joinpath("fixtures").joinpath(f"{name}.jsonl").is_file()
             assert root.joinpath("seeds").joinpath(f"{name}.md").is_file()

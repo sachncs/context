@@ -2,8 +2,8 @@ import json
 
 import pytest
 
-from ceng import errors
-from ceng.evolution import (
+from foveate import errors
+from foveate.evolution import (
     AddOp,
     Bullet,
     Checkpoint,
@@ -18,8 +18,8 @@ from ceng.evolution import (
     UpdateOp,
     roles,
 )
-from ceng.messages import Role
-from ceng.tokenizers import HeuristicTokenizer
+from foveate.messages import Role
+from foveate.tokenizers import HeuristicTokenizer
 from tests.test_compression import make_runtime
 
 TOK = HeuristicTokenizer()

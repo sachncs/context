@@ -1,9 +1,9 @@
-"""Enforces the project's no-underscore naming rule over src/."""
+"""Enforces the project's no-underscore naming rule over the package."""
 
 import ast
 import pathlib
 
-SOURCE = pathlib.Path(__file__).resolve().parents[1] / "src" / "ceng"
+SOURCE = pathlib.Path(__file__).resolve().parents[1] / "foveate"
 
 
 def is_semi_private(name: str) -> bool:

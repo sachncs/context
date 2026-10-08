@@ -12,11 +12,13 @@ from tests.test_examples import EXAMPLES
 
 @pytest.fixture
 def example_env(monkeypatch):
-    monkeypatch.setenv("CENG_BACKEND", "openai")
-    monkeypatch.setenv("CENG_BASE_URL", conftest.BASE_URL)
-    monkeypatch.setenv("CENG_MODEL", conftest.MODEL)
-    monkeypatch.setenv("CENG_OPTIONS", json.dumps({"reasoning_effort": "low"}))
-    monkeypatch.setenv("CENG_CACHE_DIR", str(conftest.CACHE_DIR))
+    monkeypatch.setenv("FOVEATE_BACKEND", "openai")
+    monkeypatch.setenv("FOVEATE_BASE_URL", conftest.BASE_URL)
+    monkeypatch.setenv("FOVEATE_MODEL", conftest.MODEL)
+    monkeypatch.setenv(
+        "FOVEATE_OPTIONS", json.dumps({"reasoning_effort": "low"})
+    )
+    monkeypatch.setenv("FOVEATE_CACHE_DIR", str(conftest.CACHE_DIR))
     monkeypatch.setenv("OPENAI_API_KEY", conftest.API_KEY or "")
     monkeypatch.syspath_prepend(str(EXAMPLES))
 
@@ -38,7 +40,7 @@ def test_example_runs(name, example_env, capsys):
 def test_runtime_from_env_reaches_the_real_provider(example_env):
     import asyncio
 
-    from ceng import Runtime, messages
+    from foveate import Runtime, messages
 
     with Runtime.from_env() as runtime:
         out = asyncio.run(

@@ -3,8 +3,8 @@ import random
 
 import pytest
 
-from ceng import errors, messages, observability
-from ceng.backends import base, resilient
+from foveate import errors, messages, observability
+from foveate.backends import base, resilient
 from tests import faults as scripted
 
 USER = (messages.Message(messages.Role.USER, "hello"),)

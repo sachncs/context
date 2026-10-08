@@ -31,8 +31,8 @@ jobs:
           pip install -e ".[dev,tokenize]"
       - name: Lint
         run: |
-          ruff check src tests examples
-          ruff format --check src tests examples
+          ruff check foveate tests examples
+          ruff format --check foveate tests examples
       - name: Type check
         run: mypy
       - name: Unit tests (includes the no-underscore naming gate)
@@ -88,17 +88,17 @@ jobs:
           import glob, zipfile
           names = zipfile.ZipFile(glob.glob("dist/*.whl")[0]).namelist()
           for name in ("finer", "formula", "ddxplus"):
-              assert f"ceng/bench/fixtures/{name}.jsonl" in names, name
-              assert f"ceng/bench/seeds/{name}.md" in names, name
-          assert "ceng/py.typed" in names
+              assert f"foveate/bench/fixtures/{name}.jsonl" in names, name
+              assert f"foveate/bench/seeds/{name}.md" in names, name
+          assert "foveate/py.typed" in names
           PY
       - name: Install outside the checkout and smoke test
         run: |
           python -m venv "$RUNNER_TEMP/venv"
           "$RUNNER_TEMP/venv/bin/pip" install dist/*.whl
           cd "$RUNNER_TEMP"
-          "$RUNNER_TEMP/venv/bin/python" -I -c "import ceng, importlib.metadata as m; assert ceng.__version__ == m.version('ceng-context')"
-          "$RUNNER_TEMP/venv/bin/python" -I -c "from ceng.bench import Formula; assert len(Formula().seed_playbook()) > 0 and len(Formula().load_samples()) == 20"
+          "$RUNNER_TEMP/venv/bin/python" -I -c "import foveate, importlib.metadata as m; assert foveate.__version__ == m.version('foveate')"
+          "$RUNNER_TEMP/venv/bin/python" -I -c "from foveate.bench import Formula; assert len(Formula().seed_playbook()) > 0 and len(Formula().load_samples()) == 20"
 
   site:
     runs-on: ubuntu-latest

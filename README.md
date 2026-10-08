@@ -1,9 +1,9 @@
-# ceng
+# foveate
 
 Context engineering for LLMs, with one noun: **`Context`**.
 
 ```python
-from ceng import Context, Runtime
+from foveate import Context, Runtime
 
 context = Context.from_dicts(messages, Runtime.from_env())
 smaller = context.compress("ppa", budget=4000)     # -> a new Context
@@ -16,17 +16,17 @@ print(smaller.report)                              # tokens, steps, usage, cost
 the context fits, or `BudgetExceededError` is raised, or (opt-in) the result is
 hard-truncated and the report says so.
 
-- Package on PyPI: `ceng-context` · import name: `ceng` · Python 3.10-3.13
+- Package on PyPI: `foveate` · import name: `foveate` · Python 3.10-3.13
 - v2 is a breaking rewrite; see [CHANGELOG.md](CHANGELOG.md).
 
 ## Install
 
 ```bash
-pip install ceng-context                 # core (PyYAML only)
-pip install "ceng-context[litellm]"      # any provider via LiteLLM (default backend)
-pip install "ceng-context[openai]"       # OpenAI SDK / compatible servers
-pip install "ceng-context[vllm]"         # in-process vLLM
-pip install "ceng-context[tokenize]"     # exact token counts with tiktoken
+pip install foveate                 # core (PyYAML only)
+pip install "foveate[litellm]"      # any provider via LiteLLM (default backend)
+pip install "foveate[openai]"       # OpenAI SDK / compatible servers
+pip install "foveate[vllm]"         # in-process vLLM
+pip install "foveate[tokenize]"     # exact token counts with tiktoken
 ```
 
 Credentials come from the provider's usual environment variables.
@@ -84,7 +84,7 @@ ctx.compress("window+extractive", budget=4000)
 
 ## Agent frameworks
 
-`ceng.integrations` puts compression in the history path of three frameworks.
+`foveate.integrations` puts compression in the history path of three frameworks.
 Each keeps the newest turns verbatim, summarises the older ones as one
 transcript (falling back to an offline method if the model is unreachable),
 and never splits a tool call from its result. Runnable demos are in
@@ -92,9 +92,9 @@ and never splits a tool call from its result. Runnable demos are in
 
 | Framework | Hook | Demo |
 |---|---|---|
-| Pydantic AI (2.x) | `Agent(capabilities=[ProcessHistory(ceng_pai.history_processor(runtime, budget=4000))])` | `05_pydantic_ai.py` |
-| Google ADK (1.10 and 2.x) | `LlmAgent(before_model_callback=ceng_adk.model_callback(runtime, budget=4000))` | `06_google_adk.py` |
-| LangGraph (1.x) | `create_react_agent(model, tools, pre_model_hook=ceng_lg.compression_node(runtime, budget=4000))` | `07_langgraph.py` |
+| Pydantic AI (2.x) | `Agent(capabilities=[ProcessHistory(foveate_pai.history_processor(runtime, budget=4000))])` | `05_pydantic_ai.py` |
+| Google ADK (1.10 and 2.x) | `LlmAgent(before_model_callback=foveate_adk.model_callback(runtime, budget=4000))` | `06_google_adk.py` |
+| LangGraph (1.x) | `create_react_agent(model, tools, pre_model_hook=foveate_lg.compression_node(runtime, budget=4000))` | `07_langgraph.py` |
 
 In a real run of the demos a ~460-token history shrank to 40-55 tokens and
 the agent still answered a question about a fact in the oldest turn. The
@@ -112,8 +112,8 @@ smaller.save("ctx.json", format="json")
 Context.load("ctx/", runtime=runtime) # round-trips messages, report and metadata
 ```
 
-`ceng.evolution` implements ACE playbooks (Generator, Reflector, Curator) and
-`ceng.bench` measures them; see [BENCHMARKS.md](BENCHMARKS.md).
+`foveate.evolution` implements ACE playbooks (Generator, Reflector, Curator) and
+`foveate.bench` measures them; see [BENCHMARKS.md](BENCHMARKS.md).
 
 ## Configuration
 
@@ -123,22 +123,22 @@ tokenizer, observers, price table). There are no global singletons.
 
 | Variable | Default | Meaning |
 |---|---|---|
-| `CENG_BACKEND` | `litellm` | `litellm`, `openai`, `vllm` |
-| `CENG_MODEL` | `gpt-4o-mini` | Model id |
-| `CENG_BASE_URL` | unset | OpenAI-compatible endpoint (`openai` / `litellm` backends) |
-| `CENG_OPTIONS` | `{}` | JSON of provider parameters sent with every call, e.g. `{"reasoning_effort": "low"}` |
-| `CENG_CACHE_DIR` | `.ceng/cache` | SQLite cache directory; empty disables caching |
-| `CENG_TIMEOUT_SECONDS` | `60` | Per-call timeout |
-| `CENG_RETRY_ATTEMPTS` | `3` | Attempts for transient failures |
-| `CENG_CONCURRENCY` | `8` | Parallel LLM calls |
-| `CENG_RATE_LIMIT_PER_SECOND` | unset | Ceiling on LLM calls started per second |
-| `CENG_DEADLINE_SECONDS` | unset | Total time allowed for one request across retries |
+| `FOVEATE_BACKEND` | `litellm` | `litellm`, `openai`, `vllm` |
+| `FOVEATE_MODEL` | `gpt-4o-mini` | Model id |
+| `FOVEATE_BASE_URL` | unset | OpenAI-compatible endpoint (`openai` / `litellm` backends) |
+| `FOVEATE_OPTIONS` | `{}` | JSON of provider parameters sent with every call, e.g. `{"reasoning_effort": "low"}` |
+| `FOVEATE_CACHE_DIR` | `.foveate/cache` | SQLite cache directory; empty disables caching |
+| `FOVEATE_TIMEOUT_SECONDS` | `60` | Per-call timeout |
+| `FOVEATE_RETRY_ATTEMPTS` | `3` | Attempts for transient failures |
+| `FOVEATE_CONCURRENCY` | `8` | Parallel LLM calls |
+| `FOVEATE_RATE_LIMIT_PER_SECOND` | unset | Ceiling on LLM calls started per second |
+| `FOVEATE_DEADLINE_SECONDS` | unset | Total time allowed for one request across retries |
 
 **Reasoning models** (gpt-oss, DeepSeek, Nemotron, ...) spend part of the
-token cap on hidden thinking and may return nothing visible. ceng detects a
+token cap on hidden thinking and may return nothing visible. foveate detects a
 truncated reply with (almost) no visible text and retries with a larger cap
 (up to 3 times, 4x each); set a low `reasoning_effort` through
-`CENG_OPTIONS` to keep calls cheap and fast.
+`FOVEATE_OPTIONS` to keep calls cheap and fast.
 
 Resilience is built in: retries with jittered backoff for transient errors
 only, circuit breaker, timeouts, bounded concurrency, single-flight
@@ -163,8 +163,8 @@ that depends on model behaviour is tested against a real provider in
 `tests/integration/` and skipped unless a key is set:
 
 ```bash
-export NVIDIA_API_KEY=...          # or CENG_TEST_API_KEY, any OpenAI-compatible key
-pytest tests/integration           # CENG_TEST_BASE_URL / CENG_TEST_MODEL override the target
+export NVIDIA_API_KEY=...          # or FOVEATE_TEST_API_KEY, any OpenAI-compatible key
+pytest tests/integration           # FOVEATE_TEST_BASE_URL / FOVEATE_TEST_MODEL override the target
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md). Examples in [`examples/`](examples/) are

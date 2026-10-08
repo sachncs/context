@@ -4,8 +4,8 @@ import dataclasses
 
 import pytest
 
-from ceng import Message, Role, errors
-from ceng.integrations import history
+from foveate import Message, Role, errors
+from foveate.integrations import history
 from tests import faults
 from tests.test_compression import make_runtime
 
