@@ -30,6 +30,7 @@ from foveate.context import Context
 from foveate.documents import Document
 from foveate.foveator import Foveator, Index, Plan
 from foveate.grounding import Answer, Citation
+from foveate.memory import Memory
 from foveate.messages import Message, Role
 from foveate.runtime import Runtime
 
@@ -45,6 +46,7 @@ __all__ = [
     "Document",
     "Foveator",
     "Index",
+    "Memory",
     "Message",
     "Overflow",
     "Plan",
