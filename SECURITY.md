@@ -26,4 +26,4 @@ production credentials in the initial report.
 - Triage and severity assessment within **7 business days**.
 - Fix timeline negotiated based on severity and exploitability.
 
-Thank you for helping keep `context` and its users safe.
+Thank you for helping keep Foveate and its users safe.

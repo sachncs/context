@@ -1,180 +1,108 @@
-# foveate
+# Foveate
 
-Context engineering for LLMs, with one noun: **`Context`**.
+**Context engineering for LLM apps: put the right pages in the window, and prove the answer.**
+
+Upload a 200-page filing and ask a question. Foveate shows the model the pages
+that matter at full detail, the pages around them condensed, and an outline of
+the rest, then checks that every citation in the answer really appears on the
+page it names.
 
 ```python
-from foveate import Context, Runtime
+from foveate import Document, Foveator, Runtime
 
-context = Context.from_dicts(messages, Runtime.from_env())
-smaller = context.compress("ppa", budget=4000)     # -> a new Context
+document = Document.load("annual_report.pdf")              # pip install "foveate[pdf]"
+with Runtime.from_env() as runtime:
+    answer = Foveator(runtime).ask(
+        "What were capital expenditures in fiscal 2018?", [document]
+    )
 
-print(smaller.report)                              # tokens, steps, usage, cost
+print(answer.text)                  # "... $1,577 million"
+print(answer.pages)                 # [("annual_report", 60)]
+print(answer.grounded)              # True: every quote was found on its cited page
 ```
 
-`compress` never mutates. It returns a new frozen `Context` that carries a
-`CompressionReport`, and it **guarantees the result fits the budget**: either
-the context fits, or `BudgetExceededError` is raised, or (opt-in) the result is
-hard-truncated and the report says so.
+When the document does not contain the answer, you get an explicit
+`abstained=True` instead of a confident guess.
 
-- Package on PyPI: `foveate` · import name: `foveate` · Python 3.10-3.13
-- v2 is a breaking rewrite; see [CHANGELOG.md](CHANGELOG.md).
+## Why
+
+| Without Foveate | With Foveate |
+|---|---|
+| Whole document exceeds the window, or silently truncates | Page-level selection under a token budget you set |
+| 100k+ tokens per question, slow and costly | A fraction of the tokens ([measured](docs/benchmarks.md)) |
+| Answers cannot be audited | `(document, page, quote)` citations, verified against the source |
+| Wrong answers when the file lacks the fact | Abstention |
+| Agents drown in tool output and history | Page tools, history compression, tool-output reducers |
+
+<!-- RESULTS -->
+
+## What you get
+
+* **Documents**: PDF, DOCX, HTML, Markdown, text as page-addressable `Document`s;
+  `doc.select("10-14,40")`, `doc.around(40, radius=2)`.
+* **Selection**: BM25 (no dependencies), embeddings, hybrid fusion, model re-rank.
+* **Foveation**: full / condensed / outline tiers within your token budget.
+* **Grounding**: verified page citations, retry with feedback, abstention.
+* **Plan**: `Foveator.plan(...)` shows tokens and cost before any model call.
+* **Agents**: `read_pages`, `search_document`, `document_outline` tools and
+  history compression for Pydantic AI, Google ADK and LangGraph.
+* **Compression**: `Context(...).compress("ppa", budget=4000)` for chat history
+  and `"tool_output"` for JSON/CSV/HTML/log results; several methods need no model.
+* **Reliability**: retry with jitter, timeouts, circuit breaker, rate limits,
+  caching, single-flight; typed events, metrics and OpenTelemetry spans.
+* **Local models**: any OpenAI-compatible server, in-process vLLM, and a Docker
+  recipe for vLLM on CPU.
+* **Evaluation**: a long-document benchmark with gold sets you can rerun on your data.
 
 ## Install
 
 ```bash
-pip install foveate                 # core (PyYAML only)
-pip install "foveate[litellm]"      # any provider via LiteLLM (default backend)
-pip install "foveate[openai]"       # OpenAI SDK / compatible servers
-pip install "foveate[vllm]"         # in-process vLLM
-pip install "foveate[tokenize]"     # exact token counts with tiktoken
+pip install foveate                   # core, no required dependencies
+pip install "foveate[pdf]"            # read PDFs
+pip install "foveate[openai]"         # OpenAI SDK / vLLM / Ollama / NVIDIA endpoints
+pip install "foveate[litellm]"        # 100+ providers through LiteLLM
+pip install "foveate[frameworks]"     # Pydantic AI, Google ADK, LangGraph
 ```
 
-Credentials come from the provider's usual environment variables.
+Also: `docx`, `tokenize` (tiktoken), `vllm`. Python 3.10-3.13 on Linux, macOS and Windows.
 
-## Compression methods
-
-`method` is a registered name, a composition, or a configured instance.
-
-| Method | Needs LLM | What it does |
-|---|---|---|
-| `ppa` | yes | Partition, summarise leaves concurrently, aggregate (Wolf et al., 2026). |
-| `hierarchical` | yes | Repeats PPA rounds until the budget is met. |
-| `ushape` | yes* | Keeps head and tail turns; summarises (or drops) the middle. |
-| `window` | no | Drops the oldest turns; system messages are kept. |
-| `truncate` | no | Cuts oversize messages (`keep=head\|tail\|middle`). |
-| `extractive` | no | Keeps the highest-scoring sentences, in order. |
-| `offload` | no | Moves old turns to a notes store and leaves a retrieval pointer. |
-
-\* `ushape` with `middle="drop"` needs no LLM.
-
-Budget is shared across messages by max-min fairness: system messages are
-protected, messages below the fair share are untouched, larger ones are
-compressed to it.
-
-```python
-context.compress("ushape+ppa", budget=4000)              # pipeline: stop as soon as it fits
-context.compress("ppa|extractive", budget=4000)          # fallback if the LLM path fails
-context.compress("ppa", budget=4000, leaf_tokens=512)    # strategy options as kwargs
-context.compress("ushape+ppa", budget=4000, ppa={"leaf_tokens": 512})  # per-stage options
-context.compress(                                         # hard-truncate instead of raising
-    "ppa", budget=Budget(4000, Overflow.TRUNCATE)
-)
-await context.acompress("ppa", budget=4000)               # native async
-```
-
-Add a method by subclassing `Compressor` and decorating it:
-
-```python
-@Compressor.register("mine")
-@dataclasses.dataclass(frozen=True)
-class Mine(Compressor):
-    async def run(self, context, budget, trace): ...
-```
-
-## Compress without a model
-
-`Runtime.without_llm()` builds a runtime whose backend refuses every call, so
-`window`, `truncate`, `extractive` and `offload` (and pipelines of them) run
-with no provider, no key and no network:
-
-```python
-ctx = Context.from_dicts(messages, Runtime.without_llm())
-ctx.compress("window+extractive", budget=4000)
-```
-
-## Agent frameworks
-
-`foveate.integrations` puts compression in the history path of three frameworks.
-Each keeps the newest turns verbatim, summarises the older ones as one
-transcript (falling back to an offline method if the model is unreachable),
-and never splits a tool call from its result. Runnable demos are in
-[`examples/`](examples/).
-
-| Framework | Hook | Demo |
-|---|---|---|
-| Pydantic AI (2.x) | `Agent(capabilities=[ProcessHistory(foveate_pai.history_processor(runtime, budget=4000))])` | `05_pydantic_ai.py` |
-| Google ADK (1.10 and 2.x) | `LlmAgent(before_model_callback=foveate_adk.model_callback(runtime, budget=4000))` | `06_google_adk.py` |
-| LangGraph (1.x) | `create_react_agent(model, tools, pre_model_hook=foveate_lg.compression_node(runtime, budget=4000))` | `07_langgraph.py` |
-
-In a real run of the demos a ~460-token history shrank to 40-55 tokens and
-the agent still answered a question about a fact in the oldest turn. The
-adapters are one small `HistoryAdapter` each; add another framework by
-implementing `flatten`, `rebuild` and `starts_turn`.
-
-## Verify, persist, evolve
-
-```python
-context.verify("fits", tokens=4000)                       # LLM-free budget check
-context.verify("macro_fallacy", question=..., population=..., tree=[...])
-
-smaller.save("ctx/")                  # OKF markdown bundle (Open Knowledge Format)
-smaller.save("ctx.json", format="json")
-Context.load("ctx/", runtime=runtime) # round-trips messages, report and metadata
-```
-
-`foveate.evolution` implements ACE playbooks (Generator, Reflector, Curator) and
-`foveate.bench` measures them; see [BENCHMARKS.md](BENCHMARKS.md).
-
-## Configuration
-
-`Runtime` is the single, explicit bundle of services (backend, cache,
-tokenizer, observers, price table). There are no global singletons.
-`Runtime.from_env()` reads, with strict parsing:
-
-| Variable | Default | Meaning |
-|---|---|---|
-| `FOVEATE_BACKEND` | `litellm` | `litellm`, `openai`, `vllm` |
-| `FOVEATE_MODEL` | `gpt-4o-mini` | Model id |
-| `FOVEATE_BASE_URL` | unset | OpenAI-compatible endpoint (`openai` / `litellm` backends) |
-| `FOVEATE_OPTIONS` | `{}` | JSON of provider parameters sent with every call, e.g. `{"reasoning_effort": "low"}` |
-| `FOVEATE_CACHE_DIR` | `.foveate/cache` | SQLite cache directory; empty disables caching |
-| `FOVEATE_TIMEOUT_SECONDS` | `60` | Per-call timeout |
-| `FOVEATE_RETRY_ATTEMPTS` | `3` | Attempts for transient failures |
-| `FOVEATE_CONCURRENCY` | `8` | Parallel LLM calls |
-| `FOVEATE_RATE_LIMIT_PER_SECOND` | unset | Ceiling on LLM calls started per second |
-| `FOVEATE_DEADLINE_SECONDS` | unset | Total time allowed for one request across retries |
-
-**Reasoning models** (gpt-oss, DeepSeek, Nemotron, ...) spend part of the
-token cap on hidden thinking and may return nothing visible. foveate detects a
-truncated reply with (almost) no visible text and retries with a larger cap
-(up to 3 times, 4x each); set a low `reasoning_effort` through
-`FOVEATE_OPTIONS` to keep calls cheap and fast.
-
-Resilience is built in: retries with jittered backoff for transient errors
-only, circuit breaker, timeouts, bounded concurrency, single-flight
-de-duplication, cache keys covering model, prompt text, sampling parameters
-and strategy version. See [PRODUCTION.md](PRODUCTION.md).
-
-## Design
-
-See [ARCHITECTURE.md](ARCHITECTURE.md). In short: frozen dataclasses, an ABC and
-registry for every extension point, async core with one sync bridge, strict
-types, and **no underscore-prefixed names anywhere** (enforced by a test).
-
-## Development
+Configure a model through the environment:
 
 ```bash
-make setup && make check     # ruff, mypy --strict, pytest (90% coverage gate)
+export FOVEATE_BACKEND=openai
+export FOVEATE_BASE_URL=https://integrate.api.nvidia.com/v1
+export FOVEATE_MODEL=openai/gpt-oss-20b
+export FOVEATE_OPTIONS='{"reasoning_effort": "low"}'
+export OPENAI_API_KEY=...
 ```
 
-Unit tests need no network; deterministic fault injection (retries, timeouts,
-circuit breaker) lives in `tests/faults.py` and is **not** shipped. Everything
-that depends on model behaviour is tested against a real provider in
-`tests/integration/` and skipped unless a key is set:
+## Try it without a model
 
-```bash
-export NVIDIA_API_KEY=...          # or FOVEATE_TEST_API_KEY, any OpenAI-compatible key
-pytest tests/integration           # FOVEATE_TEST_BASE_URL / FOVEATE_TEST_MODEL override the target
+```python
+from foveate import Document, Foveator, Runtime
+
+document = Document.load(open("report.txt", "rb").read(), format="text", doc_id="report")
+plan = Foveator(Runtime.without_llm(), budget=4000).plan("What was revenue?", [document])
+print(plan.document_tokens, "->", plan.prompt_tokens, "tokens")
 ```
 
-See [CONTRIBUTING.md](CONTRIBUTING.md). Examples in [`examples/`](examples/) are
-executed by the test suites (`02_llm_free.py` offline, the rest against a
-real model).
+## Documentation
 
-## References
+Start at [docs/index.md](docs/index.md): [quickstart](docs/quickstart.md),
+[concepts](docs/concepts.md), guides for
+[long documents](docs/guides/long-documents.md),
+[agents](docs/guides/agents-and-tools.md),
+[local models](docs/guides/local-models.md),
+[evaluation](docs/guides/evaluating.md) and
+[production](docs/guides/production.md), plus [benchmarks](docs/benchmarks.md),
+[reference](docs/reference/index.md), [FAQ](docs/faq.md) and
+[roadmap](docs/roadmap.md). Architecture notes are in
+[ARCHITECTURE.md](ARCHITECTURE.md).
 
-- Wolf et al., 2026: Partition-Prompt-Aggregate.
-- Zhang et al., [arXiv:2510.04618](https://arxiv.org/abs/2510.04618): ACE.
-- [arXiv:2510.26493](https://arxiv.org/abs/2510.26493): Context Engineering 2.0 (OKF).
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md). `make setup && make check` runs lint,
+`mypy --strict` and the tests (90% coverage gate). Security issues:
+[SECURITY.md](SECURITY.md).
 
 Apache-2.0.

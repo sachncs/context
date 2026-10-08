@@ -1,9 +1,9 @@
 {
   "name": "foveate-site",
   "type": "module",
-  "version": "2.0.0",
+  "version": "0.1.0",
   "private": true,
-  "description": "foveate — Context, engineered. Product marketing site.",
+  "description": "Foveate product site.",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
