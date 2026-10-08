@@ -21,6 +21,13 @@ def test_llm_free_example_runs_without_any_provider(capsys):
     assert "extractive" in out and "offloaded" in out
 
 
+def test_long_document_example_plans_without_a_model(capsys, monkeypatch):
+    monkeypatch.delenv("FOVEATE_MODEL", raising=False)
+    run_example("08_long_document.py")
+    out = capsys.readouterr().out
+    assert "200 pages" in out and "page  40  FULL" in out
+
+
 def test_every_example_is_listed():
     names = sorted(p.name for p in EXAMPLES.glob("0*.py"))
     assert names == [
@@ -31,4 +38,5 @@ def test_every_example_is_listed():
         "05_pydantic_ai.py",
         "06_google_adk.py",
         "07_langgraph.py",
+        "08_long_document.py",
     ]

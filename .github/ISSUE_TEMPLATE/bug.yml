@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a bug in this project
+description: Report a bug in Foveate
 title: "[bug] "
 labels: ["bug"]
 body:
@@ -34,8 +34,9 @@ body:
       label: Environment
       placeholder: |
         - OS:
-        - Language/runtime version:
-        - Project version:
+        - Python version:
+        - foveate version (`python -c "import foveate; print(foveate.__version__)"`):
+        - Model / backend (e.g. gpt-oss-20b via OpenAI-compatible, LiteLLM, vLLM):
   - type: textarea
     id: logs
     attributes:

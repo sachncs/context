@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """Generate the social/OG card for the foveate site (1200x630)."""
+import pathlib
+
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 W, H = 1200, 630
@@ -73,15 +75,14 @@ def font(path, size, index=0):
     except Exception:
         return ImageFont.load_default()
 
-head = font("/System/Library/Fonts/Supplemental/Arial.ttf", 76)
+head = font("/System/Library/Fonts/Supplemental/Arial.ttf", 64)
 sub = font("/System/Library/Fonts/Helvetica.ttc", 34)
 tag = font("/System/Library/Fonts/Helvetica.ttc", 25)
 mono = font("/System/Library/Fonts/Supplemental/Arial.ttf", 30)
 
-# Headline with gradient: "Context," white, " engineered." gradient
-base_y = 120
-draw.text((330, base_y), "Context,", font=head, fill=(246, 248, 255, 255))
-w = draw.textlength("Context,", font=head)
+# Headline: first line white, second line gradient
+base_y = 100
+draw.text((330, base_y), "Send the right pages.", font=head, fill=(246, 248, 255, 255))
 
 def gradient_text(x, y, word, fp, size):
     step = 1
@@ -95,21 +96,23 @@ def gradient_text(x, y, word, fp, size):
         draw.text((gx, y), ch, font=fp, fill=(r, gg, b, 255))
         gx += wch
 
-gradient_text(330 + w + 22, base_y, "engineered.", head, 76)
+gradient_text(330, base_y + 80, "Prove the answer.", head, 64)
 
 # Subline
-subline = "Research-grade context engineering for LLMs."
-draw.text((330, 226), subline, font=sub, fill=(168, 180, 214, 255))
+subline = "Context engineering for LLM apps."
+draw.text((330, 300), subline, font=sub, fill=(168, 180, 214, 255))
 
 # tag chips
-draw.text((330, 430), "compress", font=mono, fill=(146, 176, 255, 255))
-draw.text((565, 430), "verify", font=mono, fill=(146, 176, 255, 255))
-draw.text((790, 430), "Evolver", font=mono, fill=(146, 176, 255, 255))
-draw.text((1010, 430), "OKF", font=mono, fill=(146, 176, 255, 255))
+draw.text((330, 430), "Document", font=mono, fill=(146, 176, 255, 255))
+draw.text((565, 430), "Foveator", font=mono, fill=(146, 176, 255, 255))
+draw.text((790, 430), "Plan", font=mono, fill=(146, 176, 255, 255))
+draw.text((1010, 430), "Answer", font=mono, fill=(146, 176, 255, 255))
 
 # footer
-draw.text((330, 520), "v2.0.0  ·  Apache-2.0  ·  Python 3.10–3.13", font=tag, fill=(120, 132, 164, 255))
-draw.text((960, 520), "sachncs/context", font=tag, fill=(120, 132, 164, 255))
+draw.text((330, 520), "v0.1.0  ·  Apache-2.0  ·  Python 3.10–3.13", font=tag, fill=(120, 132, 164, 255))
+draw.text((960, 520), "foveate", font=tag, fill=(120, 132, 164, 255))
 
-img.convert("RGB").save("/Users/sachin/repo/mygit/context/site/public/og.png", "PNG")
+img.convert("RGB").save(
+    pathlib.Path(__file__).resolve().parents[1] / "public" / "og.png", "PNG"
+)
 print("og.png written")
