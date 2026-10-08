@@ -25,7 +25,7 @@ DATASET_URL = (
     "financebench_merged.jsonl"
 )
 USER_AGENT = "Mozilla/5.0 (foveate benchmark; research use)"
-TIMEOUT_SECONDS = 120
+TIMEOUT_SECONDS = 45
 
 
 def cache_home() -> pathlib.Path:

@@ -4,74 +4,51 @@ All notable changes to this project are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 This project adheres to [Semantic Versioning](https://semver.org/).
 
-## [2.0.0] - Unreleased
+## [0.1.0] - Unreleased
 
-A ground-up, breaking rewrite. There are no compatibility shims; this lists
-what changed so you can port, not how to keep old code running.
+First release.
 
-### Added
+### Long documents
 
-- `Context`: immutable conversation + `Runtime`, with `compress`/`acompress`,
-  `verify`/`averify`, `save`/`load`. `compress` returns a new `Context` with a
-  `CompressionReport` and **guarantees the budget** (or raises
-  `BudgetExceededError`, or truncates when `Overflow.TRUNCATE`).
-- Compression strategies: `ppa`, `hierarchical`, `ushape`, `window`,
-  `truncate`, `extractive`, `offload`; composition with `a+b` (pipeline) and
-  `a|b` (fallback). Max-min fair budget allocation across messages.
-- `Runtime` (backend, cache, tokenizer, observers, price table) replacing the
-  global backend singleton; `Runtime.from_env()` with strict parsing.
-- Resilient backends: retries with jitter for transient errors only,
-  `Retry-After`, per-call timeouts, an overall retry deadline, circuit breaker,
-  concurrency caps, an optional rate limit, error classification;
-  `ScriptedBackend` for tests. Tokenizer is chosen from the model name.
-- Concurrent leaf summarisation, single-flight request de-duplication, usage
-  and cost accounting, structured events and `MetricsObserver`.
-- SQLite cache with TTL, size bound and corruption recovery; cache keys cover
-  the full request and prompt/strategy versions.
-- OKF persistence as `Context.save/load` (plus `json`), atomic bundle writes.
-- `foveate.integrations`: Pydantic AI history processor, Google ADK
-  `before_model_callback` and LangGraph node / `pre_model_hook`, built on a
-  framework-neutral `HistoryCompressor`.
-- Real-provider support: `FOVEATE_BASE_URL`, `FOVEATE_OPTIONS`, per-request provider
-  `options`, truncation-aware retries for reasoning models, a shorten pass for
-  over-long summaries, `Runtime.without_llm()`.
-- A real-model integration suite (`tests/integration`).
-- `FilesystemNotesStore` with persisted tags/timestamps, atomic writes and
-  cross-process locking.
-- `foveate.evolution` (ACE) with typed curator operations, checkpoint/resume and
-  per-step error isolation; `foveate.bench` with a real playbook-injecting arm.
-- Strict typing (`mypy --strict`), Google-style docstrings, a no-underscore
-  naming gate, property-based tests, a 90% coverage gate, CI on Linux, macOS
-  and Windows.
+- `Document`: page-addressable documents with loaders for PDF, DOCX, HTML,
+  Markdown and text; `select("10-14,40")`, `around`, `page`, `outline`.
+- Selection: BM25 (no dependencies), embeddings (any OpenAI-compatible
+  endpoint), hybrid rank fusion, optional model re-rank.
+- Foveation: full / condensed / outline / dropped page tiers under a token
+  budget; model context-window registry for automatic budgets.
+- `Foveator`: grounded answers with `(document, page, quote)` citations
+  verified against the source, retry with feedback, flag or abstain;
+  `plan()` dry run with token and cost estimate.
+- Prompt-injection fencing for retrieved text.
 
-### Fixed (defects in 1.x)
+### Agents
 
-- `budget_tokens` was never enforced.
-- The benchmark "foveate" arm contained no playbook (it measured the baseline
-  against itself); benchmark fixtures were missing from the wheel.
-- Evolver cache keys ignored the question/playbook and curator bullet ids
-  collided across steps; `curator_frequency` only gated trimming; reflection was
-  gated on string equality and helpful/harmful tags were only updated on
-  failures.
-- Compaction reported zero token counts and its cache key ignored the system
-  prompt and sampling options.
-- `"50%"` parsed as 1.0; integer `0` answers were dropped; Formula parsing
-  ignored thousands separators and `%`.
-- Note tags and timestamps were never persisted; note writes were not atomic.
-- Partitioning flattened newlines; SQLite connections were never closed.
+- `read_pages`, `search_document` and `document_outline` tools for Pydantic AI,
+  Google ADK and LangGraph.
+- Chat-history compression hooks for the same three frameworks.
+- Tool-output reducers for JSON, CSV, HTML and logs (`tool_output`).
 
-### Removed
+### Compression
 
-- `ppa_compress`, `compress_to_bundle`, `ppa_compress_to_okf`,
-  `compact_messages`, `ppa_check`, `NotesManager`, `foveate.notes`,
-  `foveate.compact`, `foveate.check`, `foveate.presets`, `foveate.playbooks`, `foveate.eval`,
-  `foveate.tokens`, `foveate.log`, `foveate.compress`, and the `foveate-bench` command
-  (v2 ships no command line; use the Python API).
-- The global backend registry functions (`set_backend`, `get_backend`, ...).
-- `ScriptedBackend` and the simulated `--offline` benchmark mode (fault
-  injection now lives in `tests/faults.py`).
-- AppWorld stub, the `index_only` and `fallback_to_last` options, and the
-  `litellm` hard dependency (now the `litellm` extra).
-- Benchmark numbers published with 1.x (invalid; see `BENCHMARKS.md`).
+- `Context(...).compress(method, budget=...)` returns a new `Context` with a
+  `CompressionReport`; the budget is guaranteed or an error is raised.
+- Strategies `ppa`, `hierarchical`, `ushape`, `window`, `truncate`,
+  `extractive`, `offload`, `tool_output`; `a+b` pipelines and `a|b` fallbacks.
 
-Release history before 2.0 is available in the git log.
+### Reliability and operations
+
+- `Runtime` with cache, single-flight, truncation-aware retries for reasoning
+  models and inline `<think>` stripping.
+- `ResilientBackend`: retry with jitter and `Retry-After`, timeout, circuit
+  breaker, concurrency and rate limits, total deadline.
+- Backends: LiteLLM, OpenAI-compatible, in-process vLLM, none (LLM-free).
+- Typed events with logging, metrics and OpenTelemetry observers.
+
+### Evaluation
+
+- Long-document benchmark (`foveate.bench.longdoc`): FinanceBench loader,
+  gold-set builders (answerable, unanswerable, paraphrase, needle depth),
+  pipelines `full-context`, `truncate`, `naive-rag`, `foveate`, metrics and
+  report.
+- Playbook evolution (ACE) with `finer`, `formula` and `ddxplus` benchmarks.
+- Notes stores, portable OKF bundles, verification (`fits`, `macro_fallacy`).

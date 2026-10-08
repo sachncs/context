@@ -1,6 +1,6 @@
-# Contributing to context
+# Contributing to Foveate
 
-Thanks for your interest in context. This document explains how to set up
+Thanks for your interest in Foveate. This document explains how to set up
 the project locally, run the test suite, and submit a pull request.
 
 ## Reporting issues
@@ -47,8 +47,11 @@ annotations) with these project rules:
   fault injection (errors, timeouts, truncation); never use a fake model to
   assert on model behaviour. Anything that depends on what a model returns
   belongs in `tests/integration/`, which calls a real provider (set
-  `NVIDIA_API_KEY` or `FOVEATE_TEST_API_KEY`; see the README) and is skipped
-  without a key. Add a regression test with every bug fix.
+  `NVIDIA_API_KEY` or `FOVEATE_TEST_API_KEY`) and is skipped without a key,
+  or `tests/local/` for a local vLLM server (`FOVEATE_TEST_VLLM_URL`). These
+  run on your machine, not in CI. Framework adapters have no-model tests in
+  `tests/test_framework_adapters.py`. Add a regression test with every bug
+  fix.
 
 ## Pull request flow
 
