@@ -17,6 +17,7 @@ import pathlib
 import sys
 
 from foveate import Runtime, models
+from foveate.backends import OpenAIBackend, ResilientBackend, RetryPolicy
 from foveate.backends.embeddings import OpenAIEmbedder
 from foveate.bench.longdoc import dataset, gold, runner
 
@@ -72,12 +73,36 @@ def with_embedder(runtime: Runtime, model: str) -> Runtime:
         return runtime
     embedder = OpenAIEmbedder(
         model,
-        base_url=os.environ.get("FOVEATE_BASE_URL"),
-        api_key=os.environ.get("OPENAI_API_KEY"),
+        base_url=os.environ.get("EMBED_BASE_URL")
+        or os.environ.get("FOVEATE_BASE_URL"),
+        api_key=os.environ.get("EMBED_API_KEY")
+        or os.environ.get("OPENAI_API_KEY"),
         passage_options={"input_type": "passage"},
         query_options={"input_type": "query"},
     )
     return dataclasses.replace(runtime, embedder=embedder)
+
+
+def judge_runtime(runtime: Runtime, model: str) -> Runtime:
+    """Returns a runtime that grades with `model` on its own endpoint."""
+    if not model:
+        return runtime
+    backend = ResilientBackend(
+        OpenAIBackend(
+            base_url=os.environ.get("JUDGE_BASE_URL"),
+            api_key=os.environ.get("JUDGE_API_KEY"),
+        ),
+        retry=RetryPolicy(attempts=4, base_delay=2.0, max_delay=30.0),
+        timeout=180.0,
+        rate_per_second=0.6,
+    )
+    return dataclasses.replace(
+        runtime,
+        backend=backend,
+        model=model,
+        options={"reasoning_effort": "low"},
+        embedder=None,
+    )
 
 
 def main() -> int:
@@ -97,9 +122,22 @@ def main() -> int:
         "--retrieval", default="bm25", choices=("bm25", "embedding", "hybrid")
     )
     parser.add_argument("--expand", type=int, default=0)
+    parser.add_argument(
+        "--kinds",
+        default="",
+        help="comma-separated item kinds to keep (default: all)",
+    )
     parser.add_argument("--embedding-model", default="")
+    parser.add_argument(
+        "--judge-model",
+        default="",
+        help="grade with this model (env JUDGE_BASE_URL / JUDGE_API_KEY)",
+    )
     args = parser.parse_args()
     items, chosen = select(args.n, args.seed)
+    if args.kinds:
+        keep = set(args.kinds.split(","))
+        items = [i for i in items if i.kind in keep]
     bench = dataset.FinanceBench()
     with Runtime.from_env() as base_runtime:
         runtime = with_embedder(base_runtime, args.embedding_model)
@@ -108,7 +146,8 @@ def main() -> int:
             runtime.context_window
             or models.lookup(runtime.model).context_window
         )
-        items += needle_items(corpus, window)
+        if not args.kinds or "needle" in args.kinds:
+            items += needle_items(corpus, window)
         kinds = {k: sum(i.kind == k for i in items) for k in gold.KINDS}
         print(f"{len(chosen)} questions, items by kind: {kinds}")
         if args.dry_run:
@@ -128,7 +167,14 @@ def main() -> int:
             expand=args.expand,
         )
         report = asyncio.run(
-            runner.run(items, corpus, runtime, runtime, config, print)
+            runner.run(
+                items,
+                corpus,
+                runtime,
+                judge_runtime(runtime, args.judge_model),
+                config,
+                print,
+            )
         )
     print(report.to_markdown())
     print("written:", report.write(pathlib.Path(args.out)))
