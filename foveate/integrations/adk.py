@@ -12,14 +12,15 @@ returns None so the call proceeds with the compressed history.
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from typing import Any
 
 from google.genai import types
 
 from foveate import messages as messages_lib
 from foveate import runtime as runtime_lib
-from foveate.integrations import history
+from foveate.documents import document as document_lib
+from foveate.integrations import history, tools
 
 Role = messages_lib.Role
 
@@ -115,3 +116,13 @@ def model_callback(
             options=dict(options),
         )
     )
+
+
+def document_tools(
+    documents: Sequence[document_lib.Document], max_tokens: int = 4000
+) -> list[Callable[..., str]]:
+    """Returns plain tool functions for `LlmAgent(tools=...)`.
+
+    agent = LlmAgent(..., tools=foveate_adk.document_tools([doc]))
+    """
+    return tools.DocumentTools(documents, max_tokens=max_tokens).functions()

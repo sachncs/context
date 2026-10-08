@@ -19,11 +19,13 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from langchain_core import messages as lc
+from langchain_core.tools import StructuredTool
 from langgraph.graph.message import REMOVE_ALL_MESSAGES
 
 from foveate import messages as messages_lib
 from foveate import runtime as runtime_lib
-from foveate.integrations import history
+from foveate.documents import document as document_lib
+from foveate.integrations import history, tools
 
 Role = messages_lib.Role
 
@@ -139,3 +141,11 @@ def compression_node(
         ),
         persist=persist,
     )
+
+
+def document_tools(
+    documents: Sequence[document_lib.Document], max_tokens: int = 4000
+) -> list[StructuredTool]:
+    """Returns LangChain tools for `create_react_agent(model, tools)`."""
+    toolbox = tools.DocumentTools(documents, max_tokens=max_tokens)
+    return [StructuredTool.from_function(fn) for fn in toolbox.functions()]
