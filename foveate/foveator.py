@@ -36,7 +36,7 @@ from foveate.grounding import answer as answer_lib
 from foveate.grounding import quotes
 from foveate.internals import jsonout, runner
 from foveate.selection import base as selection_base
-from foveate.selection import build_retriever
+from foveate.selection import build_retriever, expansion
 
 logger = logging.getLogger("foveate.foveator")
 
@@ -67,6 +67,7 @@ ANSWER = prompts.PromptTemplate(
 ANSWER_TOKENS = 1_500
 FIXED_OVERHEAD = 400
 EXPANSION_PAGES = 4
+MAX_EXPAND = 5
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -114,6 +115,8 @@ class Foveator:
         budget: Prompt token budget; None derives it from the model window.
         retrieval: `bm25`, `embedding` or `hybrid`.
         rerank: Re-rank candidates with the model.
+        expand: Number of alternative search phrasings the model writes for
+            each question (0 disables). Costs one short call per question.
         k: Chunks retrieved per question.
         chunker: How pages are split for retrieval (default per page).
         foveation: Shape of the page allocation.
@@ -132,6 +135,7 @@ class Foveator:
     budget: int | None = None
     retrieval: str = "hybrid"
     rerank: bool = False
+    expand: int = 0
     k: int = 24
     chunker: chunking.Chunker | None = None
     foveation: FoveationConfig = dataclasses.field(
@@ -146,6 +150,8 @@ class Foveator:
     def __post_init__(self) -> None:
         if self.ungrounded not in ("flag", "abstain"):
             raise errors.ConfigError("ungrounded must be 'flag' or 'abstain'")
+        if not 0 <= self.expand <= MAX_EXPAND:
+            raise errors.ConfigError(f"expand must be 0 to {MAX_EXPAND}")
         if self.max_rounds < 1 or self.k < 1 or self.answer_tokens < 64:
             raise errors.ConfigError("invalid max_rounds, k or answer_tokens")
         if self.budget is not None and self.budget < 256:
@@ -176,6 +182,14 @@ class Foveator:
     ) -> list[tuple[PageKey, float]]:
         """Returns `((doc, page), score)` pairs for the question."""
         hits = await index.retriever.search(question, self.k)
+        if self.expand:
+            extra = await expansion.rewrites(
+                self.runtime, question, self.expand
+            )
+            rankings = [hits]
+            for query in extra:
+                rankings.append(await index.retriever.search(query, self.k))
+            hits = expansion.fuse(rankings, self.k)
         return selection_base.ranked_pages(hits)
 
     def evidence_budget(self, question: str) -> int:
