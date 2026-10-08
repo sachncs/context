@@ -80,6 +80,11 @@ Set prices with `Runtime(prices=...)` to get a cost estimate.
 
 ## Embeddings
 
+On the FinanceBench check in the [benchmarks](../benchmarks.md), adding embeddings raised how often
+the evidence page reached the prompt in full from 60% to 76% (hybrid) or 87% (embeddings only),
+and query expansion (`expand=2`) added a few more points. If your questions and documents use
+different words, configure an embedder.
+
 ```python
 from foveate.backends.embeddings import OpenAIEmbedder
 runtime = Runtime(..., embedder=OpenAIEmbedder("text-embedding-3-small"))

@@ -130,6 +130,60 @@ when the evidence happens to be in what they were sent.
 * 38 of the 150 FinanceBench questions could not be used (see Data above), so the set is
   biased towards filings that are still downloadable.
 
+## Finding the evidence page: retrieval settings
+
+Run 1 used BM25 only. This check plans the prompt for 90 questions (the 30 questions and
+their 60 paraphrases) under each retrieval setting, with no answer model, and counts how often
+the page holding the evidence is sent in full, or at least condensed. Evidence budget 12,000
+tokens; embeddings are `nvidia/nemotron-3-embed-1b`; expansion asks the model for two
+alternative search phrasings. Raw results: `bench/results/retrieval*/`.
+
+| Retrieval | Evidence page sent in full | Sent in full or condensed |
+|---|---|---|
+| BM25 (run 1 setting) | 60% | 81% |
+| BM25 + position-aware order | 60% | 81% |
+| BM25 + query expansion | 73% | 89% |
+| Hybrid (BM25 + embeddings) | 76% | 93% |
+| Embeddings only | 87% | 97% |
+| Hybrid + query expansion | 88% | 98% |
+| Embeddings + query expansion | 90% | 98% |
+
+The biggest single improvement is adding embeddings: the evidence page is in the prompt in
+full 27 points more often than with BM25 alone on this data, where questions and filings use
+different words for the same thing. Query expansion adds about 13 points to BM25 and a few
+points on top of embeddings. Reordering pages changes what the model sees, not which pages
+are chosen, so it does not move this measure. Whether better retrieval raises answer accuracy
+and consistency is measured in the next run (it is not claimed here).
+
+## Needle in a haystack
+
+A fact is hidden at a known depth in a long text and the model is asked for it. Same pipelines,
+answer model `gpt-oss-20b`, evidence budget 4,000 tokens, lengths 8k to 64k (multi: 16k to 64k),
+depths 0%, 25%, 50%, 75%, 100%. Raw results: `bench/results/needle/`. The haystacks are
+seeded synthetic prose, and for the NoLiMa-style case a book from the NoLiMa dataset
+(Adobe Research License, noncommercial research use; downloaded at run time, not
+redistributed).
+
+| Test | Send everything | Truncate | Plain RAG | Foveate |
+|---|---|---|---|---|
+| One literal needle (40 cases) | 100% | 25% | 100% | 100% |
+| Three needles, all required (12 cases) | 100% | 0% | 100% | 100% |
+| NoLiMa-style non-literal needle (45 cases) | 0% | 2% | 2% | 2% |
+| Mean prompt tokens, one literal needle | 30,674 | 2,907 | 841 | 2,654 |
+
+* **Literal needles are solved.** For this model the classic test does not separate the
+  pipelines: sending everything works up to 64k tokens. Foveate matches it while sending about
+  6% of the tokens (3,612 against 64,862 at 64k). Truncation finds the needle only when
+  it sits at the very start. Plain RAG is cheaper still on this test, because the question
+  repeats the needle's words and a keyword match is enough.
+* **Non-literal needles are not solved by anyone.** When the question shares almost no words
+  with the needle (a character who lives next to a landmark; the question names the city),
+  every pipeline scored 0 to 2%, including sending the whole text. This matches the NoLiMa
+  paper's finding that such needles are hard. We also tried an inference-friendly prompt
+  and embedding retrieval; neither changed the result for this model. This is a limit of the
+  answer model at low reasoning effort, and in a debugging case the needle page was reduced to
+  an outline line, so retrieval also needs work. We report it rather than drop it.
+
 ## Reproduce
 
 ```bash
@@ -137,4 +191,8 @@ python scripts/build_gold.py              # downloads filings, writes gold sets
 python scripts/run_longdoc.py --dry-run   # sizes only, no model calls
 python scripts/run_longdoc.py --n 30 --runs 3
 python scripts/summarize_results.py bench/results/run1
+python scripts/run_needle.py --family literal --lengths 8000,16000,32000,64000
+python scripts/run_needle.py --family nonliteral --retrieval hybrid --inference \\
+  --embedding-model nvidia/nemotron-3-embed-1b
+python scripts/run_needle.py --family multi --needles 3
 ```
