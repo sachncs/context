@@ -309,6 +309,10 @@ context engineering helps a small model, so it supports no claim either way. It 
 fix: Foveate now caps its "give the model more room to think" retries to what fits in the
 window, and reports the failure instead of sending a request the server rejects.
 
+A rerun with a non-reasoning small model (`Qwen2.5-1.5B-Instruct`, 16,384-token window) was
+started but processed only three of the twenty items in the time available (CPU inference takes
+about seven minutes per item), so it is not reported.
+
 **So the claim that a 1B model can beat a 30B model is not established by our data.** What the
 data do support is narrower: retrieval and page selection cut tokens by roughly 3x to 7x against sending
 a whole filing and did not cost accuracy for the models we tried (20B and 30B-class); whether
