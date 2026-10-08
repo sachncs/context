@@ -1,0 +1,55 @@
+---
+import { readSummary, pipelineNames } from '../data/results';
+
+interface Props { family: string; title: string; blurb: string; }
+const { family, title, blurb } = Astro.props;
+const summary = readSummary('needle', family);
+const cells: any[] = summary?.cells ?? [];
+const pipelines = [...new Set(cells.map((c) => c.pipeline))];
+const lengths = [...new Set(cells.map((c) => c.length))].sort((a, b) => a - b);
+const depths = [...new Set(cells.map((c) => c.depth))].sort((a, b) => a - b);
+const find = (p: string, l: number, d: number) => cells.find((c) => c.pipeline === p && c.length === l && c.depth === d);
+const shade = (x: number) => `color-mix(in srgb, var(--good) ${Math.round(x * 70)}%, var(--surface))`;
+---
+<section class="needle">
+  <h3>{title}</h3>
+  <p class="muted">{blurb}</p>
+  {cells.length === 0 ? (
+    <div class="card"><p class="muted">Not run yet. This grid fills in from <code>bench/results/needle/{family}/</code> when the run finishes.</p></div>
+  ) : (
+    <div class="grids">
+      {pipelines.map((p) => (
+        <figure>
+          <figcaption>{pipelineNames[p] ?? p}</figcaption>
+          <table>
+            <thead><tr><th scope="col">Length</th>{depths.map((d) => <th scope="col">{Math.round(d * 100)}%</th>)}</tr></thead>
+            <tbody>
+              {lengths.map((l) => (
+                <tr>
+                  <th scope="row">{l >= 1000 ? `${l / 1000}k` : l}</th>
+                  {depths.map((d) => {
+                    const c = find(p, l, d);
+                    return c ? (
+                      <td style={`background:${shade(c.accuracy)}`} title={`${c.correct}/${c.total} correct${c.overflow ? `, ${c.overflow} too large` : ''}`}>{Math.round(c.accuracy * 100)}%</td>
+                    ) : <td>-</td>;
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </figure>
+      ))}
+    </div>
+  )}
+  {summary && <p class="muted note">Answer model {summary.model}. Rows are context length in tokens; columns are where the needle sits (0% = start). Each cell is the share answered correctly.</p>}
+</section>
+<style>
+  .needle h3 { margin-bottom: var(--space-2); }
+  .grids { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 24rem), 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
+  figure { margin: 0; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: var(--space-4); overflow-x: auto; }
+  figcaption { font-weight: 650; margin-bottom: var(--space-3); }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; font-size: .9rem; }
+  th, td { padding: .45rem .5rem; text-align: center; border: 1px solid var(--border); }
+  thead th, tbody th { color: var(--muted); font-weight: 600; background: var(--surface-2); }
+  .note { font-size: .88rem; margin-top: var(--space-3); }
+</style>

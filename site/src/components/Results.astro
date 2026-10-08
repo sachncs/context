@@ -3,14 +3,15 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const base = import.meta.env.BASE_URL;
-const root = path.resolve(process.cwd(), '..', 'bench', 'results');
 let summary: any = null;
-if (fs.existsSync(root)) {
+const dir = path.resolve(process.cwd(), '..', 'bench', 'results');
+if (fs.existsSync(dir)) {
   const runs = fs
-    .readdirSync(root)
-    .map((name) => path.join(root, name, 'summary.json'))
+    .readdirSync(dir)
+    .map((name) => path.join(dir, name, 'summary.json'))
     .filter((file) => fs.existsSync(file))
     .map((file) => JSON.parse(fs.readFileSync(file, 'utf-8')))
+    .filter((run) => Array.isArray(run.rows))
     .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
   summary = runs[0] ?? null;
 }

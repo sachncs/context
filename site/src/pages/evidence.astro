@@ -1,0 +1,40 @@
+---
+import Landing from '../layouts/Landing.astro';
+import Results from '../components/Results.astro';
+import NeedleGrid from '../components/NeedleGrid.astro';
+import CompressionChart from '../components/CompressionChart.astro';
+const base = import.meta.env.BASE_URL;
+---
+<Landing
+  title="Evidence: how Foveate is measured"
+  description="Long-document questions, needle-in-a-haystack grids and compression sweeps, with the methods and the results that do not favour Foveate."
+  current="Evidence"
+>
+  <section class="block head">
+    <div class="wrap">
+      <p class="eyebrow">Evidence</p>
+      <h1>What the measurements say</h1>
+      <p class="lede">Every number on this page is read from a result file in the repository when the site is built. Where Foveate loses, it says so. Methods, datasets and limits are in <a href={`${base}docs/benchmarks/`}>the benchmarks page</a>.</p>
+    </div>
+  </section>
+  <section class="block"><div class="wrap">
+    <div class="section-head"><h2>Long documents</h2><p>Real SEC filings from FinanceBench. Same prompt and citation check for every pipeline.</p></div>
+    <Results />
+  </div></section>
+  <section class="block"><div class="wrap">
+    <div class="section-head"><h2>Needle in a haystack</h2><p>A fact is hidden at a known depth in a long text and the model is asked for it. The classic version uses the question's own words; the harder version (NoLiMa) does not.</p></div>
+    <NeedleGrid family="literal" title="Literal needle" blurb="The question shares its key words with the hidden sentence." />
+    <NeedleGrid family="nonliteral" title="Non-literal needle (NoLiMa)" blurb="The question and the sentence share almost no words, so the model must infer the link." />
+    <NeedleGrid family="multi" title="Three needles" blurb="Three facts hidden at once; all three must be returned." />
+  </div></section>
+  <section class="block"><div class="wrap">
+    <div class="section-head"><h2>Compression</h2><p>How much can the context shrink before the answer breaks? Each method gets the same token budget; the fact to find sits in the middle.</p></div>
+    <CompressionChart task="document" title="A long document" blurb="One needle sentence in a document of about 6,000 tokens." />
+    <CompressionChart task="history" title="A long conversation" blurb="A setting the user mentioned once, early in a long chat." />
+    <CompressionChart task="tool" title="A large tool result" blurb="One field inside a large JSON result." />
+  </div></section>
+</Landing>
+<style>
+  .head { padding-bottom: clamp(2rem, 5vw, 3rem); }
+  .wrap :global(section) + :global(section) { margin-top: var(--space-12); }
+</style>
