@@ -51,6 +51,24 @@ class Config:
             pipelines.Pipeline.registry.get(name)
 
 
+class StaticCorpus:
+    """Documents you already have in memory (for your own gold set)."""
+
+    def __init__(self, documents: Sequence[Document]) -> None:
+        """Indexes `documents` by id."""
+        self.by_id = {d.id: d for d in documents}
+
+    def get(self, doc_name: str) -> Document:
+        """Returns the document called `doc_name`.
+
+        Raises:
+            ValidationError: If there is no such document.
+        """
+        if doc_name not in self.by_id:
+            raise errors.ValidationError(f"unknown document {doc_name!r}")
+        return self.by_id[doc_name]
+
+
 class Corpus:
     """Loads and caches the filings the items refer to."""
 
@@ -384,7 +402,7 @@ class Report:
 
 async def run(
     items: Sequence[gold.GoldItem],
-    corpus: Corpus,
+    corpus: Corpus | StaticCorpus,
     runtime: runtime_lib.Runtime,
     judge_runtime: runtime_lib.Runtime,
     config: Config | None = None,
