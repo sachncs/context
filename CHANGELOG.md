@@ -21,12 +21,20 @@ First release.
   `plan()` dry run with token and cost estimate.
 - Prompt-injection fencing for retrieved text.
 
+- Optional query expansion (`Foveator(expand=2)`): the model writes alternative
+  search phrasings and their rankings are fused with the original query's.
+- Position-aware page order (`FoveationConfig(order="edges")`) and query-aware
+  condensing (`query_aware=True`), both off by default.
+- `Answer.support` and `Answer.needs_more_context`; `Usage.cached_tokens`.
+
 ### Agents
 
 - `read_pages`, `search_document` and `document_outline` tools for Pydantic AI,
   Google ADK and LangGraph.
 - Chat-history compression hooks for the same three frameworks.
-- Tool-output reducers for JSON, CSV, HTML and logs (`tool_output`).
+- Tool-output reducers for JSON, CSV, HTML and logs (`tool_output`) and
+  `clear_tool_results` for old tool output.
+- `foveate.memory.Memory`: session notes, durable facts, recall and consolidation.
 
 ### Compression
 
@@ -45,6 +53,12 @@ First release.
 - Typed events with logging, metrics and OpenTelemetry observers.
 
 ### Evaluation
+
+- Needle-in-a-haystack grids (`foveate.bench.needle`): literal, NoLiMa-style and
+  multi-needle cases over any length and depth.
+- Compression sweep (`foveate.bench.compression`): accuracy against compression
+  ratio for each method on documents, chat history and tool output.
+- Starter gold sets from your own documents (`starter_items`).
 
 - Long-document benchmark (`foveate.bench.longdoc`): FinanceBench loader,
   gold-set builders (answerable, unanswerable, paraphrase, needle depth),
