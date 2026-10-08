@@ -568,3 +568,17 @@ class TestShortenPass:
         rt, backend = make_runtime(lambda r: "w " * 60)
         ctx_of(rt, "word " * 2000).compress("ppa", budget=120, leaf_tokens=4000)
         assert len(backend.requests) == 1
+
+
+def test_selective_prunes_by_information_and_keeps_facts():
+    from foveate import Context, Message, Role
+
+    filler = (
+        "The meeting went on as usual and the team agreed to continue. " * 30
+    )
+    text = filler + "Revenue reached 1,577 million in Frankfurt. " + filler
+    runtime, backend = make_runtime()
+    ctx = Context([Message(Role.USER, text)], runtime=runtime)
+    out = ctx.compress("selective", budget=60)
+    assert "1,577" in out.messages[0].content
+    assert out.report.final_tokens <= 60 and backend.requests == []

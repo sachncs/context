@@ -20,6 +20,7 @@ from foveate.compression.report import (
     StepRecord,
     Trace,
 )
+from foveate.compression.selective import Selective
 from foveate.compression.tooloutput import Reducer, ToolOutput
 from foveate.compression.truncate import Side, Truncate
 from foveate.compression.ushape import MiddleMode, UShape
@@ -106,6 +107,7 @@ __all__ = [
     "Pipeline",
     "QueryExtractive",
     "Reducer",
+    "Selective",
     "Side",
     "SlidingWindow",
     "StepRecord",

@@ -115,6 +115,8 @@ def compression_node(
     budget: int,
     method: str = history.DEFAULT_METHOD,
     keep_last: int = 4,
+    trigger: float = 1.0,
+    target: float = 1.0,
     persist: bool = False,
     **options: object,
 ) -> CompressionNode:
@@ -125,6 +127,8 @@ def compression_node(
         budget: Token ceiling for the message list.
         method: foveate compression method for the old turns.
         keep_last: Newest messages kept verbatim.
+        trigger: Fraction of `budget` above which compression starts.
+        target: Fraction of `budget` to compress down to.
         persist: Replace stored history instead of only the model input.
         **options: Strategy options (see `Context.compress`). With a
             composite method such as the default, key them by stage, e.g.
@@ -137,6 +141,8 @@ def compression_node(
             budget,
             method=method,
             keep_last=keep_last,
+            trigger=trigger,
+            target=target,
             options=dict(options),
         ),
         persist=persist,
