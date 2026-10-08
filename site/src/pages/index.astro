@@ -2,42 +2,39 @@
 import { getEntry } from 'astro:content';
 import Landing from '../layouts/Landing.astro';
 import FoveationExplorer from '../components/FoveationExplorer.astro';
-import Results from '../components/Results.astro';
+import PlanFigure from '../components/PlanFigure.astro';
+import Proof from '../components/Proof.astro';
+import FrameworkTabs from '../components/FrameworkTabs.astro';
 
 const base = import.meta.env.BASE_URL;
 const roadmap = await getEntry('docs', 'docs/roadmap');
-const upcoming = (roadmap?.data.items ?? []).filter((i) => i.status !== 'shipping').slice(0, 4);
-const statusLabel: Record<string, string> = { building: 'Being built', planned: 'Planned', exploring: 'Exploring' };
+const upcoming = (roadmap?.data.items ?? []).filter((i) => i.status === 'building').slice(0, 4);
 ---
 <Landing
   title="Foveate: put the right pages in the window, and prove the answer"
-  description="A Python library for long documents and agents. It picks the pages that matter, keeps the rest as an outline, and checks every citation against the source."
+  description="Context engineering for LLM apps. Foveate picks the pages that matter, keeps the rest as an outline, and checks every citation against the source."
 >
   <section class="hero">
     <div class="wrap hero-grid">
-      <div>
+      <div class="copy">
         <p class="eyebrow">Context engineering for LLM apps</p>
-        <h1>Put the right pages in the window. Prove the answer.</h1>
-        <p class="lede">Foveate is a Python library for long documents and agents. It picks the pages that matter, keeps the rest as a short outline, and checks every citation in the answer against the page it names.</p>
+        <h1>Put the right pages in the window. <em>Prove the answer.</em></h1>
+        <p class="lede">Foveate reads a long document the way an eye reads a scene: sharp on what matters, coarse on the rest. It picks the pages for your question, sends the rest as an outline, and checks every quote in the answer against the page it names.</p>
         <div class="cta">
-          <a class="btn primary" href={`${base}docs/quickstart/`}>Get started</a>
-          <a class="btn" href={`${base}docs/`}>Read the docs</a>
+          <a class="btn primary" href={`${base}docs/quickstart/`}>Start in five minutes</a>
+          <a class="btn" href={`${base}docs/learn/context-engineering/`}>New to context engineering?</a>
         </div>
         <div class="install"><code>pip install "foveate[pdf]"</code><button type="button" data-copy='pip install "foveate[pdf]"' aria-label="Copy install command">Copy</button></div>
       </div>
-      <div class="demo" aria-label="Example">
-<pre class="code"><span class="k">from</span> foveate <span class="k">import</span> Document, Foveator, Runtime
-
-document = Document.load(<span class="s">"3M_2018_10K.pdf"</span>)
-question = <span class="s">"What was 2018 capital expenditure?"</span>
-<span class="k">with</span> Runtime.from_env() <span class="k">as</span> runtime:
-    answer = Foveator(runtime).ask(question, [document])
-
-answer.text      <span class="c"># "$1,577 million"</span>
-answer.pages     <span class="c"># [("3M_2018_10K", 60)]</span>
-answer.grounded  <span class="c"># True: the quote is on page 60</span></pre>
-        <p class="muted small">From a real run on the 160-page 3M 2018 annual report. If the filing did not contain the answer you would get <code>answer.abstained == True</code>, not a guess.</p>
+      <div class="visual">
+        <PlanFigure />
       </div>
+    </div>
+  </section>
+
+  <section class="block tight">
+    <div class="wrap">
+      <Proof />
     </div>
   </section>
 
@@ -46,12 +43,24 @@ answer.grounded  <span class="c"># True: the quote is on page 60</span></pre>
       <div class="section-head">
         <p class="eyebrow">The problem</p>
         <h2>What happens when you upload 200 pages</h2>
-        <p>There are three common outcomes. Only the third gives you something you can check.</p>
+        <p>Three common outcomes. Only the last one gives you something you can check.</p>
       </div>
-      <div class="grid cols-3">
-        <article class="card"><h3>Send everything</h3><p class="muted">If the file is larger than the model window it fails or is silently cut. If it fits, every question costs 100,000 tokens or more, and models use the middle of a long prompt worst.</p></article>
-        <article class="card"><h3>Add plain retrieval</h3><p class="muted">Cheaper, but the model gets loose chunks with no page numbers. Nothing checks the answer, and a question the file cannot answer still gets an answer.</p></article>
-        <article class="card accent"><h3>Foveate</h3><p class="muted">The relevant pages arrive in full, their neighbours condensed, the rest as a one-line outline. The answer carries page citations, each quote is checked, and a missing answer is reported as missing.</p></article>
+      <div class="trio">
+        <article>
+          <span class="n">01</span>
+          <h3>Send everything</h3>
+          <p>If the file is larger than the model's window it fails or is silently cut. If it fits, every question costs tens of thousands of tokens, and models read the middle of a long prompt least reliably.</p>
+        </article>
+        <article>
+          <span class="n">02</span>
+          <h3>Add plain retrieval</h3>
+          <p>Cheaper, but the model gets loose chunks with no page numbers. Nothing checks the answer, and a question the file cannot answer still gets an answer.</p>
+        </article>
+        <article class="hl">
+          <span class="n">03</span>
+          <h3>Foveate</h3>
+          <p>The relevant pages arrive in full, their neighbours in short, the rest as a one-line outline. The answer cites page and quote, each quote is checked, and a missing answer is reported as missing.</p>
+        </article>
       </div>
     </div>
   </section>
@@ -59,9 +68,9 @@ answer.grounded  <span class="c"># True: the quote is on page 60</span></pre>
   <section class="block" id="explore">
     <div class="wrap">
       <div class="section-head">
-        <p class="eyebrow">Try it</p>
-        <h2>See what the model would receive</h2>
-        <p>These are real plans for three questions on real filings, computed by the library without calling a model. Change the budget and watch the pages change. The green ring marks the page that holds the answer. At small budgets it is sometimes missed; that is shown honestly.</p>
+        <p class="eyebrow">See it</p>
+        <h2>What the model would receive</h2>
+        <p>Real plans for three questions on real filings, computed by the library with no model call. Move the budget and watch the pages change. The green ring marks the page that holds the answer; at small budgets it is sometimes missed, and that is shown honestly.</p>
       </div>
       <FoveationExplorer />
     </div>
@@ -71,55 +80,72 @@ answer.grounded  <span class="c"># True: the quote is on page 60</span></pre>
     <div class="wrap">
       <div class="section-head">
         <p class="eyebrow">How it works</p>
-        <h2>Four steps, each one inspectable</h2>
+        <h2>Six decisions, each one inspectable</h2>
+        <p>Context engineering is the set of choices about what goes in the prompt. Foveate makes each one explicit.</p>
       </div>
       <ol class="steps">
-        <li><h3>Load</h3><p class="muted">PDF, DOCX, HTML, Markdown or text becomes pages with numbers, headings and token counts. <code>document.select("10-14,40")</code> returns just those pages.</p></li>
-        <li><h3>Select</h3><p class="muted">BM25 ranks pages with no extra dependencies. Add embeddings or a model re-rank if you want. <code>Foveator.plan()</code> shows the result and its cost before any call.</p></li>
-        <li><h3>Foveate</h3><p class="muted">Best pages go in full, neighbours are condensed, everything else is an outline line, all inside the token budget you set.</p></li>
-        <li><h3>Answer and verify</h3><p class="muted">The model answers in JSON with citations. Each quote is searched for on its page. Unsupported answers are retried with feedback, then flagged or turned into "not found".</p></li>
+        <li><h3>Select</h3><p>Rank pages for this question with keywords, embeddings or both. <a href={`${base}docs/learn/selection/`}>Selection</a></p></li>
+        <li><h3>Shape</h3><p>Full, condensed or outline: each page gets the detail it deserves within your budget. <a href={`${base}docs/learn/foveation/`}>Foveation</a></p></li>
+        <li><h3>Compress</h3><p>Shrink chat history and tool output, mostly without a model. <a href={`${base}docs/learn/compression/`}>Compression</a></p></li>
+        <li><h3>Remember</h3><p>Session notes and durable facts, recalled by relevance. <a href={`${base}docs/learn/memory/`}>Memory</a></p></li>
+        <li><h3>Verify</h3><p>Cite page and quote, check the quote in code, retry or refuse. <a href={`${base}docs/learn/grounding/`}>Grounding</a></p></li>
+        <li><h3>Measure</h3><p>Test on your own documents before you trust anyone's numbers. <a href={`${base}docs/guides/evaluating/`}>Evaluating</a></p></li>
       </ol>
-      <p class="more"><a href={`${base}docs/concepts/`}>Read the concepts</a></p>
     </div>
   </section>
 
   <section class="block">
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Evidence</p>
-        <h2>Measured against the alternatives</h2>
-        <p>Same prompt, same citation check, four ways of choosing evidence. Real filings from FinanceBench, gold sets we built for citations, unanswerable questions, paraphrases and needles.</p>
+    <div class="wrap two">
+      <div>
+        <p class="eyebrow">Learn</p>
+        <h2>A playbook for people new to this</h2>
+        <p class="lede">Twelve rules, one page each: the problem in plain words, why it happens, what to do, a worked example and the mistakes to avoid. Written from the research and from teams that run agents in production.</p>
+        <div class="cta"><a class="btn primary" href={`${base}docs/playbook/`}>Read the playbook</a></div>
       </div>
-      <Results />
-    </div>
-  </section>
-
-  <section class="block">
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Beyond documents</p>
-        <h2>The same ideas for agents</h2>
-        <p>Agents fail on context in two ways: they are handed whole files, and their history and tool output keep growing.</p>
-      </div>
-      <div class="grid cols-3">
-        <article class="card"><h3>Page tools</h3><p class="muted"><code>read_pages</code>, <code>search_document</code> and <code>document_outline</code> for Pydantic AI, Google ADK and LangGraph. The agent pulls pages when it needs them.</p></article>
-        <article class="card"><h3>History compression</h3><p class="muted">Keep the latest turns verbatim and compress the rest to a budget, without splitting a tool call from its result.</p></article>
-        <article class="card"><h3>Tool-output reducers</h3><p class="muted">JSON, CSV, HTML and logs shrink with no model call, and say what was cut ("481 more items").</p></article>
-      </div>
-      <p class="more"><a href={`${base}docs/guides/agents-and-tools/`}>Agents and tools guide</a></p>
-    </div>
-  </section>
-
-  <section class="block">
-    <div class="wrap">
-      <div class="section-head">
-        <p class="eyebrow">Works with</p>
-        <h2>Bring your own model and framework</h2>
-        <p>Any provider through LiteLLM, any OpenAI-compatible server (vLLM, Ollama, NVIDIA and others), or an in-process vLLM engine. Tested on Linux, macOS and Windows with Python 3.10 to 3.13. Retries, circuit breaker, caching and OpenTelemetry spans are built in.</p>
-      </div>
-      <ul class="logos">
-        <li>Pydantic AI</li><li>Google ADK</li><li>LangGraph</li><li>LiteLLM</li><li>OpenAI-compatible</li><li>vLLM</li><li>OpenTelemetry</li>
+      <ul class="rules" aria-label="The twelve rules">
+        <li><a href={`${base}docs/playbook/01-measure-first/`}><span>1</span>Measure first</a></li>
+        <li><a href={`${base}docs/playbook/02-send-less/`}><span>2</span>Send less, not more</a></li>
+        <li><a href={`${base}docs/playbook/03-edges/`}><span>3</span>Best evidence at the edges</a></li>
+        <li><a href={`${base}docs/playbook/04-stable-prefixes/`}><span>4</span>Keep prefixes stable</a></li>
+        <li><a href={`${base}docs/playbook/05-trim-first/`}><span>5</span>Trim before you summarise</a></li>
+        <li><a href={`${base}docs/playbook/06-clear-tool-output/`}><span>6</span>Clear old tool output</a></li>
+        <li><a href={`${base}docs/playbook/07-just-in-time/`}><span>7</span>Pull context just in time</a></li>
+        <li><a href={`${base}docs/playbook/08-memory/`}><span>8</span>Two kinds of memory</a></li>
+        <li><a href={`${base}docs/playbook/09-cite-and-verify/`}><span>9</span>Cite, then verify</a></li>
+        <li><a href={`${base}docs/playbook/10-abstain/`}><span>10</span>Abstain when evidence is missing</a></li>
+        <li><a href={`${base}docs/playbook/11-fence-untrusted-text/`}><span>11</span>Fence untrusted text</a></li>
+        <li><a href={`${base}docs/playbook/12-room/`}><span>12</span>Tell the model its room</a></li>
       </ul>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap">
+      <div class="section-head">
+        <p class="eyebrow">Agents</p>
+        <h2>Works with the framework you already use</h2>
+        <p>Foveate depends on no agent framework. Small adapter packages give your agent page tools and a history budget in a few lines.</p>
+      </div>
+      <FrameworkTabs />
+      <ul class="facts">
+        <li><strong>No SDKs.</strong> Talks to any OpenAI-compatible server (OpenAI, vLLM, Ollama, NVIDIA, Together) with the standard library.</li>
+        <li><strong>Reliable.</strong> Cache, retries, circuit breaker, rate limits, and recovery when a reasoning model spends its whole token cap thinking.</li>
+        <li><strong>Observable.</strong> Typed events and OpenTelemetry spans. Python 3.10 to 3.13 on Linux, macOS and Windows.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="block">
+    <div class="wrap honest">
+      <div>
+        <p class="eyebrow">Honesty</p>
+        <h2>Where it does not win</h2>
+      </div>
+      <div class="prose">
+        <p>We publish the results that do not favour Foveate. On the same questions, plain retrieval found hidden sentences in long pages that Foveate missed, Foveate sent more tokens than plain retrieval, and it gave the same answer to reworded questions less often. Better retrieval put the evidence page in the prompt much more often but did not raise accuracy. No pipeline solved needles that share no words with the question.</p>
+        <p>Thirty questions and one model is a small sample. Run the harness on your own documents before you trust any of this.</p>
+        <a class="btn" href={`${base}evidence/`}>See every result</a>
+      </div>
     </div>
   </section>
 
@@ -128,12 +154,12 @@ answer.grounded  <span class="c"># True: the quote is on page 60</span></pre>
       <div class="section-head">
         <p class="eyebrow">Coming next</p>
         <h2>What we are building</h2>
-        <p>Position-aware prompts, query-aware condensing, long-term memory and two new benchmarks are on the list.</p>
+        <p>The gaps the benchmarks found, in the order we are closing them.</p>
       </div>
       <div class="grid cols-2">
         {upcoming.map((item) => (
           <article class="card">
-            <span class={`chip ${item.status}`}>{statusLabel[item.status]}</span>
+            <span class="chip building">Being built</span>
             <h3>{item.title}</h3>
             <p class="muted">{item.summary}</p>
           </article>
@@ -146,7 +172,7 @@ answer.grounded  <span class="c"># True: the quote is on page 60</span></pre>
   <section class="block final">
     <div class="wrap">
       <h2>Start with a dry run</h2>
-      <p class="lede">Plan a question on your own file without calling a model. Then ask it with citations.</p>
+      <p class="lede">Plan a question on your own file with no model and no cost. Then ask it, with citations.</p>
       <div class="cta"><a class="btn primary" href={`${base}docs/quickstart/`}>Open the quickstart</a><a class="btn" href="https://github.com/sachncs/foveate">View on GitHub</a></div>
     </div>
   </section>
@@ -167,25 +193,46 @@ answer.grounded  <span class="c"># True: the quote is on page 60</span></pre>
 </Landing>
 
 <style>
-  .hero { padding-block: clamp(3rem, 8vw, 6rem) clamp(2.5rem, 6vw, 5rem); }
-  .hero-grid { display: grid; gap: var(--space-12); grid-template-columns: minmax(0, 1fr); align-items: center; }
-  @media (min-width: 62rem) { .hero-grid { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); } }
+  .hero { padding-block: clamp(3.5rem, 9vw, 7rem) clamp(3rem, 6vw, 5rem); }
+  .hero-grid { display: grid; gap: clamp(2.5rem, 5vw, 4.5rem); grid-template-columns: minmax(0, 1fr); align-items: center; }
+  @media (min-width: 64rem) { .hero-grid { grid-template-columns: minmax(0, 1.12fr) minmax(0, 1fr); } }
+  h1 em { font-style: italic; color: var(--accent-text); }
   .cta { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-8); }
-  .install { display: inline-flex; align-items: center; gap: var(--space-3); margin-top: var(--space-6); padding: .5rem .5rem .5rem 1rem; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); max-width: 100%; }
-  .install code { font-size: .88rem; overflow-x: auto; white-space: nowrap; }
-  .install button { border: 1px solid var(--border); background: var(--surface-2); color: var(--text); border-radius: 8px; padding: .4rem .8rem; font: inherit; font-size: .85rem; cursor: pointer; min-height: 36px; }
-  .demo .small { font-size: .88rem; margin-top: var(--space-3); }
-  .card.accent { border-color: var(--accent); background: var(--accent-soft); }
-  .steps { list-style: none; counter-reset: s; padding: 0; margin: 0; display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); }
-  .steps li { counter-increment: s; padding: var(--space-6); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
-  .steps li::before { content: counter(s); display: inline-grid; place-items: center; width: 2rem; height: 2rem; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-weight: 700; margin-bottom: var(--space-3); }
-  .steps p { margin-top: var(--space-2); }
+  .install { display: inline-flex; align-items: center; gap: var(--space-3); margin-top: var(--space-6); padding: .45rem .5rem .45rem 1rem; border: 1px solid var(--border-strong); border-radius: 999px; max-width: 100%; background: var(--surface); }
+  .install code { font-size: .84rem; overflow-x: auto; white-space: nowrap; }
+  .install button { border: 0; background: var(--text); color: var(--bg); border-radius: 999px; padding: .45rem .95rem; font: inherit; font-size: .8rem; font-weight: 560; cursor: pointer; min-height: 32px; }
+  section.tight { padding-block: clamp(2.5rem, 5vw, 4rem); border-top: 1px solid var(--border-strong); border-bottom: 1px solid var(--border); }
+  .trio { display: grid; gap: 0; grid-template-columns: minmax(0, 1fr); border-top: 1px solid var(--border-strong); }
+  @media (min-width: 62rem) { .trio { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  .trio article { padding: var(--space-8) var(--space-8) var(--space-8) 0; border-bottom: 1px solid var(--border); position: relative; }
+  @media (min-width: 62rem) { .trio article { border-bottom: 0; border-right: 1px solid var(--border); padding-left: var(--space-8); } .trio article:first-child { padding-left: 0; } .trio article:last-child { border-right: 0; padding-right: 0; } }
+  .trio .n { font-family: var(--font-serif); font-size: 1.1rem; color: var(--muted); display: block; margin-bottom: var(--space-4); }
+  .trio h3 { font-family: var(--font-serif); font-weight: 400; font-size: 1.9rem; letter-spacing: -.01em; margin-bottom: var(--space-3); }
+  .trio p { color: var(--muted); font-size: .98rem; }
+  .trio .hl h3 { color: var(--accent-text); }
+  .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); border-top: 1px solid var(--border-strong); counter-reset: s; }
+  .steps li { counter-increment: s; padding: var(--space-6) var(--space-6) var(--space-8) 0; border-bottom: 1px solid var(--border); }
+  .steps li::before { content: counter(s, decimal-leading-zero); display: block; font-family: var(--font-serif); color: var(--muted); font-size: 1rem; margin-bottom: var(--space-3); }
+  .steps h3 { font-family: var(--font-serif); font-weight: 400; font-size: 1.6rem; margin-bottom: var(--space-2); }
+  .steps p { color: var(--muted); font-size: .95rem; }
+  .two { display: grid; gap: clamp(2rem, 5vw, 4rem); grid-template-columns: minmax(0, 1fr); align-items: start; }
+  @media (min-width: 62rem) { .two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+  .rules { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); gap: 0 var(--space-6); border-top: 1px solid var(--border-strong); }
+  .rules li { border-bottom: 1px solid var(--border); }
+  .rules a { display: flex; gap: .9rem; align-items: baseline; padding: .8rem 0; color: var(--text); text-decoration: none; font-size: .95rem; font-weight: 520; }
+  .rules a:hover { color: var(--accent-text); }
+  .rules span { font-family: var(--font-serif); color: var(--muted); font-size: 1.05rem; min-width: 1.4rem; }
+  .facts { list-style: none; padding: 0; margin: var(--space-12) 0 0; display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
+  .facts li { color: var(--muted); font-size: .95rem; padding-top: var(--space-4); border-top: 1px solid var(--border-strong); }
+  .facts strong { color: var(--text); display: block; margin-bottom: .25rem; }
+  .honest { display: grid; gap: clamp(2rem, 5vw, 4rem); grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 62rem) { .honest { grid-template-columns: minmax(0, .8fr) minmax(0, 1.2fr); } }
+  .prose { display: grid; gap: var(--space-4); color: var(--muted); font-size: 1.05rem; max-width: 40rem; }
+  .prose .btn { justify-self: start; margin-top: var(--space-2); }
   .more { margin-top: var(--space-6); }
-  .logos { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-3); padding: 0; margin: 0; }
-  .logos li { padding: .5rem 1rem; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); font-weight: 550; font-size: .95rem; }
+  .card h3 { margin-top: var(--space-3); }
+  .card p { margin-top: var(--space-2); font-size: .95rem; }
   .final { text-align: center; }
   .final .lede { margin-inline: auto; }
   .final .cta { justify-content: center; }
-  .card p { margin-top: var(--space-2); }
-  .card .chip { margin-bottom: var(--space-3); }
 </style>

@@ -1,30 +1,67 @@
 ---
 const base = import.meta.env.BASE_URL;
+const groups = [
+  { title: 'Learn', links: [
+    ['Quickstart', `${base}docs/quickstart/`],
+    ['What is context engineering?', `${base}docs/learn/context-engineering/`],
+    ['The playbook', `${base}docs/playbook/`],
+    ['Glossary', `${base}docs/learn/glossary/`],
+  ] },
+  { title: 'Build', links: [
+    ['Long documents', `${base}docs/guides/long-documents/`],
+    ['Agents and tools', `${base}docs/guides/agents-and-tools/`],
+    ['Local models', `${base}docs/guides/local-models/`],
+    ['API reference', `${base}docs/reference/`],
+  ] },
+  { title: 'Evidence', links: [
+    ['Benchmarks', `${base}docs/benchmarks/`],
+    ['Results at a glance', `${base}evidence/`],
+    ['Research and sources', `${base}docs/research/`],
+    ['Roadmap', `${base}roadmap/`],
+  ] },
+  { title: 'Project', links: [
+    ['GitHub', 'https://github.com/sachncs/foveate'],
+    ['Changelog', 'https://github.com/sachncs/foveate/blob/master/CHANGELOG.md'],
+    ['Report an issue', 'https://github.com/sachncs/foveate/issues'],
+    ['Security', 'https://github.com/sachncs/foveate/blob/master/SECURITY.md'],
+  ] },
+];
 ---
 <footer class="site-footer">
-  <div class="wrap cols">
-    <div>
-      <strong>Foveate</strong>
-      <p class="muted">Context engineering for LLM apps. Apache-2.0. Python 3.10 to 3.13.</p>
+  <div class="wrap">
+    <div class="top">
+      <div class="about">
+        <a class="brand" href={base}><img src={`${base}favicon.svg`} alt="" width="26" height="26" /><span>Foveate</span></a>
+        <p>Context engineering for LLM apps. Put the right pages in the window, and prove the answer.</p>
+      </div>
+      <div class="cols">
+        {groups.map((g) => (
+          <nav aria-label={g.title}>
+            <h2>{g.title}</h2>
+            <ul>{g.links.map(([label, href]) => <li><a href={href}>{label}</a></li>)}</ul>
+          </nav>
+        ))}
+      </div>
     </div>
-    <nav aria-label="Footer">
-      <a href={`${base}docs/quickstart/`}>Quickstart</a>
-      <a href={`${base}docs/concepts/`}>Concepts</a>
-      <a href={`${base}evidence/`}>Evidence</a>
-      <a href={`${base}docs/benchmarks/`}>Benchmark method</a>
-      <a href={`${base}docs/playbook/`}>The twelve rules</a>
-      <a href={`${base}docs/research/`}>Research</a>
-      <a href={`${base}roadmap/`}>Coming next</a>
-      <a href="https://github.com/sachncs/foveate">GitHub</a>
-      <a href="https://github.com/sachncs/foveate/blob/master/CHANGELOG.md">Changelog</a>
-    </nav>
+    <div class="bottom">
+      <span>Apache-2.0 licence</span>
+      <span>Python 3.10 to 3.13</span>
+      <span>Version 0.2.0</span>
+    </div>
   </div>
 </footer>
 <style>
-  .site-footer { border-top: 1px solid var(--border); padding-block: var(--space-12); background: var(--surface-2); }
-  .cols { display: flex; flex-wrap: wrap; gap: var(--space-8); justify-content: space-between; }
-  p { margin-top: .4rem; max-width: 28rem; font-size: .92rem; }
-  nav { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); align-content: start; }
-  nav a { color: var(--muted); text-decoration: none; font-size: .95rem; }
-  nav a:hover { color: var(--text); }
+  .site-footer { border-top: 1px solid var(--border); padding-block: var(--space-16) var(--space-8); background: var(--surface-2); }
+  .top { display: grid; gap: var(--space-12); grid-template-columns: minmax(0, 1fr); }
+  @media (min-width: 60rem) { .top { grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); } }
+  .brand { display: inline-flex; align-items: center; gap: .6rem; font-family: var(--font-serif); font-size: 1.5rem; color: var(--text); text-decoration: none; }
+  .brand img { border-radius: 6px; }
+  .about p { color: var(--muted); margin-top: var(--space-4); font-size: .95rem; max-width: 20rem; }
+  .cols { display: grid; gap: var(--space-8); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  @media (min-width: 42rem) { .cols { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+  h2 { font-family: var(--font-sans); font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--muted); font-weight: 650; margin: 0 0 var(--space-4); line-height: 1.2; }
+  ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .6rem; }
+  li a { color: var(--text); text-decoration: none; font-size: .93rem; }
+  li a:hover { text-decoration: underline; text-underline-offset: 3px; }
+  .bottom { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-8); margin-top: var(--space-12); padding-top: var(--space-6); border-top: 1px solid var(--border); color: var(--muted); font-size: .85rem; }
 </style>

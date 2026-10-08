@@ -1,55 +1,64 @@
 ---
 const base = import.meta.env.BASE_URL;
-const links = [
-  { href: `${base}docs/quickstart/`, label: 'Docs' },
-  { href: `${base}evidence/`, label: 'Evidence' },
-  { href: `${base}docs/research/`, label: 'Research' },
-  { href: `${base}roadmap/`, label: 'Coming next' },
-];
 const current = Astro.props.current ?? '';
+const links = [
+  { href: `${base}docs/`, label: 'Docs' },
+  { href: `${base}docs/playbook/`, label: 'Playbook' },
+  { href: `${base}evidence/`, label: 'Evidence' },
+  { href: `${base}roadmap/`, label: 'Roadmap' },
+];
 ---
 <header class="site-header">
   <div class="wrap bar">
     <a class="brand" href={base} aria-label="Foveate home">
-      <img src={`${base}favicon.svg`} alt="" width="30" height="30" />
+      <img src={`${base}favicon.svg`} alt="" width="28" height="28" />
       <span>Foveate</span>
     </a>
     <nav aria-label="Main">
       {links.map((l) => <a href={l.href} aria-current={current === l.label ? 'page' : undefined}>{l.label}</a>)}
-      <a href="https://github.com/sachncs/foveate" rel="noopener">GitHub</a>
     </nav>
-    <details class="menu">
-      <summary aria-label="Menu">Menu</summary>
-      <div class="sheet">
-        {links.map((l) => <a href={l.href}>{l.label}</a>)}
-        <a href="https://github.com/sachncs/foveate" rel="noopener">GitHub</a>
-      </div>
-    </details>
-    <button id="theme" class="theme" type="button" aria-label="Switch colour theme">
-      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
-    </button>
+    <div class="actions">
+      <a class="gh" href="https://github.com/sachncs/foveate" rel="noopener">
+        <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8z"/></svg>
+        <span>GitHub</span>
+      </a>
+      <button id="theme" class="theme" type="button" aria-label="Switch colour theme">
+        <svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><path fill="currentColor" d="M12 3a9 9 0 1 0 9 9 7 7 0 0 1-9-9z"/></svg>
+      </button>
+      <details class="menu">
+        <summary aria-label="Menu">Menu</summary>
+        <div class="sheet">
+          {links.map((l) => <a href={l.href}>{l.label}</a>)}
+          <a href="https://github.com/sachncs/foveate" rel="noopener">GitHub</a>
+        </div>
+      </details>
+    </div>
   </div>
 </header>
 <style>
-  .site-header { position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--bg) 88%, transparent); backdrop-filter: blur(10px); border-bottom: 1px solid var(--border); }
-  .bar { display: flex; align-items: center; gap: var(--space-6); min-height: 4rem; }
-  .brand { display: inline-flex; align-items: center; gap: .6rem; font-weight: 700; font-size: 1.1rem; color: var(--text); text-decoration: none; letter-spacing: -.01em; }
-  .brand img { border-radius: 8px; }
-  nav { display: flex; gap: var(--space-6); margin-left: auto; flex-wrap: wrap; }
-  nav a { color: var(--muted); text-decoration: none; font-weight: 550; font-size: .95rem; padding: .4rem 0; }
+  .site-header { position: sticky; top: 0; z-index: 40; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: saturate(1.4) blur(14px); border-bottom: 1px solid var(--border); }
+  .bar { display: flex; align-items: center; gap: var(--space-8); min-height: 4.1rem; }
+  .brand { display: inline-flex; align-items: center; gap: .65rem; font-family: var(--font-serif); font-size: 1.5rem; color: var(--text); text-decoration: none; letter-spacing: -.01em; }
+  .brand img { border-radius: 7px; }
+  nav { display: flex; gap: var(--space-8); margin-left: var(--space-4); }
+  nav a { color: var(--muted); text-decoration: none; font-weight: 520; font-size: .93rem; padding: .45rem 0; border-bottom: 1px solid transparent; transition: color .15s; }
   nav a:hover, nav a[aria-current] { color: var(--text); }
-  .theme { border: 1px solid var(--border); background: var(--surface); color: var(--text); border-radius: 10px; width: 40px; height: 40px; display: grid; place-items: center; cursor: pointer; }
-  .menu { display: none; margin-left: auto; position: relative; }
-  .menu summary { list-style: none; cursor: pointer; border: 1px solid var(--border); background: var(--surface); border-radius: 10px; padding: .55rem .9rem; font-weight: 600; font-size: .95rem; min-height: 40px; display: grid; place-items: center; }
+  nav a[aria-current] { border-bottom-color: var(--text); }
+  .actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-3); }
+  .gh { display: inline-flex; align-items: center; gap: .5rem; color: var(--text); text-decoration: none; font-size: .88rem; font-weight: 540; padding: .5rem .95rem; border: 1px solid var(--border-strong); border-radius: 999px; transition: border-color .15s; }
+  .gh:hover { border-color: var(--text); }
+  .theme { border: 1px solid var(--border-strong); background: transparent; color: var(--text); border-radius: 999px; width: 38px; height: 38px; display: grid; place-items: center; cursor: pointer; transition: border-color .15s; }
+  .theme:hover { border-color: var(--text); }
+  .menu { display: none; position: relative; }
+  .menu summary { list-style: none; cursor: pointer; border: 1px solid var(--border-strong); border-radius: 999px; padding: .5rem .95rem; font-weight: 560; font-size: .9rem; min-height: 38px; display: grid; place-items: center; }
   .menu summary::-webkit-details-marker { display: none; }
-  .sheet { position: absolute; right: 0; top: calc(100% + .5rem); min-width: 12rem; display: grid; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: .4rem; }
-  .sheet a { padding: .7rem .8rem; color: var(--text); text-decoration: none; border-radius: 8px; font-weight: 550; }
+  .sheet { position: absolute; right: 0; top: calc(100% + .6rem); min-width: 13rem; display: grid; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); box-shadow: var(--shadow); padding: .4rem; }
+  .sheet a { padding: .75rem .9rem; color: var(--text); text-decoration: none; border-radius: 9px; font-weight: 540; }
   .sheet a:hover { background: var(--surface-2); }
-  @media (max-width: 46rem) { nav { display: none; } .menu { display: block; } }
+  @media (max-width: 52rem) { nav, .gh { display: none; } .menu { display: block; } }
 </style>
 <script>
-  const button = document.getElementById('theme');
-  button?.addEventListener('click', () => {
+  document.getElementById('theme')?.addEventListener('click', () => {
     const next = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
     document.documentElement.dataset.theme = next;
     try { localStorage.setItem('starlight-theme', next); } catch {}

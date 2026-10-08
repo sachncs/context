@@ -28,7 +28,7 @@ Context (frozen)  --compress()-->  Context (frozen, with CompressionReport)
 | API | `foveator`, `context`, `agents` | `Foveator.ask/plan`; `Context.compress`; framework-neutral agent tools and history compression |
 | Documents | `documents`, `selection`, `foveation`, `assembly`, `grounding`, `models`, `fencing` | Pages, retrieval, fidelity tiers, slots, citation checks, model windows, injection fencing |
 | Strategies | `compression`, `verification` | `Compressor`, `Verifier` ABCs and implementations |
-| Domain | `partition`, `okf`, `stores`, `memory`, `bench` | Partitioners, OKF model/bundles, notes stores, agent memory, benchmarks |
+| Domain | `partition`, `okf`, `stores`, `memory`, `evolution`, `bench` | Partitioners, OKF bundles, notes stores, agent memory, ACE playbook evolution, benchmarks |
 | Services | `runtime` | `Runtime.complete`: cache, single-flight, validation, accounting |
 | I/O | `backends`, `cache`, `tokenizers` | Providers + resilience, caches, token counting |
 | Foundation | `messages`, `errors`, `usage`, `prompts`, `observability`, `tracing`, `internals` | Value types and helpers |
@@ -47,6 +47,7 @@ the known ones.
 | `Retriever` | `bm25`, `embedding`, `hybrid`, `rerank` | |
 | `Embedder` | | `HashingEmbedder`, `OpenAIEmbedder` |
 | `Reducer` | `json`, `csv`, `html`, `log` | used by `tool_output` |
+| `Benchmark` | `finer`, `formula`, `ddxplus` | playbook tasks graded deterministically |
 | `Pipeline` (bench) | `full-context`, `truncate`, `naive-rag`, `foveate` | |
 | `Backend` | `openai` (stdlib HTTP, any OpenAI-compatible server), `vllm`, `none` | wrapped by `ResilientBackend` |
 | `Cache` | `memory`, `sqlite`, `null` | |
@@ -79,7 +80,7 @@ from a `PromptTemplate`, routes it through `Runtime.complete`, and records a
 
 ## Runtime.complete: the only LLM call path
 
-Every LLM call in the library (compression, verification, memory, bench)
+Every LLM call in the library (compression, verification, memory, evolution, bench)
 goes through `Runtime.complete`:
 
 1. Build a `Request` and a cache key from `namespace` + the **full request

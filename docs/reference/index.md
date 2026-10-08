@@ -41,7 +41,8 @@ a package exports in `__all__`.
 | `foveate.observability`, `foveate.tracing` | Events, `LoggingObserver`, `MetricsObserver`, `TracingObserver` (OpenTelemetry) |
 | `foveate.stores`, `foveate.okf` | Notes stores; portable knowledge bundles |
 | `foveate.verification` | `fits`, `macro_fallacy` verifiers for compressed contexts |
-| `foveate.bench` | `longdoc` (long documents, gold sets, `starter_items`), `needle` (length x depth grids), `compression` (accuracy against ratio), `scoring` (exact match, F1, atom recall) |
+| `foveate.evolution` | `Evolver`, `Playbook`, `Generator`, `Reflector`, `Curator`: learn a playbook from graded samples |
+| `foveate.bench` | `Benchmark`, `Runner`, `Arm` (playbook tasks `Finer`, `Formula`, `DDXPlus`); `longdoc` (long documents, gold sets, `starter_items`), `needle` (length x depth grids), `compression` (accuracy against ratio), `scoring` (exact match, F1, atom recall) |
 
 ## Compression methods
 
