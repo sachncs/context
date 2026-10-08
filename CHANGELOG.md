@@ -41,7 +41,7 @@ First release.
 - `Context(...).compress(method, budget=...)` returns a new `Context` with a
   `CompressionReport`; the budget is guaranteed or an error is raised.
 - Strategies `ppa`, `hierarchical`, `ushape`, `window`, `truncate`,
-  `extractive`, `offload`, `tool_output`; `a+b` pipelines and `a|b` fallbacks.
+  `extractive`, `selective`, `query`, `offload`, `tool_output`, `clear_tool_results`; `a+b` pipelines and `a|b` fallbacks.
 
 ### Reliability and operations
 
