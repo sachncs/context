@@ -1,132 +1,112 @@
-ceng v2: Production rewrite around Context(...).compress(method=...) -> Context
+# Foveate: context engineering for LLM apps (rename, long-document pipeline, proof, docs)
 
-Context
+## Context
 
-ceng (import name; PyPI ceng-context) is ~3k lines of synchronous helper functions. A static review found:
+The repo is a well-tested but narrow library (compress a chat). The owner's review:
+"context engineering is not context compression", docs are stale/duplicated, the name `ceng`
+is unusable on PyPI, `src/` is unwanted, and the product is "useless" unless it **proves** that
+uploading a ~200-page document goes better with it than without it (quality, grounding,
+reliability). Nothing was ever published to PyPI, so there are no users to keep compatible with.
 
-- Correctness bugs. The benchmark "ceng" arm never injects a playbook, so it measures the baseline. Eval fixtures aren't in the wheel. Evolver cache keys collide. Curator bullet IDs collide (cng-00000). budget_tokens is never enforced. Compaction provenance is zeroed. parse_probability("50%") returns 1.0. Integer 0 answers are dropped. Note tags and timestamps aren't persisted.
-- Structure. About 60 underscore-prefixed names. Thin wrappers (ppa_compress, parse_playbook, playbooks/, presets.py aliases). Legacy flags (index_only, fallback_to_last). Five copies of cache-then-call. list[dict] messages everywhere. Hidden global backend singleton. Cache connections are never closed. Logging exists in one module only. No concurrency, usage/cost accounting, or budget guarantees.
+Facts established while planning:
+- PyPI `ceng` is **taken** (civil-engineering tool). **`foveate` is free** on PyPI and npm; GitHub hits are unrelated graphics projects.
+- vLLM publishes **no macOS wheels** (Linux x86_64/aarch64 only); Docker via colima is installed but stopped; Mac is M3 Pro / 19 GB.
+- **FinanceBench** (HF `PatronusAI/financebench`, CC BY-NC 4.0): 150 Q&A over 84 real SEC 10-K/10-Q PDFs
+  (dozens to hundreds of pages), reference answers, evidence text + page numbers; PDFs fetchable from issuer sites.
+- Live NVIDIA models are mostly reasoning models; `openai/gpt-oss-20b` + `reasoning_effort=low` is fast (0.5 s).
+- Git: `origin` = github.com/sachncs/context; `gh` is logged in as `sachn-cs`. Branch `v2-rewrite` has 14 local commits, none pushed.
 
-Goal: a breaking v2.0.0 with one public noun, Context, and a polymorphic strategy hierarchy behind it. No shims, no back-compat.
+## Decisions (confirmed with the owner)
 
-ctx = Context(messages=[...], runtime=Runtime.from_env())
-out = ctx.compress(method="ppa", budget=4000) # -> Context (new, frozen, carries CompressionReport)
-out = await ctx.acompress(method="ppa", budget=4000)
-out = ctx.compress(method="ushape+ppa", budget=4000) # pipelines
-verdict = out.verify(method="macro_fallacy", ...)
-out.save("dir", format="okf"); Context.load("dir", format="okf")
+- **Brand/PyPI/import name: `foveate`** (fovea = sharp centre of vision; to *foveate* = keep full detail where it matters, coarse elsewhere). `pip install foveate`, `import foveate`.
+- **Flat layout**: `src/ceng/` becomes top-level `foveate/`; no `src/`.
+- **Retrieval**: BM25 default (zero deps) + optional embeddings via any OpenAI-compatible `/embeddings` + hybrid + optional LLM re-rank.
+- **Benchmark data**: public **FinanceBench** (real filings) as the base; we build our own **gold sets** for grounding, unanswerable questions, reliability. Optional second public set (LongBench-v2, Apache-2.0) on a small sample.
+- **vLLM**: Linux CPU in Docker (colima) running a small model (MiniCPM5-1B/2B; fall back to Qwen2.5-0.5B/SmolLM2 if vLLM lacks the architecture), exercised through both the OpenAI-compatible server and the in-process `VLLMBackend`.
+- **CI**: delete the real-model/framework job and every mention of the `NVIDIA_API_KEY` secret. macOS and Windows stay in the unit matrix; prove them by pushing.
+- **Git**: strip the `Co-Authored-By: Claude...` trailer from all commits (history rewrite of local-only commits), no trailer on new commits, force-push `v2-rewrite`, open a PR, merge after CI is green on all three OSes. Omit the "Generated with Claude Code" PR footer.
+- Reset version to **0.1.0** (never published; drop all "v1 to v2 / removed" migration text).
 
-Decisions (confirmed with user)
+## The product story (what the docs and API must answer)
 
-- Scope: re-home everything as Context capabilities or strategies (ppa_check → verify, compaction → a compression strategy, OKF → persistence format, notes → offload store, ACE evolver → ceng.evolution, eval → ceng.bench).
-- Async-first: one native async implementation. Sync calls go through a single runner.
-- Frozen dataclasses. compress returns a new Context carrying a CompressionReport.
+"If I upload 200 pages, what happens?"
+- **Without foveate**: it either exceeds the model window (provider error / silent truncation) or it fits but costs 100k+ tokens per question, is slow, suffers "lost in the middle", and returns uncited answers that cannot be audited.
+- **With foveate**: `Document.load()` gives pages/outline/token counts; `Plan` (dry run) shows tokens, cost and what will be kept; relevant pages are selected (plus neighbours) at **full fidelity (fovea)**, adjacent material is compressed (**parafovea**), the rest is a cheap page outline (**periphery**) the model can ask to expand; the answer carries **page citations**, is **verified** against the cited text, and **abstains** when unsupported.
+- "Specific pages": `doc.pages("12-14")`, `doc.around(40, radius=2)`, `doc.search("capex")`, or let an agent call `read_pages` / `search_document` tools.
 
-Style rules (Google Python Style Guide, user overrides)
+## Phases
 
-- No leading-underscore names at all. No \_helper, \_CONST, \_singleton. Dunders (**init**, **all**) are allowed.
-- Public API is delimited by (a) explicit **all** in every package **init**, (b) an internals subpackage per area for non-API helpers, and (c) docs. Google style normally uses \_ for protected names, so this is a deliberate deviation. Stating it in CONTRIBUTING.md is part of the plan.
-- Enforcement: tests/test*style.py AST-scans src/ and fails on any def, class, assignment or attribute starting with a single *. The same script runs in CI.
-- Google rules: ruff with pydocstyle convention = "google", 80-column lines, Google-style docstrings (Args/Returns/Raises), absolute imports of modules (from ceng.backends import base), full type annotations (mypy --strict, no Any in public signatures), @dataclass(frozen=True, slots=True) by default, enum.Enum for closed sets, no mutable defaults, no module-level mutable state, no bare except Exception.
-- OOP: ABCs for every extension point. Registries are explicit class-level Registry[T] objects (instances, not module globals), populated by a @Compressor.register("ppa")-style decorator.
+### 0. Housekeeping and git (first, mechanical)
+- Rewrite history to drop Claude trailers (`git filter-branch --msg-filter` on `master..v2-rewrite`); verify `git log` has none.
+- `git mv src/ceng foveate`; rename every `ceng` to `foveate`: imports, env vars `CENG_*` to `FOVEATE_*`, logger names, cache dirs `.ceng` to `.foveate`, test-style scan path, ruff/mypy/coverage paths, CI wheel checks, examples, site, docs.
+- `pyproject.toml`: `name="foveate"`, `version="0.1.0"`, `packages.find` with `include=["foveate*"]` (so `tests/ examples/ site/` never ship), package-data paths, extras (`pdf`, `embeddings`, `frameworks`, `vllm`, `openai`, `litellm`, `tokenize`), classifiers "Beta", keywords for context engineering. Verify the wheel contains only `foveate/`.
+- Delete stale files: `plan.md`, old `BENCHMARKS.md` text, CHANGELOG history, "removed in 2.0" lists, v1 references. Rewrite `CHANGELOG.md` as a fresh 0.1.0.
+- Critical files: `pyproject.toml`, `Makefile`, `.pre-commit-config.yaml`, `.github/workflows/*.yml`, `tests/test_style.py`, `tests/test_package.py`, `tests/integration/conftest.py`.
 
-Target layout (src/ceng/)
+### 1. Documents and page-level control (answers "200 pages / specific pages")
+New package `foveate/documents/`:
+- `Document` (frozen): `pages: tuple[Page, ...]` (`Page(number, text, tokens, headings)`), `outline`, metadata; `Document.load(path|bytes, format=None)` through a **`Loader` ABC + registry** (`pdf` via optional `pypdf`, `text`, `markdown`, `html`, `docx` optional); `doc.pages("10-14,40")`, `doc.around(page, radius)`, `doc.slice()`, `doc.token_count`, `doc.to_context(pages=...)`.
+- Structure-aware chunking for retrieval units that keep page + heading provenance (`Chunker` ABC: page, paragraph/semantic, table-preserving).
+- Corpus of several documents with stable ids (`doc_id`, `page`) used in citations.
 
-context.py Context (frozen), Runtime (frozen: backend, cache, tokenizer, limits, observers)
-messages.py Role(Enum), Message (frozen), ContentPart; Message.from_mapping/to_mapping at API edges
-errors.py CengError → ConfigError, BackendError(Transient|Permanent|Timeout|RateLimit),
-BudgetExceededError, ValidationError, CompressionError(step, cause)
-tokenizers/ Tokenizer ABC; HeuristicTokenizer, TiktokenTokenizer; Registry; model→tokenizer resolution
-backends/ Backend ABC (async complete(Request)->Completion{text, Usage, model, latency});
-LiteLLMBackend, OpenAIBackend, VLLMBackend, ScriptedBackend (deterministic, for tests);
-Resilient (retry policy, circuit breaker, concurrency limiter, per-call timeout) composed
-as a real decorator (adds behaviour), error classification maps provider exceptions →
-Transient/Permanent (auth/bad-request never retried)
-cache/ Cache ABC (async get/set, typed CacheKey/CacheEntry); SqliteCache (WAL, corruption-tolerant,
-TTL + max-bytes eviction, close/context manager), MemoryCache, NullCache
-CacheKey = sha256 over full request fingerprint: model, rendered messages, system prompt,
-sampling params, PromptTemplate.fingerprint, strategy name+version
-prompts.py PromptTemplate (frozen: name, version, system, user_fmt, delimiters; fingerprint property)
-partition/ Partitioner ABC; RecursivePartitioner (sentence→paragraph→word, preserves separators/newlines),
-FixedWindowPartitioner; Partition (frozen: text, index, span, tokens)
-compression/ Compressor ABC (see below), Registry, CompressionReport, StepRecord, Budget
-ppa.py PartitionSummarizeCombine (concurrent leaves, semaphore-bounded)
-hierarchical.py Recursive PPA until Budget satisfied (fixes unenforced budget)
-ushape.py Keep head/tail, compress/drop middle (old compact_messages)
-window.py SlidingWindow; truncate.py Truncate(head|tail|middle)
-extractive.py LLM-free sentence ranking (cheap fallback, offline)
-offload.py Writes dropped content to a NotesStore, leaves retrieval pointer
-pipeline.py Pipeline([Compressor,...]); "a+b" method strings parse into it
-fallback.py FallbackCompressor(primary, secondary) for degraded mode on BackendError
-stores/ NotesStore ABC; FilesystemNotesStore (atomic os.replace, file lock, persisted tags/timestamps)
-verification/ Verifier ABC; MacroFallacyVerifier (old ppa_check), TreeNode public, Verdict, LeafEstimate;
-validates root sums; fixes percent parsing
-okf/ Concept, Frontmatter, Codec ABC; OkfCodec (read/write bundle, staged atomic swap, symlink guard);
-Context.save/load dispatch on format registry
-evolution/ Playbook, Bullet (UUID ids, no collision), CuratorOp ABC → AddOp/UpdateOp/MergeOp/DeleteOp,
-Generator/Reflector/Curator roles as classes, Evolver (checkpoint/resume, curator_frequency
-honored, correctness via Benchmark.is_correct, helpful/harmful on success+failure)
-bench/ Benchmark ABC (load_samples, build_prompt, is_correct, seed_playbook); Finer/Formula/DDXPlus/
-AppWorld subclasses (AppWorld either implemented or removed; no NotImplementedError stubs);
-Runner (concurrent, writes json/md); fixtures shipped via package-data; arm "ceng" actually
-injects the (evolved) playbook
-observability.py Observer ABC (on_step_start/end, on_cache, on_retry); LoggingObserver, MetricsObserver
-(usage/cost/latency aggregates); module loggers with NullHandler only
-cli.py `ceng compress|verify|convert|bench` (argparse, JSON in/out, exit codes); entry point `ceng`
+### 2. Selection (what goes in the window)
+New `foveate/selection/`: `Selector` ABC + registry with `PageRange`, `Neighbours`, `BM25` (pure Python), `Embedding` (OpenAI-compatible `/embeddings`, on-disk vector cache, reuses `cache/`), `Hybrid` (reciprocal-rank fusion), `LlmRerank`. Output `Selection(items, scores, reasons)`.
+- `Foveation` allocator (the core idea): given scores + budget, assign each page a fidelity tier FULL / COMPRESSED / OUTLINE / DROPPED using existing `compression` strategies (`extractive`, `ushape`, `ppa`) and `compression.fit.fair_targets` for max-min fair budget.
+- Model registry (`foveate/models.py`): context window + price per known model, so `budget="auto"` = window minus reserve; user override always wins.
 
-Core abstractions
+### 3. Context assembly and grounded answering
+New `foveate/assembly/` and `foveate/grounding/`:
+- `Assembler`: named **slots** (instructions, memory, history, evidence, tools) with priorities and budgets; reuses `Context`, `Budget`, `Overflow`. Retrieved text is fenced as data with an injection-resistant template (extends `prompts.PromptTemplate`).
+- `Foveator` (the high-level object, composition of selector + allocator + assembler + answerer): `Foveator(runtime, budget=...).ask(question, documents) -> Answer`.
+- `Answer`: `text`, `citations: tuple[Citation(doc_id, page, quote)]`, `grounded: bool`, `support: float`, `abstained: bool`, `plan`, `report` (tokens, cost, steps).
+- `Verifier` (new class in the existing `verification` ABC): `CitationVerifier` checks every cited quote exists on the cited page (string match, deterministic) and `SupportVerifier` asks the model whether the cited text supports each claim; unsupported answers are re-asked once with more evidence, else the answer abstains ("not found in the provided pages").
+- `Plan` / `foveate.plan(...)`: dry run returning token counts, estimated cost and the tier assignment before any model call.
 
-@dataclasses.dataclass(frozen=True, slots=True)
-class Context:
-messages: tuple[Message, ...]
-runtime: Runtime = dataclasses.field(default_factory=Runtime.from_env)
-report: CompressionReport | None = None
-metadata: Mapping[str, str] = MappingProxyType({})
-def compress(self, method: str | Compressor = "ppa", \*, budget: int | Budget, **options) -> Context
-async def acompress(...) -> Context
-def verify(self, method="macro_fallacy", **options) -> Verdict
-def save(self, path, format="okf") -> None ; @classmethod load(...)
-@property token_count
+### 4. Agent tools (the other half of "specific pages")
+`foveate/integrations/` gains `read_pages(doc, start, end)` and `search_document(query, k)` tool factories for Pydantic AI, Google ADK and LangGraph (reuses existing adapter modules and `HistoryAdapter`); keep history compression. Real-framework tests extend `tests/integration/test_frameworks.py`; **no-model adapter tests** (`tests/test_framework_adapters.py`, `importorskip`) cover flatten/rebuild/starts_turn with the real message classes so a new CI job can run them without a key (remove the `coverage omit` for the three modules).
 
-class Compressor(abc.ABC): # template method: validate → short-circuit if within budget → run → enforce budget → report
-name: ClassVar[str]; version: ClassVar[str]
-@abc.abstractmethod async def run(self, context, budget) -> Context
+### 5. Other forgotten/missing features (prioritised for "a million developers")
+Tier A (build now, small, high value): tool-output compression for agents (JSON/HTML/log/CSV structure-aware `Compressor`s: prune keys, truncate arrays with counts, collapse repeated log lines); cost/token estimator and `Plan`; OpenTelemetry-compatible tracing via the existing `Observer` ABC; prompt-injection fencing; model/window registry.
+Tier B (build if time after the benchmark): long-term conversation memory (extends `stores.NotesStore` with summaries + recall), table-aware PDF extraction, streaming `ask`.
+Tier C (roadmap only, documented, not built): vector-DB connectors, multimodal pages (vision), PII redaction, TypeScript SDK, hosted eval dashboard.
 
-- method string resolves via Compressor.registry. Per-strategy options are typed CompressorConfig dataclasses (validated at construction), accepted as kwargs or as an instance. Unknown option → ConfigError.
-- Budget enforcement is in the base class: after run, if tokens > budget it invokes the strategy's tighten() hook (hierarchical re-pass), then falls back to the overflow policy (raise | truncate), so the guarantee is explicit.
-- Runtime replaces the global backend singleton and every cache_dir/llm string argument. There is no hidden state, so tests inject ScriptedBackend + MemoryCache.
-- The single sync runner is ceng.internals.runner.run_sync(coro). It uses asyncio.run normally and a worker thread when a loop is already running. This is the only sync/async bridge.
+### 6. Benchmark: with vs without foveate (the proof)
+`foveate/bench/longdoc/` (extends existing `Benchmark`, `Runner`, `Arm`, `BenchResult`, and the report writer):
+- **Data**: `FinanceBenchLoader` downloads the jsonl and PDFs at run time into `~/.cache/foveate/financebench` (CC BY-NC: never redistributed; only our derived gold annotations are committed under `foveate/bench/longdoc/gold/`).
+- **Gold sets we build** (script `foveate/bench/longdoc/build_gold.py`, outputs reviewed and versioned): (a) page-level evidence labels from FinanceBench evidence pages (grounding); (b) **unanswerable** set: question paired with a filing whose text provably lacks the answer value (automatic text search + spot check); (c) **reliability** set: paraphrased questions (cached LLM paraphrase, reviewed) for consistency; (d) **position sweep**: a synthetic needle sentence inserted at 0/25/50/75/100% depth of a real filing (lost-in-the-middle).
+- **Pipelines compared** (all via a `Pipeline` ABC): `FullContext` (whole document; records window overflow as a failure), `NaiveTruncate`, `NaiveRag` (fixed chunks, top-k, no foveation or verification: the honest competitor), `Foveate`.
+- **Metrics**: answer correctness (deterministic numeric/string match first, LLM judge fallback with a rubric; a stronger judge model than the answerer if one is fast enough), citation page precision/recall vs gold, faithfulness (claim support judged against cited text), abstention accuracy on unanswerables, run-to-run agreement over 3 seeded runs and paraphrases, accuracy vs needle depth, plus prompt tokens, estimated cost, latency.
+- **Runs**: primary `openai/gpt-oss-20b` (`reasoning_effort=low`) on a stratified sample (default 30 questions / ~20 filings, `--full` for all 150); a **small local model through vLLM** (window 4-32k, where the full-context baseline cannot run at all); responses cached so reruns are cheap. A `--dry-run` prints the token/cost estimate first.
+- **Honesty gate**: results (including losses) are written to `docs/benchmarks.md` with date, model, n, seeds and exact commands. Targets used to decide whether to iterate, not to massage numbers: non-inferior accuracy to full-context within a stated margin at far fewer tokens; page-citation recall materially above naive RAG; correct abstention rate above both baselines; lower run-to-run variance. If foveate does not beat NaiveRag on something, we fix the pipeline (selector, tiers, verifier) before publishing and say so in the docs.
 
-Resilience and reliability (cross-cutting)
+### 7. vLLM
+- `docker/vllm-cpu/Dockerfile` + `docker/vllm-cpu/README`: start colima, build/run vLLM CPU, `vllm serve openbmb/MiniCPM5-1B` (fallback model if the architecture is unsupported).
+- `tests/integration/test_vllm.py` (env `FOVEATE_TEST_VLLM_URL`, skipped otherwise): real calls through `OpenAIBackend`, and an in-container run of the in-process `VLLMBackend`. Fix `foveate/backends/providers.py` if the real `vllm.LLM.chat` signature differs.
 
-- Retry with exponential backoff and full jitter, only for TransientBackendError, honoring Retry-After. Per-request timeout and overall deadline. Circuit breaker. Bounded concurrency (semaphore) and optional rate limit.
-- Cache stampede protection (single-flight per key). Cache corruption is treated as a miss and logged.
-- Partial progress: leaf results are cached as they complete, so a retry resumes. FallbackCompressor degrades to extractive when the backend is down (opt-in).
-- Output validation: empty, None or over-length completions raise ValidationError, with a bounded regeneration attempt.
-- Resource hygiene: all caches and stores are context managers, and Runtime.aclose() releases them.
-- Usage and cost: Usage(prompt, completion) from the provider response (heuristic fallback), aggregated in CompressionReport with a pluggable price table.
-- Config comes from Runtime.from_env() with strict parsing (bad env values raise ConfigError, not silently ignored).
+### 8. Documentation rebuild (onboarding-first)
+Delete duplicates; create `docs/`: `index.md` (why/who/when/where/how/what), `quickstart.md` (5 min: install, first long-doc question, first benchmark), `concepts.md` (fovea/parafovea/periphery, slots, selection, grounding), `guides/` (long documents and page control, agents and tools, local models/vLLM, evaluating your own pipeline, production), `benchmarks.md` (real numbers), `reference/` (API pages for `documents`, `selection`, `assembly`, `grounding`, `compression`, `backends`, `bench`), `faq.md`, `roadmap.md` (Tier C). README becomes a short pitch + the 200-page example + links. Update `ARCHITECTURE.md`, `PRODUCTION.md` (remove "ceng is already registered on PyPI" text), `CONTRIBUTING.md`, `SECURITY.md`, `SUPPORT.md`, issue templates, `site/` copy and metrics (only real measured numbers, link to benchmarks), `site/scripts/make-og.py` + regenerate the OG image.
 
-Phases (each lands green: ruff, mypy --strict, pytest ≥ 90% branch coverage)
+### 9. CI and release readiness
+- `.github/workflows/ci.yml`: unit matrix Linux/macOS/Windows x Python 3.10-3.13 (keep), `package` job (wheel contents + clean-venv import), `frameworks` job (installs the three frameworks, runs the no-model adapter tests), `site` job. **Delete the `integration` job and the `NVIDIA_API_KEY` secret logic.** Integration tests stay local, documented in CONTRIBUTING.
+- Release workflow publishes `foveate` via trusted publishing (unchanged mechanics, new name).
+- Windows-safe: `os.replace`, explicit UTF-8, no symlink assumptions in required tests (already so; verify on the first run).
+- Push `v2-rewrite` (force, after history rewrite), open PR, watch all matrix legs, fix failures, then merge to `master` when green.
 
-1. Foundation: tooling and style gate (ruff google, mypy strict, test_style.py no-underscore scan), errors, messages, tokenizers, observability, prompts. Delete the old modules as their replacements land. There is no parallel old/new code.
-2. I/O layer: backends (+ resilience, error classification), cache, Runtime, ScriptedBackend. Tests for retry/timeout/breaker/corruption/single-flight.
-3. Core: partition, Compressor ABC + registry + budget enforcement + report, ppa, hierarchical, ushape, window, truncate, extractive, pipeline, fallback, then Context with compress/acompress.
-4. Persistence and tools: okf codec + Context.save/load, stores + offload, verification + Context.verify.
-5. Evolution and bench: evolution (ID, cache-key, gating and frequency fixes), bench with real playbook injection and shipped fixtures, cli.
-6. Release: rewrite README/ARCHITECTURE/PRODUCTION/CHANGELOG (2.0.0, migration notes only as a "what was removed" list), fix CI (macOS+Windows matrix, pinned actions, release gated on test job, pre-commit config, drop unused pytest-asyncio, honest classifier "Beta", bounded dependency ranges), update examples/ and the site's code snippets.
+## Reuse (do not rewrite)
+`foveate/compression/*` (strategies, `fit.fair_targets`, `Budget`, `Overflow`), `Runtime.complete` (cache, single-flight, reasoning-model retries, shorten pass), `verification` ABC, `stores`, `okf` persistence, `bench` (`Benchmark`, `Runner`, `Arm`, `BenchResult`), `integrations.history`, `internals.looplocal`, `tests/faults.py` (unit fault injection only).
 
-Old → new mapping: ppa_compress/compress_to_bundle → Context.compress("ppa"); ppa_compress_to_okf → compress(...).save(format="okf"); compact_messages → method="ushape"; ppa_check → Context.verify; NotesManager → FilesystemNotesStore; Playbook\*/Evolver → ceng.evolution; ceng-bench → ceng bench. The presets.py aliases and playbooks/ are deleted.
+## Risks / open items
+- API cost/latency of full-context baselines (100k+ tokens x many questions) and free-tier rate limits: mitigated by sampling, caching, `--dry-run`, resumable runs; may need a smaller default sample.
+- Some filings may exceed the answer model's window: counted as a baseline failure, reported separately from "fits" subset.
+- FinanceBench license is non-commercial: benchmark use only, no redistribution of documents.
+- MiniCPM5 may be unsupported by the installed vLLM: documented fallback model.
+- GitHub push/merge depends on the `sachn-cs` token having write access to `sachncs/context`; if denied I stop and report. Renaming the GitHub repo to `foveate` is recommended but left for the owner.
+- Scope is large: phases are ordered so each is shippable and green on its own (0, 1, 2, 3, 6 are the critical path; 4, 5, 7, 8, 9 follow).
 
-Critical files
-
-Replaced/deleted: all of src/ceng/_.py, compress/, playbook/, playbooks/, eval/, presets.py, bench.py. Reused with rewrite (logic worth keeping): okf.py (parse/render and the staged-swap writer), partition.py (recursion idea), backends.retry_with_backoff (jitter logic), cache.py (sqlite WAL + schema versioning), playbook/prompts.py and compress/prompts.py (prompt text). Also touched: pyproject.toml (package-data for fixtures, extras, entry point ceng, tool config), .github/workflows/{ci,release}.yml, Makefile, docs, examples/_.
-
-Verification
-
-- make check: ruff check, ruff format --check, mypy --strict src/ceng, pytest --cov --cov-branch --cov-fail-under=90. test_style.py must report zero underscore-prefixed names.
-- Regression tests, one per bug in the review: budget enforced (output ≤ budget or BudgetExceededError), cache-key sensitivity (changing the prompt/system/temperature/playbook changes the key), unique bullet IDs, curator_frequency honored, 50% → 0.5, answer 0 kept, notes tags round-trip, compaction report token counts non-zero, newline preservation in the partitioner, fixtures present in the built wheel.
-- Resilience tests with ScriptedBackend fault injection: transient-then-success, permanent failure (not retried), timeout, breaker open/half-open, concurrent identical requests hit the backend once, corrupted cache row.
-- Property tests (hypothesis): partition concatenation preserves text; partitions ≤ max tokens; pipeline output ≤ budget.
-- Build wheel, install into a clean venv outside the checkout, run ceng compress on a sample JSON and the offline examples/; confirm ceng bench smoke shows a nonzero delta only when a playbook is injected.
-- CI green on Linux/macOS/Windows × Python 3.10–3.13.
+## Verification
+- `make check`: ruff, `mypy --strict`, pytest (90% coverage gate), no-underscore gate, wheel contains only `foveate/`.
+- Unit tests per phase (loaders on generated PDFs, BM25 ranking properties via hypothesis, foveation tier allocation never exceeds budget, citation verifier on crafted answers); fault-injection tests stay in `tests/faults.py`.
+- Real-model tests locally: `pytest tests/integration` (long-document pipeline on a real filing; frameworks; vLLM).
+- Benchmark: `python -m foveate.bench.longdoc --dry-run`, then the sampled run; report regenerated into `docs/benchmarks.md`.
+- Docs: every code block in `README.md`/`docs/` executed by a docs test where it needs no key; links checked.
+- CI: PR shows green Linux/macOS/Windows x 3.10-3.13, `package`, `frameworks`, `site`; then merge.
