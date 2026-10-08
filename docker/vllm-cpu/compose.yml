@@ -13,7 +13,7 @@ services:
       - --dtype=bfloat16
       - --trust-remote-code
     environment:
-      VLLM_CPU_KVCACHE_SPACE: "4"
+      VLLM_CPU_KVCACHE_SPACE: "${VLLM_KV:-4}"
       HF_HOME: /models
     volumes:
       - hf-cache:/models
