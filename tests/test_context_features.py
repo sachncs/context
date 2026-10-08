@@ -257,7 +257,7 @@ def test_inference_mode_changes_the_system_prompt_only():
 
     assert "inference" in ANSWER_INFERENCE.system
     assert "inference" not in ANSWER.system
-    assert ANSWER_INFERENCE.user == ANSWER.user
+    assert "short inference" in ANSWER_INFERENCE.user
     assert ANSWER_INFERENCE.fingerprint != ANSWER.fingerprint
     seen = []
 

@@ -8,15 +8,16 @@ NoLiMa books) into pages the same way.
 from __future__ import annotations
 
 import random
-import re
 from collections.abc import Sequence
 
 from foveate import errors
 from foveate.documents import Document
 from foveate.documents import page as page_lib
+from foveate.partition import base as partition_base
 from foveate.tokenizers import base as tokenizer_base
 
 PAGE_TOKENS = 500
+MAX_REPEATS = 50
 SUBJECTS = (
     "The committee",
     "A visiting engineer",
@@ -103,25 +104,32 @@ def book_pages(
 ) -> list[str]:
     """Cuts a window of `tokens` tokens out of `text` and pages it.
 
-    The window starts at a seeded offset so different seeds read different
-    parts of the book.
+    The window starts at a seeded offset (moved to the next line break) and
+    wraps around the end of the text. Pages are cut by the recursive
+    partitioner, so they stay near `page_tokens` even when the source has
+    no blank lines.
     """
-    paragraphs = [p.strip() for p in re.split(r"\n\s*\n", text) if p.strip()]
-    if not paragraphs:
+    if not text.strip():
         raise errors.ValidationError("haystack text is empty")
-    start = random.Random(seed).randrange(len(paragraphs))
+    start = random.Random(seed).randrange(len(text))
+    cut = text.find("\n", start)
+    start = 0 if cut == -1 else cut + 1
+    rotated = text[start:] + "\n" + text[:start]
+    splitter = partition_base.RecursivePartitioner(page_tokens)
     pages: list[str] = []
-    current = ""
     total = 0
-    index = start
+    repeats = 0
     while total < tokens:
-        current += paragraphs[index % len(paragraphs)] + "\n\n"
-        index += 1
-        if tokenizer.count(current) >= page_tokens:
-            pages.append(current.strip())
-            total += tokenizer.count(current)
-            current = ""
-        if index - start > 50 * len(paragraphs):
+        for part in splitter.split(rotated, tokenizer):
+            body = part.text.strip()
+            if not body:
+                continue
+            pages.append(body)
+            total += tokenizer.count(body)
+            if total >= tokens:
+                break
+        repeats += 1
+        if repeats > MAX_REPEATS:
             raise errors.ValidationError("haystack text is too short")
     return pages
 

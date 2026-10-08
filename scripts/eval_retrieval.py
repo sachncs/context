@@ -46,6 +46,10 @@ def settings(
         out["embedding"] = Foveator(
             with_vectors, budget=12_000, retrieval="embedding"
         )
+        out["hybrid+expand"] = dataclasses.replace(out["hybrid"], expand=2)
+        out["embedding+expand"] = dataclasses.replace(
+            out["embedding"], expand=2
+        )
     return out
 
 

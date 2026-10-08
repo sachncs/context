@@ -76,6 +76,11 @@ ANSWER_INFERENCE = dataclasses.replace(
         " Reply with a single JSON",
         INFERENCE_NOTE + " Reply with a single JSON",
     ),
+    user=ANSWER.user.replace(
+        "set found=false when the shown pages lack the answer;",
+        "set found=false only when neither the shown pages nor a short "
+        "inference from them gives the answer;",
+    ),
 )
 ANSWER_TOKENS = 1_500
 FIXED_OVERHEAD = 400
