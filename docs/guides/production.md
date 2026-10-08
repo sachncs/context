@@ -11,7 +11,7 @@ synchronous methods are for scripts and notebooks; they run the same code.
 Build one `Runtime` per process and share it across tasks: it owns the cache
 connection, the circuit-breaker state and the concurrency limits, which only
 work as intended when shared. Caches and stores lock internally; the circuit
-breaker assumes one event loop per process. `Runtime.from_env()` reads `FOVEATE_BACKEND`,
+breaker assumes one event loop per process. `Runtime.from_env()` reads `FOVEATE_BACKEND` (`openai`, the default, or `vllm`),
 `FOVEATE_MODEL`, `FOVEATE_BASE_URL`, `FOVEATE_OPTIONS`, `FOVEATE_CACHE_DIR`, `FOVEATE_TIMEOUT_SECONDS`, `FOVEATE_RETRY_ATTEMPTS`,
 `FOVEATE_CONCURRENCY`, and optionally `FOVEATE_RATE_LIMIT_PER_SECOND` and
 `FOVEATE_DEADLINE_SECONDS`; malformed values raise `ConfigError` instead of being

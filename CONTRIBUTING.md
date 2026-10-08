@@ -49,8 +49,8 @@ annotations) with these project rules:
   belongs in `tests/integration/`, which calls a real provider (set
   `NVIDIA_API_KEY` or `FOVEATE_TEST_API_KEY`) and is skipped without a key,
   or `tests/local/` for a local vLLM server (`FOVEATE_TEST_VLLM_URL`). These
-  run on your machine, not in CI. Framework adapters have no-model tests in
-  `tests/test_framework_adapters.py`. Add a regression test with every bug
+  run on your machine, not in CI. Framework adapters live in `integrations/<name>/` and have their own
+  no-model tests (`make integrations`). Add a regression test with every bug
   fix.
 
 ## Pull request flow

@@ -21,7 +21,6 @@ downloads the weights (about 2 GB for the 1B model).
 Then use it like any OpenAI-compatible endpoint:
 
 ```bash
-export FOVEATE_BACKEND=openai
 export FOVEATE_BASE_URL=http://localhost:8000/v1
 export FOVEATE_MODEL=openbmb/MiniCPM5-1B
 export FOVEATE_CONTEXT_WINDOW=8192

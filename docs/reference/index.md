@@ -1,12 +1,12 @@
 ---
-title: "Reference"
-description: "Public names, modules, extension points and environment variables."
+title: "API overview"
+description: "The public names of Foveate by module, with a one-line description of each."
 ---
 
-Public names are exported from the package or the module listed. Every public
-class and function has a docstring with arguments and errors; use
-`help(foveate.Foveator)` or your editor. The package ships type information
-(`py.typed`) and is checked with `mypy --strict`.
+Every public class and function has a docstring with arguments and the errors it raises; use
+`help(foveate.Foveator)` or your editor. The package ships type information (`py.typed`) and is checked
+with `mypy --strict`. Names that start with an underscore do not exist in Foveate: what is public is what
+a package exports in `__all__`.
 
 ## Top level (`import foveate`)
 
@@ -14,56 +14,38 @@ class and function has a docstring with arguments and errors; use
 |---|---|
 | `Document` | Page-addressable document: `load`, `select`, `around`, `page`, `outline`, `text` |
 | `Foveator` | Retrieve, foveate, answer, verify: `ask`, `aask`, `plan`, `index` |
-| `Plan`, `Index` | Dry-run result; prepared documents for repeated questions |
-| `Answer`, `Citation` | Grounded result and its verified evidence |
+| `Plan`, `Index` | The dry-run result; documents prepared for repeated questions |
+| `Answer`, `Citation` | The grounded result and its verified evidence |
 | `Context` | Messages plus runtime; `compress(method, budget=...)` |
 | `Message`, `Role` | Chat message model |
 | `Budget`, `Overflow`, `CompressionReport` | Token ceiling, overflow policy, what compression did |
+| `Memory` | Session notes and durable facts |
 | `Runtime` | Backend, cache, tokenizer, observers, prices, options, embedder |
 
 ## Modules
 
 | Module | Contents |
 |---|---|
-| `foveate.documents` | `Document`, `Page`, `Loader` (+ registry), `PageChunker`, `parse_pages` |
-| `foveate.selection` | `Retriever`, `BM25Retriever`, `EmbeddingRetriever`, `HybridRetriever`, `LlmReranker`, `build_retriever` |
-| `foveate.foveation` | `FoveationConfig`, `Tier`, `PagePlan`, `Foveation`, `allocate` |
-| `foveate.assembly` | `Slot`, `allocate`: split a window between instructions, history, evidence |
+| `foveate.documents` | `Document`, `Page`, `Loader` (and its registry), `PageChunker`, `parse_pages` |
+| `foveate.selection` | `Retriever`, `BM25Retriever`, `EmbeddingRetriever`, `HybridRetriever`, `LlmReranker`, `build_retriever`, query expansion |
+| `foveate.foveation` | `FoveationConfig`, `Tier`, `PagePlan`, `Foveation`, `allocate`, `arrange` |
+| `foveate.assembly` | `Slot`, `allocate`: split a window between instructions, history and evidence |
 | `foveate.models` | Context windows of known models, `auto_budget` |
 | `foveate.grounding` | `Answer`, `Citation`, quote verification, `NOT_FOUND` |
 | `foveate.fencing` | `escape`, `suspicious` |
-| `foveate.compression` | `Compressor` registry: `ppa`, `hierarchical`, `ushape`, `window`, `extractive`, `selective`, `query`, `truncate`, `offload`, `tool_output`, `clear_tool_results`; `Pipeline` (`a+b`), `Fallback` (`a\|b`) |
-| `foveate.backends` | `Backend`, `LiteLLMBackend`, `OpenAIBackend`, `VLLMBackend`, `NoBackend`, `ResilientBackend`, `RetryPolicy`, `CircuitBreaker`, embedders |
+| `foveate.compression` | `Compressor` registry; `Pipeline` (`a+b`), `Fallback` (`a\|b`) |
+| `foveate.agents` | `DocumentTools`, `HistoryCompressor`, `HistoryAdapter` (framework-neutral) |
+| `foveate.memory` | `Memory`: `remember`, `recall`, `message`, `consolidate`, `forget` |
+| `foveate.backends` | `Backend`, `OpenAIBackend`, `VLLMBackend`, `NoBackend`, `ResilientBackend`, `RetryPolicy`, `CircuitBreaker`, embedders |
 | `foveate.cache` | `Cache`, `MemoryCache`, `SqliteCache`, `NullCache` |
-| `foveate.observability` | `Event`s, `Observer`, `LoggingObserver`, `MetricsObserver` |
-| `foveate.tracing` | `TracingObserver` (OpenTelemetry) |
-| `foveate.integrations` | `history`, `tools`, `pydantic_ai`, `adk`, `langgraph` |
-| `foveate.stores`, `foveate.okf` | Notes stores and portable knowledge format for `offload` and evolution |
+| `foveate.observability`, `foveate.tracing` | Events, `LoggingObserver`, `MetricsObserver`, `TracingObserver` (OpenTelemetry) |
+| `foveate.stores`, `foveate.okf` | Notes stores; portable knowledge bundles |
 | `foveate.verification` | `fits`, `macro_fallacy` verifiers for compressed contexts |
-| `foveate.evolution` | ACE-style playbook evolution |
-| `foveate.bench` | `Benchmark`, `Runner` (playbook tasks); `bench.longdoc` (long documents, gold sets, `starter_items`); `bench.needle` (length x depth grids); `bench.compression` (accuracy against compression ratio); `bench.scoring` (exact match, F1, atom recall) |
-| `foveate.memory` | `Memory`: session notes, durable facts, `recall`, `consolidate` |
+| `foveate.bench` | `longdoc` (long documents, gold sets, `starter_items`), `needle` (length x depth grids), `compression` (accuracy against ratio), `scoring` (exact match, F1, atom recall) |
 
-## Extending
+## Compression methods
 
-Every extension point is an abstract class with a registry, so adding one is a
-subclass plus a decorator:
+`ppa`, `hierarchical`, `ushape`, `window`, `extractive`, `selective`, `query`, `truncate`, `offload`,
+`tool_output`, `clear_tool_results`. See [compression](../learn/compression.md).
 
-| To add | Subclass | Register with |
-|---|---|---|
-| A compression method | `compression.Compressor` | `@Compressor.register("name")` |
-| A tool-output format | `compression.Reducer` | `@Reducer.registry.register("name")` |
-| A document format | `documents.Loader` | `@Loader.registry.register("name")` |
-| A retriever | `selection.Retriever` | `@Retriever.registry.register("name")` |
-| A benchmark pipeline | `bench.longdoc.Pipeline` | `@Pipeline.registry.register("name")` |
-| A model provider | `backends.Backend` | pass it to `Runtime(backend=...)` |
-| A cache | `cache.Cache` | pass it to `Runtime(cache=...)` |
-| An observer | `observability.Observer` | `Runtime(observers=(...))` |
-
-## Environment variables
-
-`FOVEATE_BACKEND` (litellm, openai, vllm), `FOVEATE_MODEL`, `FOVEATE_BASE_URL`,
-`FOVEATE_OPTIONS` (JSON), `FOVEATE_CONTEXT_WINDOW`, `FOVEATE_EMBEDDING_MODEL`,
-`FOVEATE_CACHE_DIR` (empty disables), `FOVEATE_TIMEOUT_SECONDS`,
-`FOVEATE_RETRY_ATTEMPTS`, `FOVEATE_CONCURRENCY`, `FOVEATE_RATE_LIMIT_PER_SECOND`,
-`FOVEATE_DEADLINE_SECONDS`, `FOVEATE_CACHE_HOME` (benchmark downloads).
+More: [settings](settings.md), [errors](errors.md), [extending Foveate](extending.md).
