@@ -47,9 +47,11 @@ def text_from_choices(response: Any) -> tuple[str, str]:
 def usage_from_response(response: Any) -> usage_lib.Usage:
     """Reads token usage from an OpenAI-shaped response (0s if absent)."""
     raw = getattr(response, "usage", None)
+    details = getattr(raw, "prompt_tokens_details", None)
     return usage_lib.Usage(
         int(getattr(raw, "prompt_tokens", 0) or 0),
         int(getattr(raw, "completion_tokens", 0) or 0),
+        int(getattr(details, "cached_tokens", 0) or 0),
     )
 
 
