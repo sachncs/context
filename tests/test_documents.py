@@ -152,6 +152,8 @@ class TestLoaders:
         doc = Document.load(path, tokenizer=TOK, page_tokens=200)
         assert len(doc.pages) > 5 and all(p.tokens <= 200 for p in doc.pages)
         assert "".join(p.text for p in doc.pages) == body
+        crlf = Document.load(b"a\r\nb\r\n\fc", format="text")
+        assert [p.text for p in crlf.pages] == ["a\nb\n", "c"]
         paged = Document.load(b"one\fTwo\fthree", format="text")
         assert [p.text for p in paged.pages] == ["one", "Two", "three"]
 
