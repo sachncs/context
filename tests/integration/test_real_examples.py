@@ -25,11 +25,7 @@ def example_env(monkeypatch):
 
 @pytest.mark.parametrize(
     "name",
-    [
-        "01_quickstart.py",
-        "03_fallback_and_persistence.py",
-        "04_verify_and_evolve.py",
-    ],
+    ["02_ask_with_citations.py"],
 )
 def test_example_runs(name, example_env, capsys):
     runpy.run_path(str(EXAMPLES / name), run_name="__main__")

@@ -6,7 +6,7 @@ import pytest
 
 from foveate import errors, messages, observability
 from foveate import runtime as runtime_lib
-from foveate.backends import base, resilient
+from foveate.backends import OpenAIBackend, base, resilient
 from foveate.cache import base as cache_base
 from tests.integration import conftest
 
@@ -134,21 +134,15 @@ def test_retry_policy_against_real_timeout():
         asyncio.run(backend.complete(ask("hi", max_tokens=20)))
 
 
-def test_litellm_backend_reaches_the_real_provider():
-    pytest.importorskip("litellm")
-    from foveate.backends import LiteLLMBackend
-
-    backend = LiteLLMBackend(
-        base_url=conftest.BASE_URL, api_key=conftest.API_KEY
-    )
+def test_http_backend_reaches_the_real_provider_and_rejects_a_bad_key():
     request = base.Request(
-        f"openai/{conftest.MODEL}",
+        conftest.MODEL,
         (messages.Message(USER, "Reply with exactly the word: pong"),),
         max_tokens=400,
         options=(("reasoning_effort", "low"),),
     )
-    out = asyncio.run(backend.complete(request))
+    out = asyncio.run(conftest.make_backend().inner.complete(request))
     assert "pong" in out.text.lower() and out.usage.total_tokens > 0
-    bad = LiteLLMBackend(base_url=conftest.BASE_URL, api_key="nvapi-invalid")
+    bad = OpenAIBackend(base_url=conftest.BASE_URL, api_key="nvapi-invalid")
     with pytest.raises(errors.PermanentBackendError):
         asyncio.run(bad.complete(request))
