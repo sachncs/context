@@ -4,43 +4,18 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-import json
-import re
 from collections.abc import Mapping
 
-from foveate import errors, prompts
 from foveate import messages as messages_lib
+from foveate import prompts
 from foveate import runtime as runtime_lib
 from foveate import usage as usage_lib
 from foveate.evolution import grading, operations
 from foveate.evolution import playbook as playbook_lib
 from foveate.evolution import prompts as ace_prompts
+from foveate.internals.jsonout import extract_json
 
 MAX_COMPLETION_TOKENS = 4096
-FENCE = re.compile(r"^```(?:json)?\s*|\s*```$", re.MULTILINE)
-
-
-def extract_json(text: str) -> dict[str, object]:
-    """Parses a JSON object out of model text, tolerating code fences.
-
-    Raises:
-        ValidationError: If no JSON object can be recovered.
-    """
-    cleaned = FENCE.sub("", text.strip())
-    candidates = [cleaned]
-    start, end = cleaned.find("{"), cleaned.rfind("}")
-    if 0 <= start < end:
-        candidates.append(cleaned[start : end + 1])
-    for candidate in candidates:
-        try:
-            loaded = json.loads(candidate)
-        except ValueError:
-            continue
-        if isinstance(loaded, dict):
-            return loaded
-    raise errors.ValidationError(
-        f"no JSON object in model output: {text[:80]!r}"
-    )
 
 
 @dataclasses.dataclass(frozen=True, slots=True)

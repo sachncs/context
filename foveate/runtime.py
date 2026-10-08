@@ -21,6 +21,7 @@ from foveate import messages as messages_lib
 from foveate import tokenizers as tokenizers_lib
 from foveate import usage as usage_lib
 from foveate.backends import base as backend_base
+from foveate.backends import embeddings as embeddings_lib
 from foveate.backends import none as none_backend
 from foveate.backends import resilient
 from foveate.cache import base as cache_base
@@ -93,6 +94,8 @@ class Runtime:
         tokenizer: Token counter used for budgeting.
         observers: Event sinks.
         prices: Price table used to compute cost in reports.
+        embedder: Embedding model for semantic retrieval, or None.
+        context_window: Model window in tokens; None looks it up by name.
         options: Provider parameters sent with every request, e.g.
             `{"reasoning_effort": "low"}` for reasoning models.
         concurrency: Maximum parallel LLM calls issued by one operation.
@@ -112,6 +115,8 @@ class Runtime:
         default_factory=usage_lib.PriceTable
     )
     options: Mapping[str, object] = dataclasses.field(default_factory=dict)
+    embedder: embeddings_lib.Embedder | None = None
+    context_window: int | None = None
     concurrency: int = 8
     single_flight: SingleFlight = dataclasses.field(
         default_factory=SingleFlight
@@ -198,12 +203,27 @@ class Runtime:
             else cache_base.NullCache()
         )
         model = env.get("FOVEATE_MODEL", DEFAULT_MODEL)
+        window_raw = env.get("FOVEATE_CONTEXT_WINDOW")
+        try:
+            window = int(window_raw) if window_raw else None
+        except ValueError as exc:
+            raise errors.ConfigError(
+                f"FOVEATE_CONTEXT_WINDOW={window_raw!r} is not an integer"
+            ) from exc
+        embedding_model = env.get("FOVEATE_EMBEDDING_MODEL")
+        embedder = (
+            embeddings_lib.OpenAIEmbedder(embedding_model, base_url=base_url)
+            if embedding_model
+            else None
+        )
         return cls(
             backend=backend,
             model=model,
             cache=cache,
             tokenizer=tokenizers_lib.for_model(model),
             options=options,
+            embedder=embedder,
+            context_window=window,
             concurrency=concurrency,
         )
 
@@ -363,6 +383,8 @@ class Runtime:
     async def aclose(self) -> None:
         """Closes the backend and cache."""
         await self.backend.aclose()
+        if self.embedder is not None:
+            await self.embedder.aclose()
         self.cache.close()
 
     def close(self) -> None:

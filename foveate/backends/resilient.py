@@ -7,10 +7,13 @@ import dataclasses
 import random
 import time
 from collections.abc import Awaitable, Callable
+from typing import TypeVar
 
 from foveate import errors, observability
 from foveate.backends import base
 from foveate.internals import looplocal
+
+T = TypeVar("T")
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -42,6 +45,38 @@ class RetryPolicy:
         if hint is not None:
             return min(self.max_delay, max(jittered, hint))
         return jittered
+
+
+async def retry_async(
+    call: Callable[[], Awaitable[T]],
+    policy: RetryPolicy,
+    sleep: Callable[[float], Awaitable[None]] = asyncio.sleep,
+    rng: random.Random | None = None,
+) -> T:
+    """Runs `call`, retrying `TransientBackendError` with backoff.
+
+    Args:
+        call: Zero-argument coroutine factory.
+        policy: Attempts and delays.
+        sleep: Awaitable sleep (injectable for tests).
+        rng: Jitter source.
+
+    Returns:
+        The first successful result.
+
+    Raises:
+        TransientBackendError: The last one, after `policy.attempts` tries.
+    """
+    jitter = rng or random.Random()
+    last: errors.TransientBackendError | None = None
+    for attempt in range(1, policy.attempts + 1):
+        try:
+            return await call()
+        except errors.TransientBackendError as exc:
+            last = exc
+            if attempt < policy.attempts:
+                await sleep(policy.delay(attempt, jitter, exc.retry_after))
+    raise last if last is not None else errors.BackendError("no attempts")
 
 
 class CircuitBreaker:

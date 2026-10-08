@@ -16,8 +16,8 @@ from foveate.evolution import (
     Playbook,
     Sample,
     UpdateOp,
-    roles,
 )
+from foveate.internals import jsonout
 from foveate.messages import Role
 from foveate.tokenizers import HeuristicTokenizer
 from tests.test_compression import make_runtime
@@ -166,16 +166,16 @@ class TestOperations:
 
 class TestExtractJson:
     def test_forms(self):
-        assert roles.extract_json('{"a": 1}') == {"a": 1}
-        assert roles.extract_json('```json\n{"a": 1}\n```') == {"a": 1}
-        assert roles.extract_json('Sure! {"a": {"b": 2}} done') == {
+        assert jsonout.extract_json('{"a": 1}') == {"a": 1}
+        assert jsonout.extract_json('```json\n{"a": 1}\n```') == {"a": 1}
+        assert jsonout.extract_json('Sure! {"a": {"b": 2}} done') == {
             "a": {"b": 2}
         }
 
     @pytest.mark.parametrize("bad", ["", "no json", "[1, 2]", "{broken"])
     def test_invalid(self, bad):
         with pytest.raises(errors.ValidationError):
-            roles.extract_json(bad)
+            jsonout.extract_json(bad)
 
 
 def ace_responder(answers, insight="use the formula", ops=None, log=None):
