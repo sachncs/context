@@ -80,6 +80,66 @@ attached.
   the `query` compressor and the optional `query_aware` condensed tier: keep the sentence that
   matches the question, not the most frequent words.
 
+## Compression research and how Foveate relates to it
+
+Most compression research changes the model: it trains a compressor, reads hidden states, or
+edits the key-value cache. That works when you host the model. Foveate works on text, so it
+works with any API model, and its output (the pages it sent and the quotes it checked) can be
+read and audited. The two approaches are complementary; the papers below also shaped how
+Foveate is evaluated.
+
+* **Learned latent compressors.** Wang et al. (2024), *In-Context Former*,
+  [arXiv:2406.13618](https://arxiv.org/abs/2406.13618): cross-attention digest tokens give linear
+  compression time; evaluated with BLEU-4, ROUGE and compression time on the PwC dataset.
+  Liu et al., *Autoencoding-Free Context Compression via Contextual Semantic Anchors* (SAC),
+  [arXiv:2510.08907](https://arxiv.org/abs/2510.08907); Ye et al., *ComprExIT*,
+  [arXiv:2602.03784](https://arxiv.org/abs/2602.03784); and Li et al. (2026), *End-to-End Context
+  Compression at Scale*, [arXiv:2606.09659](https://arxiv.org/abs/2606.09659). SAC and
+  ComprExIT are evaluated on MRQA in and out of domain with exact match and F1 at 4x to 51x;
+  ComprExIT notes that compression slots should cover complementary regions rather than the same
+  one. The last paper reports time to first token and memory next to accuracy, and finds that an
+  agent that can choose which compressed chunk to expand improves needle tasks.
+  **Foveate takes** the evaluation protocol (exact match, F1, ratios of 4x and 8x, latency
+  reported with accuracy) and the idea of selective expansion, which is the outline plus
+  `need_pages` round in `Foveator`. These methods need weights or hidden states, so they are
+  not options for API models.
+* **Query-conditioned compression.** Ma et al. (2026), *Thinking as Compression*,
+  [arXiv:2605.28713](https://arxiv.org/abs/2605.28713): a model writes a compact,
+  question-specific trace and a second model answers from it; evaluated on NaturalQuestions,
+  2WikiMQA, HotpotQA and MuSiQue with exact match and F1 at 4x and 8x. **Foveate takes** the
+  protocol (it runs HotpotQA at 4x and 8x) and the principle that compression should depend on
+  the question (`query` compressor, `query_aware` condensing).
+* **Information-based pruning.** Li et al. (2023), *Compressing Context to Enhance Inference
+  Efficiency of Large Language Models* (Selective Context),
+  [arXiv:2310.06201](https://arxiv.org/abs/2310.06201): drops low-information content by
+  self-information, found phrases a better unit than tokens or sentences, reported 36% less GPU
+  memory and 32% lower latency at 50% compression with a BERTScore-F1 drop of 0.023, and used the
+  full-context answer as the reference. **Foveate takes** the `selective` compressor (phrase-level,
+  percentile-free budget fill, no model) and the "agreement with the full-context answer" metric.
+* **Agent context policies.** Satish et al. (2026), *Beyond Token Savings: A Systematic Study of
+  Context Compression in LLM Agents*, [arXiv:2609.32961](https://arxiv.org/abs/2609.32961): about
+  35,000 runs on SWE-bench Verified and Terminal-Bench. Policies split into primitive (truncate,
+  summarise, clear tool results), trigger and depth. Policies that used a third of the tokens
+  took 20-80% longer on Terminal-Bench because of extra calls; billed cost depends on prefix
+  caching (0.71-0.95x of full-context cost at 0.56-0.63x of its tokens); policies with similar
+  success solved different tasks (one gained 7 and lost 8); and rankings flipped between
+  models. **Foveate takes** the decomposition (`window`, `clear_tool_results` and `ppa` as
+  primitives, `trigger` and `target` on `HistoryCompressor`), cost-aware evaluation (compressor
+  tokens, latency, cached-token price) and the per-sample gained and lost counts.
+* Dixit et al. (2026), *FOCUS: Training-Free Decision-Preserving Context Compression for LLM
+  Agents*, [arXiv:2609.37590](https://arxiv.org/abs/2609.37590): scores spans by whether later
+  decisions depend on them and adds a defensive pass that rescues spans carrying negative
+  constraints or state; reports +8.9 points on AppWorld with 35-48% lower peak tokens.
+  **Foveate takes** the defensive rule: `clear_tool_results` keeps results that look like
+  failures and honours `exclude`.
+* **Verifiable compression.** Trukhina and Vashkelis (2026), *Compress the Context, Keep the
+  Commitments*, [arXiv:2605.17304](https://arxiv.org/abs/2605.17304): represent state as typed,
+  source-grounded atoms; measure Critical Atom Recall, Weighted Atom Recall and commitment
+  density; distinguish omission, weakening and mutation; keep raw spans for low-confidence
+  facts. Free prose compressed 68% but lost 39% of commitments. **Foveate takes** the metrics
+  (`foveate.bench.scoring`) and a failure taxonomy (kept, mutated, omitted), so compression is
+  measured by what survives, not only by whether one question is still answered.
+
 ## Caching and cost
 
 * Lumer et al. (2026), *Don't Break the Cache: An Evaluation of Prompt Caching for
