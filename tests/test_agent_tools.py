@@ -3,7 +3,7 @@
 import pytest
 
 from foveate import errors
-from foveate.integrations import tools
+from foveate.agents import tools
 from tests.test_longdoc import make_doc
 
 

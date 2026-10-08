@@ -15,7 +15,7 @@ const shade = (x: number) => `color-mix(in srgb, var(--good) ${Math.round(x * 70
   <h3>{title}</h3>
   <p class="muted">{blurb}</p>
   {cells.length === 0 ? (
-    <div class="card"><p class="muted">Not run yet. This grid fills in from <code>bench/results/needle/{family}/</code> when the run finishes.</p></div>
+    <div class="card"><p class="muted">Not run yet. This grid fills in from <code>site/src/data/results/needle/{family}/</code> when the run finishes.</p></div>
   ) : (
     <div class="grids">
       {pipelines.map((p) => (

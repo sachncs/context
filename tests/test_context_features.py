@@ -231,25 +231,17 @@ class TestSupportAndCaching:
         assert (Usage(10, 2, 4) + Usage(5, 1, 1)).cached_tokens == 5
 
     def test_cached_tokens_are_read_from_openai_shaped_responses(self):
-        class Details:
-            cached_tokens = 128
-
-        class Raw:
-            prompt_tokens = 200
-            completion_tokens = 20
-            prompt_tokens_details = Details()
-
-        class Response:
-            usage = Raw()
-
-        assert providers.usage_from_response(Response()).cached_tokens == 128
-
-        class Bare:
-            usage = type(
-                "U", (), {"prompt_tokens": 1, "completion_tokens": 1}
-            )()
-
-        assert providers.usage_from_response(Bare()).cached_tokens == 0
+        response = {
+            "usage": {
+                "prompt_tokens": 200,
+                "completion_tokens": 20,
+                "prompt_tokens_details": {"cached_tokens": 128},
+            }
+        }
+        assert providers.usage_from_response(response).cached_tokens == 128
+        bare = {"usage": {"prompt_tokens": 1, "completion_tokens": 1}}
+        assert providers.usage_from_response(bare).cached_tokens == 0
+        assert providers.usage_from_response({}).prompt_tokens == 0
 
 
 def test_inference_mode_changes_the_system_prompt_only():
@@ -328,8 +320,8 @@ def test_cached_tokens_use_the_cached_price():
 
 
 def test_history_trigger_and_target_leave_headroom():
-    from foveate.integrations import history
-    from tests.test_integrations_history import ToyAdapter, conversation
+    from foveate.agents import history
+    from tests.test_agents_history import ToyAdapter, conversation
 
     runtime, _ = make_runtime()
     items = conversation(6, 80)

@@ -4,7 +4,7 @@
     python scripts/run_longdoc.py --n 30 --runs 3    # the published setup
 
 The answer and judge models come from the FOVEATE_* environment variables.
-Results go to bench/results/ as longdoc.md and longdoc.json.
+Results go to results/ as longdoc.md and longdoc.json.
 """
 
 from __future__ import annotations
@@ -116,7 +116,7 @@ def main() -> int:
     parser.add_argument(
         "--pipelines", default=",".join(runner.DEFAULT_PIPELINES)
     )
-    parser.add_argument("--out", default=str(ROOT / "bench/results"))
+    parser.add_argument("--out", default=str(ROOT / "results"))
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument(
         "--retrieval", default="bm25", choices=("bm25", "embedding", "hybrid")

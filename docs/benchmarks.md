@@ -4,8 +4,8 @@ description: "How Foveate is measured against full context, truncation and plain
 ---
 
 This page states how Foveate is measured and what the measurements found, including the
-places where it does not win. Every number comes from a run in `bench/results/` that you
-can repeat.
+places where it does not win. Every number comes from a run you can repeat with the scripts
+listed at the end; the summary file of each run is kept in `site/src/data/results/`.
 
 ## What is compared
 
@@ -54,7 +54,7 @@ unanswerable question), agreement across paraphrases and runs, tokens, latency.
   sends the whole filing; filings above the model window (131,072 tokens minus a margin)
   count as "could not run".
 * Foveate settings: defaults (BM25 retrieval, page tiers, up to two rounds), no embeddings.
-* Raw results: `bench/results/run1/` in the repository (`longdoc.json`, `summary.json`).
+* Summary: `site/src/data/site/src/data/results/run1/summary.json`.
 
 ### Answer quality (30 questions, deterministic run)
 
@@ -136,7 +136,7 @@ Run 1 used BM25 only. This check plans the prompt for 90 questions (the 30 quest
 their 60 paraphrases) under each retrieval setting, with no answer model, and counts how often
 the page holding the evidence is sent in full, or at least condensed. Evidence budget 12,000
 tokens; embeddings are `nvidia/nemotron-3-embed-1b`; expansion asks the model for two
-alternative search phrasings. Raw results: `bench/results/retrieval*/`.
+alternative search phrasings. Reproduce with `scripts/eval_retrieval.py`.
 
 | Retrieval | Evidence page sent in full | Sent in full or condensed |
 |---|---|---|
@@ -162,7 +162,7 @@ often. Run 2 asks whether that turns into better answers. Same 30 questions, par
 unanswerable questions and needles as run 1, same model and 12,000-token budget, three runs.
 Both pipelines now retrieve with embeddings (`nvidia/nemotron-3-embed-1b`); Foveate also writes
 two alternative search phrasings per question. `full-context` and `truncate` do not retrieve
-and were not repeated. Raw results: `bench/results/run2/`.
+and were not repeated. Summary: `site/src/data/results/run2/summary.json`.
 
 | | Plain RAG (embeddings) | Foveate (embeddings + expansion) |
 |---|---|---|
@@ -196,7 +196,7 @@ planted where naive compression loses it. Then the model answers from the compre
 Answer model `gpt-oss-20b`; **4 samples per cell**, so each percentage moves in steps of
 25 points and small differences mean nothing. All methods here need no model call (the
 model-based `ppa` strategy was too slow for this rate-limited key and is not in this sweep).
-Raw results: `bench/results/compression/`. Tasks:
+Summary: `site/src/data/results/compression/summary.json`. Tasks:
 
 * **document**: one sentence hidden in the middle of about 6,000 tokens of prose.
 * **history**: a setting stated once, early in a long chat.
@@ -252,7 +252,7 @@ What this suggests, with the caveat of four samples per cell and synthetic fille
 
 A fact is hidden at a known depth in a long text and the model is asked for it. Same pipelines,
 answer model `gpt-oss-20b`, evidence budget 4,000 tokens, lengths 8k to 64k (multi: 16k to 64k),
-depths 0%, 25%, 50%, 75%, 100%. Raw results: `bench/results/needle/`. The haystacks are
+depths 0%, 25%, 50%, 75%, 100%. Summaries: `site/src/data/results/needle/`. The haystacks are
 seeded synthetic prose, and for the NoLiMa-style case a book from the NoLiMa dataset
 (Adobe Research License, noncommercial research use; downloaded at run time, not
 redistributed).
@@ -282,8 +282,7 @@ redistributed).
 A claim worth testing: with the right context, a small model can match a much larger one. We
 tried it on 12 FinanceBench questions plus 8 unanswerable ones, with embedding retrieval for
 both retrieval-based pipelines, one run each, graded by `gpt-oss-20b`. This sample is far too
-small for statistics; read it as a smoke test. Raw results: `bench/results/model-30b/` and
-`bench/results/small-*/`.
+small for statistics; read it as a smoke test. Summary: `site/src/data/results/model-30b/summary.json`.
 
 **A 30B-class model** (`nvidia/nemotron-3.5-lightning-30b-a3b`, a mixture-of-experts model
 with about 3B active parameters) behind each pipeline, 12,000-token budget:
@@ -325,7 +324,6 @@ window, and more than 12 questions.
 python scripts/build_gold.py              # downloads filings, writes gold sets
 python scripts/run_longdoc.py --dry-run   # sizes only, no model calls
 python scripts/run_longdoc.py --n 30 --runs 3
-python scripts/summarize_results.py bench/results/run1
 python scripts/run_needle.py --family literal --lengths 8000,16000,32000,64000
 python scripts/run_needle.py --family nonliteral --retrieval hybrid --inference \\
   --embedding-model nvidia/nemotron-3-embed-1b

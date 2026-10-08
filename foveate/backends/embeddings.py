@@ -4,14 +4,15 @@ from __future__ import annotations
 
 import abc
 import math
+import os
 import re
 import zlib
 from collections.abc import Mapping, Sequence
 from typing import Any, ClassVar
 
 from foveate import errors
-from foveate.backends import classify, providers, resilient
-from foveate.internals import looplocal, registry
+from foveate.backends import http, providers, resilient
+from foveate.internals import registry
 
 WORD = re.compile(r"[a-z0-9]+")
 PASSAGE = "passage"
@@ -106,18 +107,20 @@ class OpenAIEmbedder(Embedder):
         passage_options: Mapping[str, object] | None = None,
         query_options: Mapping[str, object] | None = None,
         retry: resilient.RetryPolicy | None = None,
+        timeout: float = 120.0,
     ) -> None:
-        """Stores settings; the client is built lazily per event loop.
+        """Stores settings.
 
         Args:
             model: Embedding model id.
-            base_url: Endpoint override.
+            base_url: Endpoint root; defaults to `OPENAI_BASE_URL` or OpenAI.
             api_key: Explicit key; otherwise `OPENAI_API_KEY`.
             batch_size: Texts per request (>= 1).
             passage_options: Extra body for passage embeddings, for example
                 `{"input_type": "passage"}` on retrieval models that need it.
             query_options: Extra body for query embeddings.
             retry: Retry policy for transient failures.
+            timeout: Per-request timeout in seconds.
 
         Raises:
             ConfigError: If `batch_size` is below one.
@@ -125,43 +128,44 @@ class OpenAIEmbedder(Embedder):
         if batch_size < 1:
             raise errors.ConfigError("batch_size must be >= 1")
         self.model = model
-        self.base_url = base_url
-        self.api_key = api_key
+        self.base_url = (
+            base_url
+            or os.environ.get("OPENAI_BASE_URL")
+            or providers.DEFAULT_BASE_URL
+        ).rstrip("/")
+        self.api_key = api_key or os.environ.get("OPENAI_API_KEY", "")
         self.batch_size = batch_size
+        self.timeout = timeout
         self.options = {
             PASSAGE: dict(passage_options or {}),
             QUERY: dict(query_options or {}),
         }
         self.retry = retry or resilient.RetryPolicy(attempts=4, base_delay=1.0)
-        self.clients: looplocal.LoopLocal[Any] = looplocal.LoopLocal(
-            self.build_client
-        )
-
-    def build_client(self) -> Any:
-        """Builds an async client (once per event loop)."""
-        openai = providers.require("openai", "openai")
-        return openai.AsyncOpenAI(
-            base_url=self.base_url, api_key=self.api_key, max_retries=0
-        )
 
     async def embed_batch(
         self, texts: Sequence[str], kind: str
     ) -> list[list[float]]:
         """Embeds one batch with retries."""
-        client = self.clients.get()
+        body: dict[str, Any] = {"model": self.model, "input": list(texts)}
+        body.update(self.options.get(kind) or {})
+        headers = {}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
 
         async def call() -> list[list[float]]:
+            response = await http.apost_json(
+                f"{self.base_url}/embeddings", body, headers, self.timeout
+            )
             try:
-                extra = self.options.get(kind) or None
-                response = await client.embeddings.create(
-                    model=self.model, input=list(texts), extra_body=extra
-                )
-            except Exception as exc:
-                raise classify.classify(exc) from exc
-            ordered = sorted(response.data, key=lambda item: item.index)
-            if len(ordered) != len(texts):
+                rows = sorted(response["data"], key=lambda item: item["index"])
+                vectors = [normalise(list(r["embedding"])) for r in rows]
+            except (KeyError, TypeError, ValueError) as exc:
+                raise errors.ValidationError(
+                    f"malformed embeddings reply: {exc}"
+                ) from exc
+            if len(vectors) != len(texts):
                 raise errors.ValidationError("embedding count mismatch")
-            return [normalise(list(item.embedding)) for item in ordered]
+            return vectors
 
         return await resilient.retry_async(call, self.retry)
 
@@ -176,8 +180,3 @@ class OpenAIEmbedder(Embedder):
                 )
             )
         return vectors
-
-    async def aclose(self) -> None:
-        client = self.clients.discard()
-        if client is not None:
-            await client.close()

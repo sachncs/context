@@ -1,33 +1,42 @@
-"""Shared helpers for the examples.
+"""Helpers shared by the examples.
 
-Examples that call a model read their configuration from the environment
-(see the README). For a quick try with an OpenAI-compatible endpoint:
+Examples that call a model read their settings from the environment, for any
+OpenAI-compatible endpoint (OpenAI, vLLM, Ollama, NVIDIA, Together, ...):
 
-    export FOVEATE_BACKEND=openai
-    export FOVEATE_BASE_URL=https://integrate.api.nvidia.com/v1
-    export FOVEATE_MODEL=openai/gpt-oss-20b
-    export FOVEATE_OPTIONS='{"reasoning_effort": "low"}'
-    export OPENAI_API_KEY=<your key>
+    export FOVEATE_BASE_URL=https://api.openai.com/v1
+    export FOVEATE_MODEL=gpt-4o-mini
+    export OPENAI_API_KEY=...
+
+Without FOVEATE_MODEL the examples that need a model still run their offline
+part and say what to set.
 """
 
-from foveate import Runtime
+import os
+
+from foveate import Document, Runtime
+
+QUESTION = "What were capital expenditures in fiscal 2018?"
 
 
-def long_document(facts: int = 6) -> str:
-    """Builds a long document whose key facts are buried in filler."""
-    filler = (
-        "The committee reviewed logistics, parking and catering without "
-        "reaching any decision. "
-    ) * 12
-    parts = []
-    for number in range(facts):
-        parts.append(filler)
-        parts.append(
-            f"Fact {number}: the reference value is {number * 7 + 100}. "
-        )
-    return "".join(parts)
+def has_model() -> bool:
+    """Returns whether a model is configured through the environment."""
+    return bool(os.environ.get("FOVEATE_MODEL"))
 
 
 def model_runtime() -> Runtime:
-    """Returns a runtime configured from `FOVEATE_*` environment variables."""
+    """Returns a runtime built from the `FOVEATE_*` variables."""
     return Runtime.from_env()
+
+
+def annual_report(pages: int = 200) -> Document:
+    """Builds a long report with one relevant sentence on page 40."""
+    texts = [
+        f"Section {n}. " + "Routine operations are described here. " * 60
+        for n in range(1, pages + 1)
+    ]
+    texts[39] += (
+        " Capital expenditures were 1,577 million dollars in fiscal 2018."
+    )
+    return Document.load(
+        "\f".join(texts).encode(), format="text", doc_id="annual_report"
+    )

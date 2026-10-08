@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "foveate-langgraph"
+version = "0.2.0"
+description = "Foveate for LangGraph and LangChain: page tools and history compression."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+dependencies = ["foveate>=0.2.0", "langgraph>=1.0"]
+keywords = ["llm", "context-engineering", "agents"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/sachncs/foveate"
+Issues = "https://github.com/sachncs/foveate/issues"
+
+[tool.setuptools.packages.find]
+include = ["foveate_langgraph*"]
+
+[tool.setuptools.package-data]
+foveate_langgraph = ["py.typed"]

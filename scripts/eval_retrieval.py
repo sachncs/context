@@ -96,7 +96,7 @@ def main() -> int:
     parser.add_argument(
         "--variants", default="", help="comma-separated subset to run"
     )
-    parser.add_argument("--out", default=str(ROOT / "bench/results/retrieval"))
+    parser.add_argument("--out", default=str(ROOT / "results/retrieval"))
     args = parser.parse_args()
     items, unused = run_longdoc.select(args.n, 0)
     del unused

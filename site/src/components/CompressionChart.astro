@@ -18,7 +18,7 @@ const path = (m: string) => cells.filter((c) => c.method === m).sort((a, b) => a
   <h3>{title}</h3>
   <p class="muted">{blurb}</p>
   {cells.length === 0 ? (
-    <div class="card"><p class="muted">Not run yet. This chart fills in from <code>bench/results/compression/</code> when the run finishes.</p></div>
+    <div class="card"><p class="muted">Not run yet. This chart fills in from <code>site/src/data/results/compression/</code> when the run finishes.</p></div>
   ) : (
     <div class="wrap-chart">
       <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Accuracy against compression ratio for ${methods.join(', ')}`}>

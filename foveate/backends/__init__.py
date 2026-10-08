@@ -2,11 +2,7 @@
 
 from foveate.backends.base import Backend, Completion, Request
 from foveate.backends.none import NoBackend
-from foveate.backends.providers import (
-    LiteLLMBackend,
-    OpenAIBackend,
-    VLLMBackend,
-)
+from foveate.backends.providers import OpenAIBackend, VLLMBackend
 from foveate.backends.resilient import (
     CircuitBreaker,
     ResilientBackend,
@@ -17,7 +13,6 @@ __all__ = [
     "Backend",
     "CircuitBreaker",
     "Completion",
-    "LiteLLMBackend",
     "NoBackend",
     "OpenAIBackend",
     "Request",

@@ -10,7 +10,7 @@ option. That is where Foveate matters most.
 
 ```bash
 colima start --cpu 4 --memory 10        # macOS only; Docker Desktop also works
-docker compose -f docker/vllm-cpu/compose.yml up -d
+docker compose -f docker/compose.yml up -d
 ```
 
 The compose file runs `vllm/vllm-openai-cpu` with `openbmb/MiniCPM5-1B`,
@@ -52,7 +52,7 @@ runtime = Runtime(
 Keep the call under `if __name__ == "__main__":` (vLLM spawns worker
 processes). On a CPU-only machine also pass `gpu_memory_utilization=0.5`: on
 the CPU backend it is the fraction of RAM to reserve, and the default fails when
-other programs use memory. `docker/vllm-cpu/inprocess.py` is a working example.
+other programs use memory. `docker/inprocess.py` is a working example.
 
 vLLM publishes no macOS wheels; on a Mac use the Docker server above.
 

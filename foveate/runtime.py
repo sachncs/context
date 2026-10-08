@@ -131,7 +131,7 @@ class Runtime:
     def from_env(cls, environ: Mapping[str, str] | None = None) -> Runtime:
         """Builds a runtime from `FOVEATE_*` environment variables.
 
-        Recognised: `FOVEATE_BACKEND` (litellm|openai|vllm), `FOVEATE_MODEL`,
+        Recognised: `FOVEATE_BACKEND` (openai|vllm), `FOVEATE_MODEL`,
         `FOVEATE_BASE_URL` (OpenAI-compatible endpoint), `FOVEATE_OPTIONS` (JSON
         object of provider parameters), `FOVEATE_CACHE_DIR` (empty disables
         caching), `FOVEATE_TIMEOUT_SECONDS`,
@@ -158,7 +158,7 @@ class Runtime:
                     f"{name}={raw!r} is not valid"
                 ) from exc
 
-        backend_name = env.get("FOVEATE_BACKEND", "litellm")
+        backend_name = env.get("FOVEATE_BACKEND", "openai")
         backend_cls = backend_base.Backend.registry.get(backend_name)
         base_url = env.get("FOVEATE_BASE_URL")
         try:
