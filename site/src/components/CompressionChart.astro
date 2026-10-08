@@ -1,0 +1,40 @@
+---
+import { readSummary } from '../data/results';
+
+interface Props { task: string; title: string; blurb: string; }
+const { task, title, blurb } = Astro.props;
+const summary = readSummary('compression');
+const cells: any[] = (summary?.cells ?? []).filter((c: any) => c.task === task);
+const methods = [...new Set(cells.map((c) => c.method))];
+const ratios = [...new Set(cells.map((c) => c.ratio))].sort((a, b) => a - b);
+const W = 520, H = 260, L = 44, R = 12, T = 12, B = 34;
+const x = (r: number) => L + ((Math.log2(r) - Math.log2(ratios[0])) / Math.max(1, Math.log2(ratios[ratios.length - 1]) - Math.log2(ratios[0]))) * (W - L - R);
+const y = (a: number) => T + (1 - a) * (H - T - B);
+const palette = ['var(--tier-full)', 'var(--good)', 'var(--warn)', '#d1478a', '#2a9fd6', '#8a8f99', '#b07d2b', '#6b46c1'];
+const color = (m: string) => palette[methods.indexOf(m) % palette.length];
+const path = (m: string) => cells.filter((c) => c.method === m).sort((a, b) => a.ratio - b.ratio).map((c, i) => `${i ? 'L' : 'M'}${x(c.ratio).toFixed(1)},${y(c.accuracy).toFixed(1)}`).join(' ');
+---
+<section class="chart">
+  <h3>{title}</h3>
+  <p class="muted">{blurb}</p>
+  {cells.length === 0 ? (
+    <div class="card"><p class="muted">Not run yet. This chart fills in from <code>bench/results/compression/</code> when the run finishes.</p></div>
+  ) : (
+    <div class="wrap-chart">
+      <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`Accuracy against compression ratio for ${methods.join(', ')}`}>
+        {[0, 0.25, 0.5, 0.75, 1].map((a) => (<g><line x1={L} x2={W - R} y1={y(a)} y2={y(a)} stroke="var(--border)" /><text x={L - 8} y={y(a) + 4} text-anchor="end" fill="var(--muted)" font-size="11">{Math.round(a * 100)}%</text></g>))}
+        {ratios.map((r) => (<text x={x(r)} y={H - 12} text-anchor="middle" fill="var(--muted)" font-size="11">{r}x</text>))}
+        {methods.map((m) => (<g><path d={path(m)} fill="none" stroke={color(m)} stroke-width="2.2" />{cells.filter((c) => c.method === m).map((c) => <circle cx={x(c.ratio)} cy={y(c.accuracy)} r="3.2" fill={color(m)}><title>{m}, {c.ratio}x: {Math.round(c.accuracy * 100)}% ({c.n} samples)</title></circle>)}</g>))}
+      </svg>
+      <ul class="key">{methods.map((m) => <li><i style={`background:${color(m)}`}></i>{m}</li>)}</ul>
+    </div>
+  )}
+</section>
+<style>
+  .chart h3 { margin-bottom: var(--space-2); }
+  .wrap-chart { margin-top: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); padding: var(--space-4); }
+  svg { width: 100%; height: auto; display: block; }
+  .key { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); padding: 0; margin: var(--space-3) 0 0; font-size: .88rem; }
+  .key li { display: inline-flex; align-items: center; gap: .45rem; }
+  .key i { width: 14px; height: 4px; border-radius: 2px; display: inline-block; }
+</style>
