@@ -557,3 +557,21 @@ class TestStarter:
             )
         )
         assert report.rows()[0].answerable == 1
+
+
+class TestRetrievalSettings:
+    def test_naive_rag_and_foveate_can_use_embeddings_and_expansion(self):
+        import dataclasses
+
+        from foveate.backends.embeddings import HashingEmbedder
+
+        runtime = dataclasses.replace(rt(), embedder=HashingEmbedder())
+        q = "What were Acme capital expenditures in fiscal 2018?"
+        for cls in (pipelines.NaiveRag, pipelines.Foveate):
+            pipe = cls(runtime, 4000, retrieval="hybrid", expand=1)
+            result = run(pipe.answer(q, make_doc(pages=60)))
+            assert result.found and result.cited_pages == (7,), cls.__name__
+
+    def test_config_carries_retrieval_into_pipelines(self):
+        cfg = runner.Config(retrieval="hybrid", expand=2)
+        assert (cfg.retrieval, cfg.expand) == ("hybrid", 2)

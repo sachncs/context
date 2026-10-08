@@ -35,12 +35,17 @@ class Config:
         runs: Runs per item and pipeline. Run 0 is deterministic; further
             runs are independent samples at temperature 0.7.
         concurrency: Items processed in parallel.
+        retrieval: `bm25`, `embedding` or `hybrid` for `naive-rag` and
+            `foveate` (embedding settings need `runtime.embedder`).
+        expand: Alternative search phrasings per question (`foveate`).
     """
 
     pipelines: tuple[str, ...] = DEFAULT_PIPELINES
     budget: int = 12_000
     runs: int = 1
     concurrency: int = 3
+    retrieval: str = "bm25"
+    expand: int = 0
 
     def __post_init__(self) -> None:
         if self.runs < 1 or self.concurrency < 1 or self.budget < 2_000:
@@ -423,7 +428,9 @@ async def run(
     """
     cfg = config or Config()
     built = {
-        name: pipelines.Pipeline.registry.get(name)(runtime, cfg.budget)
+        name: pipelines.Pipeline.registry.get(name)(
+            runtime, cfg.budget, cfg.retrieval, cfg.expand
+        )
         for name in cfg.pipelines
     }
 

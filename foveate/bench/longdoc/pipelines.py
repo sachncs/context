@@ -19,7 +19,7 @@ from foveate.foveation import Foveation, PagePlan, Tier
 from foveate.grounding import NOT_FOUND
 from foveate.internals import registry
 from foveate.selection import base as selection_base
-from foveate.selection import bm25
+from foveate.selection import build_retriever
 
 OVERFLOW_MARGIN = 800
 
@@ -67,15 +67,28 @@ class Pipeline(abc.ABC):
     )
     name: ClassVar[str] = ""
 
-    def __init__(self, runtime: runtime_lib.Runtime, budget: int) -> None:
+    def __init__(
+        self,
+        runtime: runtime_lib.Runtime,
+        budget: int,
+        retrieval: str = "bm25",
+        expand: int = 0,
+    ) -> None:
         """Creates the pipeline.
 
         Args:
             runtime: Model access.
             budget: Prompt token budget for evidence-limited pipelines.
+            retrieval: `bm25`, `embedding` or `hybrid` (the last two need
+                `runtime.embedder`). Used by `naive-rag` and `foveate` so both
+                search the same way.
+            expand: Alternative search phrasings written per question
+                (`foveate` only).
         """
         self.runtime = runtime
         self.budget = budget
+        self.retrieval = retrieval
+        self.expand = expand
 
     @abc.abstractmethod
     async def answer(
@@ -98,6 +111,8 @@ class Pipeline(abc.ABC):
             max_rounds=rounds,
             temperature=0.7 if sampled else 0.0,
             run_tag=tag,
+            retrieval=self.retrieval,
+            expand=self.expand,
         )
 
     async def run_fixed(
@@ -230,7 +245,7 @@ class NaiveTruncate(Pipeline):
 
 @Pipeline.registry.register("naive-rag")
 class NaiveRag(Pipeline):
-    """Fixed-size chunks, BM25 top-k up to the budget, one shot, no checks."""
+    """Fixed-size chunks, top-k up to the budget, one shot, no checks."""
 
     name = "naive-rag"
 
@@ -239,7 +254,8 @@ class NaiveRag(Pipeline):
     ) -> Result:
         tokenizer = self.runtime.tokenizer
         chunks = chunking.PageChunker(256).chunk(document, tokenizer)
-        hits = await bm25.BM25Retriever(chunks).search(question, 200)
+        retriever = build_retriever(self.retrieval, chunks, self.runtime)
+        hits = await retriever.search(question, 200)
         selected = chunk_foveation(document, hits, self.budget - 1200)
         return await self.run_fixed(question, document, selected, tag)
 
