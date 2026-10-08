@@ -122,6 +122,9 @@ class Foveator:
         max_rounds: Model rounds per question (>= 1); extra rounds read more
             pages when the answer is missing or unsupported.
         answer_tokens: Completion cap for answers.
+        temperature: Sampling temperature (0 = deterministic and cacheable).
+        run_tag: Mixed into the cache key so repeated sampled runs are
+            independent instead of replaying one cached reply.
     """
 
     runtime: runtime_lib.Runtime
@@ -136,6 +139,8 @@ class Foveator:
     ungrounded: str = "flag"
     max_rounds: int = 2
     answer_tokens: int = ANSWER_TOKENS
+    temperature: float = 0.0
+    run_tag: str = ""
 
     def __post_init__(self) -> None:
         if self.ungrounded not in ("flag", "abstain"):
@@ -260,8 +265,9 @@ class Foveator:
                 ),
             ),
             source="foveator",
-            namespace=f"foveator:{ANSWER.fingerprint}",
+            namespace=f"foveator:{ANSWER.fingerprint}:{self.run_tag}",
             max_tokens=self.answer_tokens,
+            temperature=self.temperature,
         )
         try:
             parsed = jsonout.extract_json(completion.text)
@@ -273,13 +279,13 @@ class Foveator:
             }
         return parsed, completion.text, completion.usage
 
+    @staticmethod
     def verify(
-        self,
         parsed: dict[str, object],
-        index: Index,
+        documents: Sequence[document_lib.Document],
     ) -> tuple[answer_lib.Citation, ...]:
         """Checks each cited quote against the real page text."""
-        by_id = {d.id: d for d in index.documents}
+        by_id = {d.id: d for d in documents}
         raw = parsed.get("citations")
         checked = []
         for item in raw if isinstance(raw, list) else []:
@@ -378,7 +384,7 @@ class Foveator:
             parsed, raw, used = await self.ask_once(question, fov, feedback)
             usage = usage + used
             shown = {(p.doc_id, p.page) for p in fov.shown()}
-            citations = self.verify(parsed, index)
+            citations = self.verify(parsed, index.documents)
             found = bool(parsed.get("found"))
             supported = bool(citations) and all(c.verified for c in citations)
             needs = [
