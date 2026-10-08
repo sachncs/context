@@ -45,6 +45,9 @@ class Answer:
         cost_usd: Estimated spend from the runtime's price table.
         seconds: Wall-clock duration.
         raw: The model's last raw reply (for debugging).
+        needs_more_context: The model asked for pages that were not shown
+            and the answer is not grounded; a larger budget or more rounds
+            may help.
     """
 
     question: str
@@ -59,6 +62,14 @@ class Answer:
     cost_usd: float = 0.0
     seconds: float = 0.0
     raw: str = ""
+    needs_more_context: bool = False
+
+    @property
+    def support(self) -> float:
+        """Returns the share of citations verified against the source."""
+        if not self.citations:
+            return 0.0
+        return sum(c.verified for c in self.citations) / len(self.citations)
 
     @property
     def pages(self) -> list[tuple[str, int]]:

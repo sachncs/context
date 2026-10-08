@@ -14,12 +14,13 @@ import enum
 from collections.abc import Mapping, Sequence
 
 from foveate import errors
-from foveate.compression import extractive
+from foveate.compression import extractive, queryaware
 from foveate.documents import document as document_lib
 from foveate.tokenizers import base as tokenizer_base
 
 PageKey = tuple[str, int]
 OUTLINE_PREFIX_TOKENS = 4
+ORDERS = ("reading", "edges")
 
 
 class Tier(str, enum.Enum):
@@ -43,6 +44,11 @@ class FoveationConfig:
         condensed_tokens: Target size of one condensed page.
         outline_tokens: Size cap of one outline line.
         max_full: Optional cap on the number of FULL pages.
+        order: How shown pages are arranged in the prompt: `"reading"`
+            (document order) or `"edges"` (best pages first and last, weakest
+            in the middle, since models use the middle of a long prompt least).
+        query_aware: Condense neighbour pages by keeping the sentences that
+            match the question rather than the most frequent words.
     """
 
     fovea_share: float = 0.6
@@ -51,6 +57,8 @@ class FoveationConfig:
     condensed_tokens: int = 150
     outline_tokens: int = 24
     max_full: int | None = None
+    order: str = "reading"
+    query_aware: bool = False
 
     def __post_init__(self) -> None:
         if not 0 < self.fovea_share < 1 or not 0 <= self.parafovea_share < 1:
@@ -65,6 +73,8 @@ class FoveationConfig:
             raise errors.ConfigError("outline_tokens must be >= 4")
         if self.max_full is not None and self.max_full < 1:
             raise errors.ConfigError("max_full must be >= 1")
+        if self.order not in ORDERS:
+            raise errors.ConfigError(f"order must be one of {ORDERS}")
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -116,6 +126,24 @@ class Foveation:
         return [p for p in self.pages if p.tier in (Tier.FULL, Tier.CONDENSED)]
 
 
+def arrange(pages: Sequence[PagePlan], order: str) -> list[PagePlan]:
+    """Orders shown pages for the prompt.
+
+    `"reading"` keeps document order. `"edges"` ranks FULL pages by score and
+    deals them alternately to the front and the back, so the best evidence sits
+    at both ends; CONDENSED pages (neighbours) fill the middle in reading
+    order.
+    """
+    if order == "reading":
+        return list(pages)
+    full = sorted(
+        (p for p in pages if p.tier is Tier.FULL), key=lambda p: -p.score
+    )
+    middle = [p for p in pages if p.tier is not Tier.FULL]
+    front, back = full[0::2], full[1::2]
+    return [*front, *middle, *reversed(back)]
+
+
 def outline_line(
     document: document_lib.Document,
     number: int,
@@ -135,6 +163,7 @@ def allocate(
     budget: int,
     tokenizer: tokenizer_base.Tokenizer,
     config: FoveationConfig | None = None,
+    query: str = "",
 ) -> Foveation:
     """Assigns every page a tier so the result fits `budget` tokens.
 
@@ -144,6 +173,8 @@ def allocate(
         budget: Token ceiling for the whole allocation.
         tokenizer: Token counter.
         config: Shape of the allocation.
+        query: The question; used to condense neighbours when
+            `config.query_aware` is set.
 
     Returns:
         A `Foveation` whose `tokens` never exceed `budget`.
@@ -156,7 +187,11 @@ def allocate(
     cfg = config or FoveationConfig()
     docs: Mapping[str, document_lib.Document] = {d.id: d for d in documents}
     plans: dict[PageKey, PagePlan] = {}
-    condenser = extractive.Extractive()
+    condenser: extractive.Extractive = (
+        queryaware.QueryExtractive(query=query)
+        if cfg.query_aware and query
+        else extractive.Extractive()
+    )
 
     def cost(key: PageKey) -> int:
         return docs[key[0]].page(key[1]).tokens

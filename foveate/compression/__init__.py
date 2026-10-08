@@ -6,11 +6,13 @@ from collections.abc import Mapping
 
 from foveate import errors
 from foveate.compression.base import Compressor
+from foveate.compression.clearing import ClearToolResults
 from foveate.compression.extractive import Extractive
 from foveate.compression.hierarchical import Hierarchical
 from foveate.compression.offload import Offload
 from foveate.compression.pipeline import Fallback, Pipeline
 from foveate.compression.ppa import CombineMode, PartitionSummarizeCombine
+from foveate.compression.queryaware import QueryExtractive
 from foveate.compression.report import (
     Budget,
     CompressionReport,
@@ -90,6 +92,7 @@ def scoped(name: str, options: Mapping[str, object]) -> dict[str, object]:
 
 __all__ = [
     "Budget",
+    "ClearToolResults",
     "CombineMode",
     "CompressionReport",
     "Compressor",
@@ -101,6 +104,7 @@ __all__ = [
     "Overflow",
     "PartitionSummarizeCombine",
     "Pipeline",
+    "QueryExtractive",
     "Reducer",
     "Side",
     "SlidingWindow",
