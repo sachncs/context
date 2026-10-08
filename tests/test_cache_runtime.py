@@ -386,3 +386,43 @@ class TestInlineReasoning:
             )
         )
         assert out.text == '{"a": 1}'
+
+
+class TestWindowAwareRetry:
+    def test_growth_is_capped_to_the_context_window(self):
+        from foveate import Message, Role
+        from foveate.backends import base
+
+        cut = base.Completion(text="", finish_reason="length")
+        backend = scripted.ScriptedBackend([cut] * 6)
+        rt = runtime_lib.Runtime(backend=backend, context_window=3000)
+        with pytest.raises(errors.ValidationError):
+            asyncio.run(
+                rt.complete(
+                    (Message(Role.USER, "word " * 400),),
+                    source="t",
+                    namespace="n",
+                    max_tokens=1000,
+                )
+            )
+        caps = [r.max_tokens for r in backend.requests]
+        assert caps[0] == 1000 and len(caps) >= 2
+        assert max(caps) < 3000 and caps == sorted(caps)
+
+    def test_cap_to_window_without_a_known_window_is_unchanged(self):
+        from foveate import Message, Role
+        from foveate.backends import base
+
+        rt = runtime_lib.Runtime(
+            backend=scripted.ScriptedBackend(), model="unknown-model"
+        )
+        request = base.Request(
+            messages=(Message(Role.USER, "hi"),), model="unknown-model"
+        )
+        assert rt.cap_to_window(request, 5000) == 5000
+        small = runtime_lib.Runtime(
+            backend=scripted.ScriptedBackend(),
+            model="unknown-model",
+            context_window=1000,
+        )
+        assert small.cap_to_window(request, 5000) <= 1000
