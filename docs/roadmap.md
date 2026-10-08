@@ -52,8 +52,8 @@ items:
   why: Shows where long context fails and whether Foveate helps.
   source: NoLiMa (arXiv:2502.05167); BABILong (arXiv:2406.10149)
 - title: Compression benchmark
-  status: building
-  summary: Accuracy against compression ratio for each method on documents, needle cells, chat history and tool output.
+  status: shipping
+  summary: Accuracy against compression ratio for each model-free method on documents, chat history, tool output and HotpotQA, with fact-retention metrics. Model-based methods are next.
   why: The clearest test of whether less context can still answer correctly.
   source: End-to-End Context Compression at Scale (arXiv:2606.09659)
 - title: Long-term memory
@@ -165,13 +165,13 @@ Status of each item. The list is the same one shown on the site's Coming next pa
 * **Cache-friendly prompts.** Order prompts so the stable part comes first and report cached tokens, so provider prompt caches hit.
 * **Tool-result clearing.** Replace old, re-fetchable tool results with a stub that keeps the call and its arguments.
 * **Needle-in-a-haystack benchmark.** Length-by-depth grids with NoLiMa, a RULER-style generator and a LongBench v2 sample, for all four pipelines.
+* **Compression benchmark.** Accuracy against compression ratio for each model-free method on documents, chat history, tool output and HotpotQA, with fact-retention metrics. Model-based methods are next.
 * **Long-term memory.** Working notes per session and consolidated facts across sessions, with recall by query.
 * **Evaluate your own documents in minutes.** Build a starter gold set from your own files: answerable, unanswerable and needle questions.
 * **Query expansion.** The model writes alternative search phrasings and their rankings are fused with the original query's (Foveator(expand=2)).
 
 ## Being built now
 
-* **Compression benchmark.** Accuracy against compression ratio for each method on documents, needle cells, chat history and tool output.
 * **Consistent answers across reworded questions.** Make the same question asked three ways return the same verdict: stabilise page selection across paraphrases and make the retry round deterministic.
 * **Short facts inside long pages.** Score chunks as well as pages, so a single sentence inside a long page can still win a full-page slot.
 

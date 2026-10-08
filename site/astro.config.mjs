@@ -24,7 +24,10 @@ export default defineConfig({
       social: [{ icon: 'github', label: 'GitHub', href: 'https://github.com/sachncs/foveate' }],
       editLink: { baseUrl: 'https://github.com/sachncs/foveate/edit/master/docs/' },
       customCss: ['./src/styles/tokens.css', './src/styles/starlight.css'],
-      components: { SiteTitle: './src/components/SiteTitle.astro' },
+      components: {
+        SiteTitle: './src/components/SiteTitle.astro',
+        Footer: './src/components/DocsFooter.astro',
+      },
       lastUpdated: false,
       pagination: true,
       sidebar: [

@@ -28,7 +28,7 @@ const groups = [
 ];
 ---
 <footer class="site-footer">
-  <div class="wrap">
+  <div class="fwrap">
     <div class="top">
       <div class="about">
         <a class="brand" href={base}><img src={`${base}favicon.svg`} alt="" width="26" height="26" /><span>Foveate</span></a>
@@ -51,6 +51,7 @@ const groups = [
   </div>
 </footer>
 <style>
+  .fwrap { width: 100%; max-width: 74rem; margin-inline: auto; padding-inline: max(1.25rem, 4vw); }
   .site-footer { border-top: 1px solid var(--border); padding-block: var(--space-16) var(--space-8); background: var(--surface-2); }
   .top { display: grid; gap: var(--space-12); grid-template-columns: minmax(0, 1fr); }
   @media (min-width: 60rem) { .top { grid-template-columns: minmax(0, 20rem) minmax(0, 1fr); } }
