@@ -174,3 +174,27 @@ S. **Build the site first** (Website section below): Starlight docs from `docs/`
 - Real runs: needle grid and compression sweep to `bench/results/`; numbers on the site are generated from those JSON files (`sync-results.mjs`), build fails if a referenced file is missing.
 - Site: `npm run build`; Playwright screenshots at 390, 768, 1280 px in light and dark; keyboard-only walkthrough; Lighthouse (performance, accessibility, SEO >= 95) on the landing page and one docs page; link checker over the built output.
 - CI: PR green on Linux/macOS/Windows x 3.10-3.13, `package`, `frameworks`, `site`; merge; then run the Pages deletion and report the manual rename steps.
+
+## Round 2b: nine more papers, read and applied (owner request, 8 October 2026)
+
+Read in full or in part and checked on 8 October 2026: IC-Former (arXiv:2406.13618), Beyond Token
+Savings (2609.32961), FOCUS (2609.37590), End-to-End Context Compression at Scale / LCLM (2606.09659),
+Thinking as Compression (2605.28713), Compress the Context, Keep the Commitments (2605.17304),
+Semantic-Anchor Compression (2510.08907), ComprExIT (2602.03784), Selective Context (2310.06201).
+
+| Paper | What it teaches | What Foveate does with it |
+|---|---|---|
+| Beyond Token Savings | Policy = primitive x trigger x depth; token savings do not mean lower latency or billed cost (prefix caching); rankings flip across models; same aggregate score hides task turnover; partial structured rewriting that keeps recent history verbatim is consistently good | Compression benchmark reports compressor calls, latency, billed cost with cached-token price, and per-sample gained/lost turnover; `HistoryCompressor` gets `trigger` and `target` knobs; `PriceTable` gets a cached-token price |
+| FOCUS | Compress by decision preservation, not redundancy; span-level units; defensive verification rescues negative constraints and state | `clear_tool_results` keeps error results and honours `exclude_tools` |
+| Compress the Context, Keep the Commitments | Typed atoms; Critical Atom Recall, Weighted Atom Recall, commitment density; error taxonomy (omission, weakening, mutation, polarity flip, ...); round-trip verification; keep raw spans for low-confidence atoms | New deterministic metrics `critical_atom_recall`, `weighted_atom_recall`, `commitment_density` and a failure taxonomy (omitted / mutated) in the compression benchmark, plus a multi-atom history task |
+| Thinking as Compression | Query-conditioned compression; evaluated with EM and F1 at 4x and 8x on NQ, 2WikiMQA, HotpotQA, MuSiQue | Exact match and token F1 metrics; HotpotQA (public, distractor setting) QA task at 1x, 4x, 8x with the `query` compressor |
+| Selective Context | Self-information pruning; phrase-level units beat token or sentence; percentile thresholds; 50% compression = -32% latency, -36% memory; evaluate against the full-context answer as reference | New LLM-free `selective` compressor (information per phrase, percentile threshold); metric `agreement_with_full` (token F1 against the full-context answer) |
+| LCLM (end-to-end compression at scale) | Learned latent compression; reports time-to-first-token and memory, not just accuracy; agent scaffolding with selective expansion helps needle tasks | Foveate's outline plus `need_pages` is the same selective-expansion idea; needle report includes extra rounds and latency; positioning below |
+| IC-Former, SAC, ComprExIT | White-box learned compressors (need hidden states or training); evaluated on MRQA in and out of domain with EM and F1; uniform coverage and complementary (non-redundant) allocation matter | Positioning: Foveate is the black-box layer for API models; coverage-aware selection recorded on the roadmap; EM/F1 protocol adopted |
+
+### Actions
+1. Metrics and tasks (offline, tested): EM, token F1, atom recall family, failure taxonomy, `agreement_with_full`, billed cost, turnover; `atoms` and `qa` (HotpotQA) tasks in `foveate.bench.compression`.
+2. Product: `selective` compressor; defensive `clear_tool_results`; `trigger`/`target` on `HistoryCompressor`; cached-token price.
+3. Experiments (real): compression sweep with the new tasks and metrics; needle grids (literal, NoLiMa-style with embeddings, multi); long-document run 2 with embeddings and expansion against plain RAG using the same retrieval; **small model against large model**: MiniCPM5-1B behind Foveate against a 30B-class or larger model sent the full filing or plain RAG, same questions, same judge; published whichever way it goes.
+4. Positioning: `docs/why.md` ("Why context engineering"), a map of where Foveate sits against learned compressors, prompt-level compressors, KV-cache methods and agent context managers, with only measured claims; landing-page section; research page extended with these nine papers.
+5. Honest limits: claims such as "a 1B model can beat a 30B model" are tested, not asserted; they appear on the site only with the numbers and sample sizes that support them.
