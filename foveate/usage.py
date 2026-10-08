@@ -36,10 +36,15 @@ class Usage:
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class Price:
-    """Per-million-token prices in USD."""
+    """Per-million-token prices in USD.
+
+    `cached_per_million` is the rate for prompt tokens served from the
+    provider's prompt cache; when unset they cost the normal prompt rate.
+    """
 
     prompt_per_million: float
     completion_per_million: float
+    cached_per_million: float | None = None
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -57,7 +62,14 @@ class PriceTable:
         price = self.prices.get(model)
         if price is None:
             return 0.0
+        cached_rate = (
+            price.prompt_per_million
+            if price.cached_per_million is None
+            else price.cached_per_million
+        )
+        fresh = max(0, usage.prompt_tokens - usage.cached_tokens)
         return (
-            usage.prompt_tokens * price.prompt_per_million
+            fresh * price.prompt_per_million
+            + usage.cached_tokens * cached_rate
             + usage.completion_tokens * price.completion_per_million
         ) / 1_000_000

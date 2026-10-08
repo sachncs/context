@@ -81,6 +81,7 @@ def make_runtime():
 class TestRunner:
     def sweep(self, **kw):
         cfg = compression.Config(
+            tasks=("history", "atoms", "tool", "document"),
             methods=(
                 "truncate",
                 "window",
@@ -89,8 +90,10 @@ class TestRunner:
                 "ushape-drop",
                 "tool_output",
                 "foveate",
+                "selective",
+                "clear_tool_results",
             ),
-            ratios=(1, 4, 16),
+            ratios=(4, 16),
             samples=2,
             tokens=8000,
             **kw,
@@ -99,8 +102,9 @@ class TestRunner:
 
     def test_uncompressed_baseline_answers_everything(self):
         report = self.sweep()
-        base = [c for c in report.cells() if c.ratio == 1]
+        base = [c for c in report.cells() if c.method == "uncompressed"]
         assert base and all(c.accuracy == 1.0 for c in base)
+        assert all(c.ratio == 1 for c in base)
 
     def test_query_aware_beats_truncation_and_drop_at_high_compression(self):
         cells = {(c.task, c.method, c.ratio): c for c in self.sweep().cells()}
@@ -142,7 +146,9 @@ class TestRunner:
     def test_report_writes_files(self, tmp_path):
         report = self.sweep()
         path = report.write(tmp_path / "out")
-        assert "### document: accuracy by compression ratio" in path.read_text()
+        text = path.read_text()
+        assert "### document" in text and "#### Correct" in text
+        assert "Samples gained / lost" in text and "Facts kept" in text
         data = json.loads((tmp_path / "out" / "summary.json").read_text())
         assert data["cells"] and data["model"]
 
@@ -156,7 +162,7 @@ class TestRunner:
         cfg = compression.Config(
             tasks=("document",),
             methods=("truncate",),
-            ratios=(1,),
+            ratios=(4,),
             samples=1,
             tokens=2000 + 2000,
         )
@@ -170,6 +176,7 @@ class TestRunner:
             {"samples": 0},
             {"ratios": (0,)},
             {"ratios": ()},
+            {"ratios": (1,)},
             {"tokens": 10},
             {"methods": ("magic",)},
             {"tasks": ("nope",)},
@@ -180,3 +187,87 @@ class TestRunner:
     def test_applies(self):
         assert runner.applies("history", "window")
         assert not runner.applies("document", "window")
+
+
+class TestAtomsAndQa:
+    def test_atoms_task_plants_six_weighted_facts_in_the_middle(self):
+        sample = tasks.Atoms(TOK, 6000).build(1)
+        assert len(sample.atoms) == 6 and {a.weight for a in sample.atoms} == {
+            1,
+            2,
+            3,
+        }
+        text = " ".join(m.content for m in sample.messages)
+        assert all(a.value in text for a in sample.atoms)
+        assert sample.expected == sample.atoms[0].value
+
+    def test_compression_reports_which_facts_survived(self):
+        cfg = compression.Config(
+            tasks=("atoms",),
+            methods=("truncate", "extractive", "selective"),
+            ratios=(8,),
+            samples=2,
+            tokens=6000,
+        )
+        report = asyncio.run(compression.run(make_runtime(), cfg))
+        by = {c.method: c for c in report.cells()}
+        assert by["uncompressed"].atom_recall == 1.0
+        for name in ("truncate", "extractive", "selective"):
+            cell = by[name]
+            assert 0.0 <= cell.atom_recall <= 1.0
+            assert (
+                cell.omitted + cell.mutated + cell.atom_recall * 6
+                == pytest.approx(6, abs=1e-6)
+            )
+        assert by["selective"].atom_recall >= by["truncate"].atom_recall
+
+    def test_hotpotqa_rows_become_exact_match_and_f1_samples(self, monkeypatch):
+        row = {
+            "question": "Which city hosts the Semper Opera House?",
+            "answer": "Dresden",
+            "context": {
+                "title": ["Semper Opera House", "Elbe"],
+                "sentences": [
+                    ["The Semper Opera House is in Dresden. "],
+                    ["The Elbe is a river."],
+                ],
+            },
+        }
+        monkeypatch.setattr(tasks.HotpotQA, "fetch", lambda self, index: row)
+        sample = tasks.HotpotQA(TOK, 2000).build(0)
+        assert (
+            sample.golds == ("Dresden",)
+            and "Semper Opera House:" in sample.messages[0].content
+        )
+        ok, f1, exact = runner.judge(sample, "The answer is Dresden")
+        assert ok and f1 > 0.3 and not exact
+        ok, f1, exact = runner.judge(sample, "dresden")
+        assert ok and exact and f1 == 1.0
+        assert not runner.judge(sample, "Berlin")[0]
+
+    def test_hotpotqa_download_is_cached(self, tmp_path, monkeypatch):
+        calls = []
+        payload = {
+            "rows": [
+                {
+                    "row": {
+                        "question": "q",
+                        "answer": "a",
+                        "context": {"title": [], "sentences": []},
+                    }
+                }
+            ]
+        }
+
+        def fake_fetch(url):
+            calls.append(url)
+            return json.dumps(payload).encode()
+
+        monkeypatch.setattr(tasks.dataset, "fetch", fake_fetch)
+        monkeypatch.setenv("FOVEATE_CACHE_HOME", str(tmp_path))
+        task = tasks.HotpotQA(TOK, 2000)
+        assert task.fetch(3)["answer"] == "a" and task.fetch(3)["answer"] == "a"
+        assert len(calls) == 1 and "offset=111" in calls[0]
+        monkeypatch.setattr(tasks.dataset, "fetch", lambda url: b'{"rows": []}')
+        with pytest.raises(errors.ValidationError):
+            task.fetch(4)

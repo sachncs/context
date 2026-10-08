@@ -23,7 +23,7 @@ ROOT = pathlib.Path(__file__).resolve().parents[1]
 def main() -> int:
     """Parses arguments and runs the sweep."""
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--tasks", default="history,tool,document")
+    parser.add_argument("--tasks", default="history,atoms,tool,document,qa")
     parser.add_argument("--methods", default=",".join(compression.METHODS))
     parser.add_argument("--ratios", default="1,2,4,8,16")
     parser.add_argument("--samples", type=int, default=6)

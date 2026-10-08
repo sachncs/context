@@ -128,6 +128,8 @@ def history_processor(
     budget: int,
     method: str = history.DEFAULT_METHOD,
     keep_last: int = 4,
+    trigger: float = 1.0,
+    target: float = 1.0,
     **options: object,
 ) -> HistoryProcessor:
     """Builds a history processor that keeps history within `budget` tokens.
@@ -137,6 +139,8 @@ def history_processor(
         budget: Token ceiling for the whole message history.
         method: foveate compression method for the old turns.
         keep_last: Newest messages kept verbatim.
+        trigger: Fraction of `budget` above which compression starts.
+        target: Fraction of `budget` to compress down to.
         **options: Strategy options (see `Context.compress`). With a
             composite method such as the default, key them by stage, e.g.
             `ushape={"head": 1}`.
@@ -148,6 +152,8 @@ def history_processor(
             budget,
             method=method,
             keep_last=keep_last,
+            trigger=trigger,
+            target=target,
             options=dict(options),
         )
     )

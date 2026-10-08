@@ -93,6 +93,8 @@ def model_callback(
     budget: int,
     method: str = history.DEFAULT_METHOD,
     keep_last: int = 4,
+    trigger: float = 1.0,
+    target: float = 1.0,
     **options: object,
 ) -> ModelCallback:
     """Builds a `before_model_callback` that keeps contents within `budget`.
@@ -102,6 +104,8 @@ def model_callback(
         budget: Token ceiling for the request contents.
         method: foveate compression method for the old turns.
         keep_last: Newest contents kept verbatim.
+        trigger: Fraction of `budget` above which compression starts.
+        target: Fraction of `budget` to compress down to.
         **options: Strategy options (see `Context.compress`). With a
             composite method such as the default, key them by stage, e.g.
             `ushape={"head": 1}`.
@@ -113,6 +117,8 @@ def model_callback(
             budget,
             method=method,
             keep_last=keep_last,
+            trigger=trigger,
+            target=target,
             options=dict(options),
         )
     )

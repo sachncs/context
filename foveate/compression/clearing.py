@@ -14,6 +14,18 @@ if TYPE_CHECKING:
 
 MARKER = "[tool result"
 PREVIEW_CHARS = 80
+ERROR_WINDOW = 300
+ERROR_MARKERS = (
+    "error",
+    "traceback",
+    "exception",
+    "failed",
+    "denied",
+    "forbidden",
+    "invalid",
+    "not found",
+    "timed out",
+)
 
 
 @base.Compressor.register("clear_tool_results")
@@ -27,11 +39,20 @@ class ClearToolResults(base.Compressor):
     removed, so the model knows the call happened and can repeat it. No model
     call is made.
 
+    Results that look like failures (an error, a traceback, "denied") are kept
+    by default: they record what did not work, which the agent should not
+    repeat, and are usually short. Results of tools named in `exclude` are
+    never cleared.
+
     Attributes:
         keep: Newest tool results that are never cleared.
+        keep_errors: Keep results that look like failures.
+        exclude: Tool names whose results are never cleared.
     """
 
     keep: int = 2
+    keep_errors: bool = True
+    exclude: tuple[str, ...] = ()
 
     def __post_init__(self) -> None:
         if self.keep < 0:
@@ -43,6 +64,15 @@ class ClearToolResults(base.Compressor):
             message.role is messages_lib.Role.TOOL
             or message.content.startswith(MARKER)
         )
+
+    def protected(self, message: messages_lib.Message) -> bool:
+        """Returns whether `message` must not be cleared."""
+        if message.name is not None and message.name in self.exclude:
+            return True
+        if not self.keep_errors:
+            return False
+        head = message.content[:ERROR_WINDOW].casefold()
+        return any(marker in head for marker in ERROR_MARKERS)
 
     def stub(self, message: messages_lib.Message, tokens: int) -> str:
         """Builds the replacement text for a cleared result."""
@@ -60,7 +90,11 @@ class ClearToolResults(base.Compressor):
         tokenizer = context.runtime.tokenizer
         messages = list(context.messages)
         results = [i for i, m in enumerate(messages) if self.is_result(m)]
-        clearable = results[: max(0, len(results) - self.keep)]
+        clearable = [
+            i
+            for i in results[: max(0, len(results) - self.keep)]
+            if not self.protected(messages[i])
+        ]
         result = context
         for index in clearable:
             before = tokenizer.count(messages[index].content)

@@ -1,4 +1,11 @@
-"""Sweeps compression ratios: how much can go before answers break?"""
+"""Sweeps compression ratios: how much can go before answers break?
+
+Each cell reports more than accuracy, because token savings alone say little
+(see the "Beyond Token Savings" study): answer F1 and exact match, how many
+planted facts survive (critical and weighted atom recall), agreement with the
+answer the full context gives, extra model calls and tokens spent compressing,
+latency, and which samples were gained or lost against the uncompressed run.
+"""
 
 from __future__ import annotations
 
@@ -7,12 +14,14 @@ import datetime
 import json
 import pathlib
 import statistics
+import time
 from collections import defaultdict
-from collections.abc import Awaitable, Callable
+from collections.abc import Awaitable, Callable, Sequence
 
 from foveate import Context, Foveator, errors
 from foveate import messages as messages_lib
 from foveate import runtime as runtime_lib
+from foveate.bench import scoring
 from foveate.bench.compression import tasks as tasks_lib
 from foveate.compression import Budget, Overflow
 from foveate.documents import Document
@@ -21,13 +30,17 @@ from foveate.internals import concurrency
 
 RATIOS = (1, 2, 4, 8, 16)
 FOVEATE_MIN_BUDGET = 1_500
+F1_PASS = 0.5
+UNCOMPRESSED = "uncompressed"
 METHODS = (
     "truncate",
     "window",
     "extractive",
+    "selective",
     "query",
     "ushape-drop",
     "tool_output",
+    "clear_tool_results",
     "ppa",
     "foveate",
 )
@@ -41,6 +54,12 @@ OPTIONS: dict[str, dict[str, object]] = {
     "ushape-drop": {"head": 1, "tail": 2, "middle": "drop"},
 }
 SPECS = {"ushape-drop": "ushape"}
+ONLY = {
+    "foveate": ("document",),
+    "tool_output": ("tool",),
+    "clear_tool_results": ("tool",),
+    "window": ("history", "atoms"),
+}
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -49,14 +68,15 @@ class Config:
 
     Attributes:
         tasks: Task names.
-        methods: Method names (`foveate` applies to the document task only).
-        ratios: Compression ratios; 1 means no compression.
+        methods: Method names (some apply to certain tasks only).
+        ratios: Compression ratios above 1; the uncompressed run is always
+            included as the reference.
         samples: Seeds per cell.
         tokens: Size of the uncompressed context.
         concurrency: Samples processed in parallel.
     """
 
-    tasks: tuple[str, ...] = ("history", "tool", "document")
+    tasks: tuple[str, ...] = ("history", "atoms", "tool", "document", "qa")
     methods: tuple[str, ...] = METHODS
     ratios: tuple[int, ...] = RATIOS
     samples: int = 6
@@ -70,6 +90,8 @@ class Config:
             )
         if not self.ratios or min(self.ratios) < 1:
             raise errors.ConfigError("ratios must be >= 1")
+        if max(self.ratios) < 2:
+            raise errors.ConfigError("need at least one ratio above 1")
         for name in self.tasks:
             tasks_lib.Task.registry.get(name)
         unknown = set(self.methods) - set(METHODS)
@@ -86,20 +108,33 @@ class Row:
     ratio: int
     seed: int
     correct: bool
+    f1: float
+    exact: bool
     original_tokens: int
     final_tokens: int
     compressor_tokens: int
+    answer_tokens: int
     forced: bool
+    seconds: float
+    agreement: float
+    atom_recall: float
+    weighted_atom_recall: float
+    density: float
+    mutated: int
+    omitted: int
+    baseline_correct: bool
     error: str = ""
 
 
 def applies(task: str, method: str) -> bool:
     """Returns whether `method` makes sense for `task`."""
-    if method == "foveate":
-        return task == "document"
-    if method == "tool_output":
-        return task == "tool"
-    return not (method == "window" and task != "history")
+    allowed = ONLY.get(method)
+    return allowed is None or task in allowed
+
+
+def fits_foveate(tokens: int, ratio: int) -> bool:
+    """Returns whether Foveator can work with `tokens // ratio` tokens."""
+    return tokens // ratio >= FOVEATE_MIN_BUDGET
 
 
 async def compress(
@@ -113,7 +148,7 @@ async def compress(
     spec = SPECS.get(method, method)
     options = dict(OPTIONS.get(method, {}))
     if method == "query":
-        options["query"] = sample.query
+        options["query"] = sample.question
     out = await context.acompress(
         spec, budget=Budget(budget, Overflow.TRUNCATE), **options
     )
@@ -121,8 +156,10 @@ async def compress(
     return out, used
 
 
-async def answer(runtime: runtime_lib.Runtime, text: str, question: str) -> str:
-    """Asks the model about `text`."""
+async def answer(
+    runtime: runtime_lib.Runtime, text: str, question: str
+) -> tuple[str, int]:
+    """Asks the model about `text`; returns the reply and tokens used."""
     reply = await runtime.complete(
         (
             messages_lib.Message(
@@ -134,12 +171,32 @@ async def answer(runtime: runtime_lib.Runtime, text: str, question: str) -> str:
         namespace="compression-bench:v1",
         max_tokens=300,
     )
-    return reply.text
+    return reply.text, reply.usage.total_tokens
 
 
 def flatten(context: Context) -> str:
     """Renders messages as plain text for the reader."""
     return "\n".join(f"{m.role.value}: {m.content}" for m in context.messages)
+
+
+def judge(sample: tasks_lib.Sample, reply: str) -> tuple[bool, float, bool]:
+    """Scores a reply: (correct, token F1, exact match)."""
+    f1 = scoring.best_f1(reply, sample.answers)
+    exact = any(scoring.exact_match(reply, g) for g in sample.answers)
+    if sample.golds:
+        return f1 >= F1_PASS or exact, f1, exact
+    return scoring.contains(reply, sample.expected), f1, exact
+
+
+def failed(
+    task: tasks_lib.Task, method: str, ratio: int, seed: int, exc: Exception
+) -> Row:
+    """Builds the row recorded when a cell raises a Foveate error."""
+    return Row(
+        task.name, method, ratio, seed, False, 0.0, False, 0, 0, 0, 0,
+        False, 0.0, 0.0, 0.0, 0.0, 0.0, 0, 0, False,
+        f"{type(exc).__name__}: {exc}"[:160],
+    )  # fmt: skip
 
 
 async def one(
@@ -153,11 +210,16 @@ async def one(
     sample = task.build(seed)
     original = sum(task.tokenizer.count(m.content) for m in sample.messages)
     budget = max(64, original // ratio)
+    started = time.monotonic()
     try:
+        full_text = flatten(Context(sample.messages, runtime))
+        base_reply = (await answer(runtime, full_text, sample.question))[0]
+        base_ok = judge(sample, base_reply)[0]
+        used = 0
+        forced = False
         if ratio == 1:
-            context, used = Context(sample.messages, runtime), 0
-            text = flatten(context)
-            final, forced = original, False
+            text, final = full_text, original
+            reply, spent = base_reply, 0
         elif method == "foveate":
             document = Document(
                 "doc",
@@ -167,43 +229,46 @@ async def one(
                 ),
             )
             result = await Foveator(
-                runtime, budget=max(budget, 1024), max_rounds=1
+                runtime, budget=max(budget, FOVEATE_MIN_BUDGET), max_rounds=1
             ).aask(sample.question, [document])
-            right = sample.expected.casefold() in result.text.casefold()
-            return Row(
-                task.name,
-                method,
-                ratio,
-                seed,
-                right,
-                original,
-                result.foveation.tokens,
-                result.usage.total_tokens,
-                False,
-            )
+            text, final = result.text, result.foveation.tokens
+            reply, spent = result.text, 0
+            used = result.usage.total_tokens
         else:
             context, used = await compress(sample, method, budget, runtime)
-            text = flatten(context)
-            final = context.token_count
+            text, final = flatten(context), context.token_count
             forced = bool(context.report and context.report.truncated)
-        reply = await answer(runtime, text, sample.question)
-        right = sample.expected.casefold() in reply.casefold()
+            reply, spent = await answer(runtime, text, sample.question)
+        right, f1, exact = judge(sample, reply)
+        counts = scoring.taxonomy(sample.atoms, text)
         return Row(
-            task.name, method, ratio, seed, right, original, final, used, forced
+            task=task.name,
+            method=method,
+            ratio=ratio,
+            seed=seed,
+            correct=right,
+            f1=f1,
+            exact=exact,
+            original_tokens=original,
+            final_tokens=final,
+            compressor_tokens=used,
+            answer_tokens=spent,
+            forced=forced,
+            seconds=time.monotonic() - started,
+            agreement=scoring.token_f1(reply, base_reply),
+            atom_recall=scoring.critical_atom_recall(sample.atoms, text),
+            weighted_atom_recall=scoring.weighted_atom_recall(
+                sample.atoms, text
+            ),
+            density=scoring.commitment_density(
+                sample.atoms, text, task.tokenizer
+            ),
+            mutated=counts[scoring.MUTATED],
+            omitted=counts[scoring.OMITTED],
+            baseline_correct=base_ok,
         )
     except errors.FoveateError as exc:
-        return Row(
-            task.name,
-            method,
-            ratio,
-            seed,
-            False,
-            original,
-            0,
-            0,
-            False,
-            f"{type(exc).__name__}: {exc}"[:160],
-        )
+        return failed(task, method, ratio, seed, exc)
 
 
 @dataclasses.dataclass(frozen=True, slots=True)
@@ -215,10 +280,27 @@ class Cell:
     ratio: int
     n: int
     accuracy: float
+    f1: float
+    exact: float
     achieved_ratio: float
     compressor_tokens: float
+    total_tokens: float
+    seconds: float
+    agreement: float
+    atom_recall: float
+    weighted_atom_recall: float
+    density: float
+    mutated: float
+    omitted: float
+    gained: int
+    lost: int
     forced_truncation: float
     errors: int
+
+
+def mean(values: Sequence[float]) -> float:
+    """Returns the mean, or 0.0 for no values."""
+    return statistics.fmean(values) if values else 0.0
 
 
 @dataclasses.dataclass(frozen=True)
@@ -244,24 +326,60 @@ class Report:
                     ratio=ratio,
                     n=len(rows),
                     accuracy=sum(r.correct for r in rows) / len(rows),
-                    achieved_ratio=statistics.fmean(
-                        r.original_tokens / max(1, r.final_tokens) for r in ok
-                    )
-                    if ok
-                    else 0.0,
-                    compressor_tokens=statistics.fmean(
-                        r.compressor_tokens for r in ok
-                    )
-                    if ok
-                    else 0.0,
+                    f1=mean([r.f1 for r in ok]),
+                    exact=mean([float(r.exact) for r in ok]),
+                    achieved_ratio=mean(
+                        [r.original_tokens / max(1, r.final_tokens) for r in ok]
+                    ),
+                    compressor_tokens=mean([r.compressor_tokens for r in ok]),
+                    total_tokens=mean(
+                        [r.compressor_tokens + r.answer_tokens for r in ok]
+                    ),
+                    seconds=mean([r.seconds for r in ok]),
+                    agreement=mean([r.agreement for r in ok]),
+                    atom_recall=mean([r.atom_recall for r in ok]),
+                    weighted_atom_recall=mean(
+                        [r.weighted_atom_recall for r in ok]
+                    ),
+                    density=mean([r.density for r in ok]),
+                    mutated=mean([float(r.mutated) for r in ok]),
+                    omitted=mean([float(r.omitted) for r in ok]),
+                    gained=sum(
+                        r.correct and not r.baseline_correct for r in rows
+                    ),
+                    lost=sum(
+                        r.baseline_correct and not r.correct for r in rows
+                    ),
                     forced_truncation=sum(r.forced for r in rows) / len(rows),
                     errors=sum(bool(r.error) for r in rows),
                 )
             )
         return out
 
+    def table(
+        self,
+        cells: Sequence[Cell],
+        title: str,
+        value: Callable[[Cell], str],
+    ) -> list[str]:
+        """Renders one methods x ratios table."""
+        ratios = sorted({c.ratio for c in cells})
+        lines = [f"#### {title}", ""]
+        lines.append("| method | " + " | ".join(f"{r}x" for r in ratios) + " |")
+        lines.append("|---|" + "---|" * len(ratios))
+        for method in sorted({c.method for c in cells}):
+            row = []
+            for ratio in ratios:
+                found = [
+                    c for c in cells if c.method == method and c.ratio == ratio
+                ]
+                row.append(value(found[0]) if found else "-")
+            lines.append(f"| {method} | " + " | ".join(row) + " |")
+        lines.append("")
+        return lines
+
     def to_markdown(self) -> str:
-        """Renders accuracy by method and ratio for each task."""
+        """Renders the sweep: accuracy first, then the other measures."""
         cells = self.cells()
         lines = [
             "# Compression sweep",
@@ -272,23 +390,44 @@ class Report:
         ]
         for task in sorted({c.task for c in cells}):
             mine = [c for c in cells if c.task == task]
-            ratios = sorted({c.ratio for c in mine})
-            lines += [f"### {task}: accuracy by compression ratio", ""]
-            lines.append(
-                "| method | " + " | ".join(f"{r}x" for r in ratios) + " |"
+            lines += [f"### {task}", ""]
+            lines += self.table(mine, "Correct", lambda c: f"{c.accuracy:.0%}")
+            if task == "qa":
+                lines += self.table(mine, "F1", lambda c: f"{c.f1:.2f}")
+                lines += self.table(
+                    mine, "Exact match", lambda c: f"{c.exact:.0%}"
+                )
+            if any(c.atom_recall or c.omitted or c.mutated for c in mine):
+                lines += self.table(
+                    mine,
+                    "Facts kept (critical atom recall)",
+                    lambda c: f"{c.atom_recall:.0%}",
+                )
+                lines += self.table(
+                    mine,
+                    "Facts kept, weighted by importance",
+                    lambda c: f"{c.weighted_atom_recall:.0%}",
+                )
+            lines += self.table(
+                mine,
+                "Agreement with the full-context answer (token F1)",
+                lambda c: f"{c.agreement:.2f}",
             )
-            lines.append("|---|" + "---|" * len(ratios))
-            for method in sorted({c.method for c in mine}):
-                row = []
-                for ratio in ratios:
-                    found = [
-                        c
-                        for c in mine
-                        if c.method == method and c.ratio == ratio
-                    ]
-                    row.append(f"{found[0].accuracy:.0%}" if found else "-")
-                lines.append(f"| {method} | " + " | ".join(row) + " |")
-            lines.append("")
+            lines += self.table(
+                mine,
+                "Mean tokens spent compressing and answering",
+                lambda c: f"{c.total_tokens:,.0f}",
+            )
+            lines += self.table(
+                mine,
+                "Mean seconds per sample",
+                lambda c: f"{c.seconds:.1f}",
+            )
+            lines += self.table(
+                mine,
+                "Samples gained / lost against no compression",
+                lambda c: f"+{c.gained} / -{c.lost}",
+            )
         return "\n".join(lines)
 
     def write(self, directory: pathlib.Path) -> pathlib.Path:
@@ -319,16 +458,18 @@ async def run(
         for name in cfg.tasks
     }
     cells = [
+        (task, UNCOMPRESSED, 1, seed)
+        for task in cfg.tasks
+        for seed in range(cfg.samples)
+    ] + [
         (task, method, ratio, seed)
         for task in cfg.tasks
         for method in cfg.methods
         if applies(task, method)
         for ratio in cfg.ratios
+        if ratio > 1
+        and not (method == "foveate" and not fits_foveate(cfg.tokens, ratio))
         for seed in range(cfg.samples)
-        if not (ratio == 1 and method != cfg.methods[0])
-        and not (
-            method == "foveate" and cfg.tokens // ratio < FOVEATE_MIN_BUDGET
-        )
     ]
 
     def job(cell: tuple[str, str, int, int]) -> Callable[[], Awaitable[Row]]:

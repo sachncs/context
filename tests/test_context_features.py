@@ -276,3 +276,87 @@ def test_inference_mode_changes_the_system_prompt_only():
     )
     Foveator(runtime, budget=4000, max_rounds=1).ask("q?", [make_doc()])
     assert "inference" in seen[0] and "inference" not in seen[1]
+
+
+class TestDefensiveClearing:
+    def convo(self):
+        return [
+            Message(Role.USER, "go"),
+            Message(
+                Role.TOOL,
+                "Traceback (most recent call last): boom " + "x " * 200,
+                name="run",
+            ),
+            Message(Role.TOOL, "result a " + "data " * 150, name="search"),
+            Message(Role.TOOL, "result b " + "data " * 150, name="keepme"),
+            Message(Role.TOOL, "result c " + "data " * 150, name="search"),
+            Message(Role.TOOL, "result d " + "data " * 150, name="search"),
+        ]
+
+    def clear(self, **kw):
+        runtime, _ = make_runtime()
+        ctx = Context(self.convo(), runtime=runtime)
+        out = asyncio.run(
+            ClearToolResults(keep=1, **kw).compress(
+                ctx, Budget(560, Overflow.TRUNCATE)
+            )
+        )
+        return [m.content for m in out.messages]
+
+    def test_errors_are_kept_by_default(self):
+        texts = self.clear()
+        assert texts[1].startswith("Traceback") and "cleared" in texts[2]
+
+    def test_errors_can_be_cleared_when_asked(self):
+        texts = self.clear(keep_errors=False)
+        assert "cleared" in texts[1]
+
+    def test_excluded_tools_are_never_cleared(self):
+        texts = self.clear(exclude=("keepme",))
+        assert texts[3].startswith("result b") and "cleared" in texts[2]
+
+
+def test_cached_tokens_use_the_cached_price():
+    from foveate.usage import Price, PriceTable
+
+    table = PriceTable({"m": Price(3.0, 15.0, 0.3)})
+    full = table.cost("m", Usage(1_000_000, 0))
+    cached = table.cost("m", Usage(1_000_000, 0, 1_000_000))
+    assert full == 3.0 and cached == pytest.approx(0.3)
+    plain = PriceTable({"m": Price(3.0, 15.0)})
+    assert plain.cost("m", Usage(1_000_000, 0, 1_000_000)) == 3.0
+
+
+def test_history_trigger_and_target_leave_headroom():
+    from foveate.integrations import history
+    from tests.test_integrations_history import ToyAdapter, conversation
+
+    runtime, _ = make_runtime()
+    items = conversation(6, 80)
+    eager = history.HistoryCompressor(
+        ToyAdapter(),
+        runtime,
+        budget=1200,
+        method="extractive",
+        trigger=0.5,
+        target=0.4,
+    )
+    lazy = history.HistoryCompressor(
+        ToyAdapter(), runtime, budget=1200, method="extractive"
+    )
+    assert eager.count(items) > 1200
+    out_eager = asyncio.run(eager.compress(items))
+    assert (
+        eager.count(out_eager) <= 1200 * 0.4 + 400
+    )  # leaves headroom (tail is verbatim)
+    assert (
+        eager.count(out_eager)
+        < lazy.count(asyncio.run(lazy.compress(items))) + 1
+    )
+    # under the trigger nothing happens
+    small = conversation(1, 20)
+    assert asyncio.run(eager.compress(small)) == small
+    with pytest.raises(errors.ConfigError):
+        history.HistoryCompressor(
+            ToyAdapter(), runtime, budget=100, trigger=0.5, target=0.9
+        )

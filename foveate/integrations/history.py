@@ -67,6 +67,13 @@ class HistoryCompressor(Generic[M]):
         keep_last: Newest messages that stay verbatim (rounded back to a
             turn boundary).
         min_prefix_tokens: Smallest budget ever given to the old part.
+        trigger: Fraction of `budget` above which compression starts
+            (1.0 = only when the history exceeds the budget). A lower value
+            compresses earlier and in bigger, less frequent steps, which
+            keeps provider prompt caches valid for longer.
+        target: Fraction of `budget` to compress down to (1.0 = right up to
+            the budget). A lower value leaves headroom so the next turns do
+            not trigger compression again at once.
         options: Strategy options forwarded to `Context.acompress`.
         reports: Reports of past compressions, newest last (diagnostics).
     """
@@ -77,6 +84,8 @@ class HistoryCompressor(Generic[M]):
     method: str = DEFAULT_METHOD
     keep_last: int = 4
     min_prefix_tokens: int = 64
+    trigger: float = 1.0
+    target: float = 1.0
     options: dict[str, object] = dataclasses.field(default_factory=dict)
     reports: list[report_lib.CompressionReport] = dataclasses.field(
         default_factory=list
@@ -86,6 +95,10 @@ class HistoryCompressor(Generic[M]):
         if self.budget < 1 or self.keep_last < 1 or self.min_prefix_tokens < 1:
             raise errors.ConfigError(
                 "budget, keep_last and min_prefix_tokens must be >= 1"
+            )
+        if not 0 < self.target <= self.trigger <= 1.0:
+            raise errors.ConfigError(
+                "need 0 < target <= trigger <= 1 (fractions of the budget)"
             )
 
     def count(self, history: Sequence[M]) -> int:
@@ -139,14 +152,15 @@ class HistoryCompressor(Generic[M]):
                 its model call fails.
         """
         items = list(history)
-        if self.count(items) <= self.budget:
+        if self.count(items) <= self.budget * self.trigger:
             return items
         cut = self.split_point(items)
         if cut == 0:
             return items
         head, tail = items[:cut], items[cut:]
         flat = [m for message in head for m in self.adapter.flatten(message)]
-        room = max(self.min_prefix_tokens, self.budget - self.count(tail))
+        goal = int(self.budget * self.target)
+        room = max(self.min_prefix_tokens, goal - self.count(tail))
         context = Context(tuple(flat), self.runtime)
         compressed = await context.acompress(
             self.method,
