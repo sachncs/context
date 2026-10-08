@@ -37,6 +37,7 @@ def settings(
     out["bm25+edges"] = dataclasses.replace(
         plain, foveation=FoveationConfig(order="edges")
     )
+    out["bm25+expand"] = dataclasses.replace(plain, expand=2)
     if embedder is not None:
         with_vectors = dataclasses.replace(runtime, embedder=embedder)
         out["hybrid"] = Foveator(
@@ -88,6 +89,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--n", type=int, default=30)
     parser.add_argument("--embedding-model", default="")
+    parser.add_argument(
+        "--variants", default="", help="comma-separated subset to run"
+    )
     parser.add_argument("--out", default=str(ROOT / "bench/results/retrieval"))
     args = parser.parse_args()
     items, unused = run_longdoc.select(args.n, 0)
@@ -109,6 +113,9 @@ def main() -> int:
     with Runtime.from_env() as runtime:
         corpus = runner.Corpus(bench, bench.questions(), runtime)
         variants = settings(runtime, embedder)
+        if args.variants:
+            keep = set(args.variants.split(","))
+            variants = {n: v for n, v in variants.items() if n in keep}
         result = asyncio.run(evaluate(variants, corpus, items))
     out = pathlib.Path(args.out)
     out.mkdir(parents=True, exist_ok=True)

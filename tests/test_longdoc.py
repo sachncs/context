@@ -489,3 +489,71 @@ class TestRunnerAndReport:
         ):
             with pytest.raises(errors.ConfigError):
                 runner.Config(**kw)
+
+
+class TestStarter:
+    def docs(self):
+        return [
+            make_doc("acme", pages=12),
+            make_doc(
+                "globex", pages=12, facts={4: "Globex revenue was 800 million."}
+            ),
+        ]
+
+    def test_builds_answerable_unanswerable_and_needle_items(self):
+        examples = [
+            gold.Example(
+                "acme",
+                "What were capital expenditures?",
+                "1,577",
+                evidence="Capital expenditures were 1,577 million dollars in fiscal 2018.",
+            )
+        ]
+        items = gold.starter_items(self.docs(), examples, seed=1)
+        kinds = [i.kind for i in items]
+        assert (
+            kinds.count("answerable") == 1 and kinds.count("unanswerable") == 1
+        )
+        assert kinds.count("needle") == 10  # 5 depths x 2 documents
+        first = items[0]
+        assert first.gold_pages == (7,) and first.doc_name == "acme"
+        un = next(i for i in items if i.kind == "unanswerable")
+        assert un.doc_name == "globex" and un.question == examples[0].question
+
+    def test_no_unanswerable_when_every_other_document_has_the_answer(self):
+        docs = [make_doc("a", pages=12), make_doc("b", pages=12)]
+        example = gold.Example("a", "q?", "1,577", evidence="")
+        items = gold.starter_items(docs, [example])
+        assert not [i for i in items if i.kind == "unanswerable"]
+        assert items[0].gold_pages == ()
+
+    def test_unknown_document_is_rejected(self):
+        with pytest.raises(errors.ValidationError):
+            gold.starter_items(self.docs(), [gold.Example("nope", "q", "a")])
+
+    def test_static_corpus_serves_documents_to_the_runner(self):
+        corpus = runner.StaticCorpus(self.docs())
+        assert corpus.get("acme").id == "acme"
+        with pytest.raises(errors.ValidationError):
+            corpus.get("missing")
+        items = gold.starter_items(
+            self.docs(),
+            [
+                gold.Example(
+                    "acme",
+                    "What were Acme capital expenditures in fiscal 2018?",
+                    "1,577",
+                )
+            ],
+        )
+        items = [i for i in items if i.kind == "answerable"]
+        report = run(
+            runner.run(
+                items,
+                corpus,
+                rt(),
+                rt(),
+                runner.Config(pipelines=("foveate",), budget=4000),
+            )
+        )
+        assert report.rows()[0].answerable == 1

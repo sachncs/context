@@ -285,3 +285,92 @@ def with_needle(document: Document, item: GoldItem) -> Document:
         else:
             pages.append(page)
     return dataclasses.replace(document, pages=tuple(pages))
+
+
+@dataclasses.dataclass(frozen=True, slots=True)
+class Example:
+    """One question about one of your own documents.
+
+    Attributes:
+        doc_id: Id of the document the question is about.
+        question: The question.
+        expected: The correct answer (a number, name or short phrase).
+        evidence: A passage copied from the page that proves the answer;
+            optional, but needed to measure citation recall.
+    """
+
+    doc_id: str
+    question: str
+    expected: str
+    evidence: str = ""
+
+
+def lacks(document: Document, expected: str) -> bool:
+    """Returns whether `document` lacks `expected` (and its key numbers)."""
+    text = quotes.normalise(document.text())
+    parts = key_numbers(expected) or [expected]
+    return not any(quotes.normalise(part) in text for part in parts if part)
+
+
+def starter_items(
+    documents: Sequence[Document],
+    examples: Sequence[Example],
+    seed: int = 0,
+) -> list[GoldItem]:
+    """Builds a starter gold set from your own documents and questions.
+
+    Produces, per example, an answerable item (with gold pages when `evidence`
+    is given) and one unanswerable item that pairs the question with another
+    document that provably lacks the answer; per document, needle items at
+    five depths.
+
+    Args:
+        documents: Your documents (unique ids).
+        examples: Questions with known answers.
+        seed: Seed for the needles.
+
+    Raises:
+        ValidationError: If an example names an unknown document.
+    """
+    by_id = {d.id: d for d in documents}
+    items: list[GoldItem] = []
+    for number, example in enumerate(examples):
+        if example.doc_id not in by_id:
+            raise errors.ValidationError(f"unknown document {example.doc_id!r}")
+        document = by_id[example.doc_id]
+        pages = (
+            locate_pages(document, example.evidence) if example.evidence else ()
+        )
+        items.append(
+            GoldItem(
+                id=f"{ANSWERABLE}:own:{number}",
+                kind=ANSWERABLE,
+                doc_name=document.id,
+                question=example.question,
+                expected=example.expected,
+                gold_pages=tuple(sorted(pages)),
+                meta={"source": f"own:{number}"},
+            )
+        )
+        other = next(
+            (
+                d
+                for d in documents
+                if d.id != document.id and lacks(d, example.expected)
+            ),
+            None,
+        )
+        if other is not None:
+            items.append(
+                GoldItem(
+                    id=f"{UNANSWERABLE}:own:{number}:{other.id}",
+                    kind=UNANSWERABLE,
+                    doc_name=other.id,
+                    question=example.question,
+                    expected="",
+                    meta={"source": f"own:{number}"},
+                )
+            )
+    for document in documents:
+        items.extend(needle_items(document, seed))
+    return items

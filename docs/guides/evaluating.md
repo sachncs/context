@@ -44,6 +44,35 @@ abstention accuracy on unanswerables, hallucination rate (answering an
 unanswerable), run-to-run agreement across seeded runs and paraphrases, tokens,
 estimated cost and latency.
 
+## Start from your own files
+
+You do not need FinanceBench. Give Foveate your documents and a handful of questions with
+known answers; it builds the rest.
+
+```python
+from foveate import Document
+from foveate.bench.longdoc import Config, Example, StaticCorpus, run, starter_items
+
+documents = [Document.load("policy_2024.pdf"), Document.load("policy_2025.pdf")]
+examples = [
+    Example(
+        doc_id="policy_2025",
+        question="How many days of parental leave are granted?",
+        expected="26 weeks",
+        evidence="Employees are granted 26 weeks of paid parental leave.",
+    ),
+]
+items = starter_items(documents, examples)   # answerable + unanswerable + needles
+report = await run(items, StaticCorpus(documents), runtime, runtime, Config(runs=1))
+print(report.to_markdown())
+```
+
+For each example you get an answerable item (with the page that holds the evidence, found by
+text overlap), an unanswerable item that pairs the question with another document that does
+not contain the answer, and needle items at five depths for every document. Thirty to a
+hundred real questions are enough to see big differences; fewer than that and you are
+reading noise.
+
 ## Run it
 
 ```python
