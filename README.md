@@ -34,7 +34,26 @@ When the document does not contain the answer, you get an explicit
 | Wrong answers when the file lacks the fact | Abstention |
 | Agents drown in tool output and history | Page tools, history compression, tool-output reducers |
 
-<!-- RESULTS -->
+## Does it help? A measured answer
+
+30 real SEC filings questions, same prompt and citation check for every pipeline, answer model
+`gpt-oss-20b` (full method, gold sets and the places Foveate does **not** win are in
+[docs/benchmarks.md](docs/benchmarks.md)).
+
+| | Send everything | Truncate | Plain RAG | **Foveate** |
+|---|---|---|---|---|
+| Correct answers | 37% | 7% | 50% | **67%** |
+| Filing too large for the window | 30% | 0% | 0% | 0% |
+| Every cited quote found on its page | 74% | 67% | 76% | **85%** |
+| Says "not found" when it should (20 unanswerable) | 65% | 100% | 95% | **100%** |
+| Mean prompt tokens | 71,227 | 10,334 | 10,637 | 16,378 |
+| Same verdict across paraphrases and runs | 63% | 87% | 70% | 57% |
+
+Thirty questions is a small sample, so read differences under about 15 points as likely rather
+than certain. Foveate is no better than plain retrieval at finding the evidence page (67% against
+66%), uses more tokens than it, and is less consistent across reworded questions. These are the
+first things being worked on.
+
 
 ## What you get
 
