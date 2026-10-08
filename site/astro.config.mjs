@@ -32,6 +32,7 @@ export default defineConfig({
           label: 'Start here',
           items: [
             { label: 'Overview', slug: 'docs' },
+            { label: 'Why context engineering', slug: 'docs/why' },
             { label: 'Quickstart', slug: 'docs/quickstart' },
             { label: 'Concepts', slug: 'docs/concepts' },
           ],

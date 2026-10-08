@@ -30,7 +30,7 @@ JSON with `(document, page, quote)` citations. Every quote is searched for on
 the cited page. Unsupported answers are retried with feedback, then flagged or
 turned into an explicit "not found".
 
-See [benchmarks](benchmarks.md) for measured results, including where Foveate
+See [why context engineering](why.md) for what changes and [benchmarks](benchmarks.md) for measured results, including where Foveate
 does not help.
 
 ## Who it is for
