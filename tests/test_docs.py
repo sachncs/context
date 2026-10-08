@@ -44,3 +44,21 @@ def test_no_stale_names_in_the_docs():
         text = path.read_text(encoding="utf-8")
         hits += [f"{path.name}: {s}" for s in stale if s in text]
     assert not hits
+
+
+def test_roadmap_items_are_complete_and_listed_in_the_body():
+    import yaml
+
+    text = (ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
+    _, front, body = text.split("---", 2)
+    items = yaml.safe_load(front)["items"]
+    assert items
+    for item in items:
+        assert item["status"] in {
+            "shipping",
+            "building",
+            "planned",
+            "exploring",
+        }
+        assert item["summary"] and item["why"]
+        assert item["title"] in body, item["title"]

@@ -1,4 +1,7 @@
-# Long documents and page control
+---
+title: "Long documents and page control"
+description: "Load documents, pick pages yourself or let Foveate choose, plan costs and index once."
+---
 
 ## Loading
 

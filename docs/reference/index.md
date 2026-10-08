@@ -1,4 +1,7 @@
-# Reference
+---
+title: "Reference"
+description: "Public names, modules, extension points and environment variables."
+---
 
 Public names are exported from the package or the module listed. Every public
 class and function has a docstring with arguments and errors; use

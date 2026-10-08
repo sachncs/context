@@ -1,8 +1,10 @@
 name: Pages
 
+# Deploys the site once the repository is named `foveate` (the site is built for
+# https://<owner>.github.io/foveate/). Until then this workflow only builds it.
 on:
   push:
-    branches: [main, master]
+    branches: [master]
   workflow_dispatch:
 
 permissions:
@@ -19,31 +21,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
           cache-dependency-path: site/package-lock.json
-
-      - name: Install dependencies
-        working-directory: site
-        run: npm ci
-
       - name: Build site
         working-directory: site
-        run: npm run build
-
-      - name: Configure Pages
-        uses: actions/configure-pages@v5
-
+        run: npm ci && npm run build
       - name: Upload artifact
+        if: github.event.repository.name == 'foveate'
         uses: actions/upload-pages-artifact@v5
         with:
           path: site/dist
 
   deploy:
     needs: build
+    if: github.event.repository.name == 'foveate'
     runs-on: ubuntu-latest
     environment:
       name: github-pages

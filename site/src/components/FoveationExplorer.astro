@@ -1,0 +1,112 @@
+---
+import data from '../data/foveation.json';
+---
+<div class="explorer" data-explorer>
+  <fieldset class="choices">
+    <legend>Pick a question about a real filing</legend>
+    {data.entries.map((e, i) => (
+      <label class="choice">
+        <input type="radio" name="question" value={i} checked={i === 0} />
+        <span><strong>{e.question}</strong><small>{e.filing} · {e.pages} pages</small></span>
+      </label>
+    ))}
+  </fieldset>
+
+  <div class="control">
+    <label for="budget">Token budget for the prompt</label>
+    <input id="budget" type="range" min="0" max={data.budgets.length - 1} step="1" value="1" />
+    <output id="budget-out" for="budget"></output>
+  </div>
+
+  <div id="pages" class="pages" role="img" aria-label="Pages of the filing coloured by how much of each is sent"></div>
+
+  <ul class="legend" aria-hidden="true">
+    <li><i class="sw F"></i>Full page</li>
+    <li><i class="sw C"></i>Condensed</li>
+    <li><i class="sw O"></i>Outline line only</li>
+    <li><i class="sw D"></i>Not shown</li>
+    <li><i class="sw A"></i>Page with the answer</li>
+  </ul>
+
+  <div class="stats">
+    <p><span id="stat-doc"></span><small>in the whole filing</small></p>
+    <p><span id="stat-sent"></span><small>sent to the model</small></p>
+    <p><span id="stat-full"></span><small>pages shown in full</small></p>
+  </div>
+  <p id="status" class="status" role="status" aria-live="polite"></p>
+  <script type="application/json" id="explorer-data" set:html={JSON.stringify(data)} />
+</div>
+
+<style>
+  .explorer { display: grid; gap: var(--space-6); }
+  fieldset.choices { border: 0; padding: 0; margin: 0; display: grid; gap: var(--space-2); }
+  legend { font-size: .85rem; font-weight: 650; color: var(--muted); padding: 0; margin-bottom: var(--space-2); }
+  .choice { display: block; cursor: pointer; }
+  .choice input { position: absolute; opacity: 0; }
+  .choice span { display: block; padding: .8rem 1rem; border: 1px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); }
+  .choice strong { display: block; font-weight: 600; font-size: .98rem; }
+  .choice small { color: var(--muted); font-size: .82rem; }
+  .choice input:checked + span { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+  .choice input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .control { display: grid; grid-template-columns: 1fr auto; gap: var(--space-2) var(--space-4); align-items: center; }
+  .control label { font-weight: 600; font-size: .95rem; }
+  .control input[type='range'] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); min-height: 32px; }
+  output { font-family: var(--font-mono); font-weight: 650; }
+  .pages { display: grid; grid-template-columns: repeat(auto-fill, minmax(13px, 1fr)); gap: 3px; padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  .pages :global(i) { aspect-ratio: 1; border-radius: 3px; display: block; border: 1px solid transparent; }
+  .pages :global(i.F), .sw.F { background: var(--tier-full); }
+  .pages :global(i.C), .sw.C { background: var(--tier-condensed); }
+  .pages :global(i.O), .sw.O { background: var(--tier-outline); }
+  .pages :global(i.D), .sw.D { background: transparent; border-color: var(--border); }
+  .pages :global(i.A), .sw.A { box-shadow: 0 0 0 2px var(--bg), 0 0 0 4px var(--good); }
+  .legend { list-style: none; display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); padding: 0; margin: 0; font-size: .85rem; color: var(--muted); }
+  .legend li { display: inline-flex; align-items: center; gap: .5rem; }
+  .sw { width: 14px; height: 14px; border-radius: 3px; border: 1px solid transparent; display: inline-block; }
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr)); gap: var(--space-4); }
+  .stats p { display: grid; }
+  .stats span { font-size: 1.5rem; font-weight: 700; letter-spacing: -.02em; }
+  .stats small { color: var(--muted); }
+  .status { padding: var(--space-4); border-radius: var(--radius-sm); background: var(--surface-2); border: 1px solid var(--border); min-height: 3.4rem; }
+</style>
+
+<script>
+  const root = document.querySelector<HTMLElement>('[data-explorer]');
+  if (root) {
+    const data = JSON.parse(document.getElementById('explorer-data')!.textContent!);
+    const grid = document.getElementById('pages')!;
+    const slider = document.getElementById('budget') as HTMLInputElement;
+    const out = document.getElementById('budget-out')!;
+    const fmt = (n: number) => n.toLocaleString('en-US');
+    const messages: Record<string, (p: number) => string> = {
+      F: (p) => `Page ${p}, which holds the answer, is sent in full. The model quotes it and the quote is checked against the page.`,
+      C: (p) => `Page ${p}, which holds the answer, is sent condensed: its most relevant sentences only. A quote may still be found, but a larger budget is safer.`,
+      O: (p) => `Page ${p} appears only as an outline line. The model can see that it exists and ask for it in a second round.`,
+      D: (p) => `Page ${p}, which holds the answer, is not shown at this budget. Foveate would say "not found" rather than guess. Raise the budget, or add embeddings to rank pages better.`,
+    };
+    const draw = () => {
+      const entry = data.entries[Number((root.querySelector('input[name=question]:checked') as HTMLInputElement).value)];
+      const budget = data.budgets[Number(slider.value)];
+      const plan = entry.budgets[String(budget)];
+      const tiers: string = plan.tiers;
+      if (grid.childElementCount !== tiers.length) {
+        grid.replaceChildren(...Array.from({ length: tiers.length }, () => document.createElement('i')));
+      }
+      Array.from(grid.children).forEach((cell, index) => {
+        const page = index + 1;
+        const answer = page === entry.gold_page;
+        cell.className = tiers[index] + (answer ? ' A' : '');
+        cell.setAttribute('title', `Page ${page}`);
+      });
+      const full = tiers.split('').filter((t) => t === 'F').length;
+      out.textContent = `${fmt(budget)} tokens`;
+      slider.setAttribute('aria-valuetext', `${fmt(budget)} tokens`);
+      grid.setAttribute('aria-label', `${tiers.length} pages. ${full} in full. The answer is on page ${entry.gold_page}.`);
+      document.getElementById('stat-doc')!.textContent = `${fmt(entry.document_tokens)} tokens`;
+      document.getElementById('stat-sent')!.textContent = `${fmt(plan.prompt_tokens)} tokens (${Math.max(1, Math.round((plan.prompt_tokens / entry.document_tokens) * 100))}%)`;
+      document.getElementById('stat-full')!.textContent = String(full);
+      document.getElementById('status')!.textContent = messages[tiers[entry.gold_page - 1]](entry.gold_page);
+    };
+    root.addEventListener('input', draw);
+    draw();
+  }
+</script>

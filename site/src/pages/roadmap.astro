@@ -1,0 +1,67 @@
+---
+import { getEntry } from 'astro:content';
+import Landing from '../layouts/Landing.astro';
+
+const base = import.meta.env.BASE_URL;
+const entry = await getEntry('docs', 'docs/roadmap');
+const items = entry?.data.items ?? [];
+const groups = [
+  { status: 'shipping', title: 'Shipping in 0.1.0', note: 'Available now.' },
+  { status: 'building', title: 'Being built now', note: 'In progress. Expect these in the next releases.' },
+  { status: 'planned', title: 'Planned', note: 'Decided, not started.' },
+  { status: 'exploring', title: 'Exploring', note: 'Under consideration. Tell us if you need one.' },
+] as const;
+const label: Record<string, string> = { shipping: 'Shipping', building: 'Being built', planned: 'Planned', exploring: 'Exploring' };
+---
+<Landing
+  title="Coming next: the Foveate roadmap"
+  description="What ships in Foveate 0.1.0, what is being built, what is planned, and what is under consideration."
+  current="Coming next"
+>
+  <section class="block head">
+    <div class="wrap">
+      <p class="eyebrow">Roadmap</p>
+      <h1>Coming next</h1>
+      <p class="lede">What is available, what we are building, and what we are still deciding. Each item says why it matters and links to the research or playbook behind it. This page is generated from <a href="https://github.com/sachncs/context/blob/master/docs/roadmap.md">docs/roadmap.md</a>, so it cannot drift from the repository.</p>
+    </div>
+  </section>
+  {groups.map((g) => (
+    <section class="block" aria-labelledby={`h-${g.status}`}>
+      <div class="wrap">
+        <div class="section-head">
+          <h2 id={`h-${g.status}`}>{g.title}</h2>
+          <p>{g.note}</p>
+        </div>
+        <div class="grid cols-2">
+          {items.filter((i) => i.status === g.status).map((item) => (
+            <article class="card">
+              <span class={`chip ${item.status}`}>{label[item.status]}</span>
+              <h3>{item.title}</h3>
+              <p class="muted">{item.summary}</p>
+              <p class="why"><strong>Why:</strong> {item.why}</p>
+              {item.source && <p class="muted small">Based on: {item.source}</p>}
+              {item.url && <p class="small"><a href={`${base}${item.url}/`}>Read more</a></p>}
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  ))}
+  <section class="block final">
+    <div class="wrap">
+      <h2>Want something moved up?</h2>
+      <p class="lede">Open an issue and say what you are trying to do. Real use cases decide the order.</p>
+      <div class="cta"><a class="btn primary" href="https://github.com/sachncs/context/issues/new?template=feature_request.yml">Suggest or vote</a></div>
+    </div>
+  </section>
+</Landing>
+<style>
+  .head { padding-bottom: clamp(2rem, 5vw, 3rem); }
+  .card p { margin-top: var(--space-2); }
+  .card .chip { margin-bottom: var(--space-3); }
+  .small { font-size: .88rem; }
+  .why { font-size: .95rem; }
+  .final { text-align: center; }
+  .final .lede { margin-inline: auto; }
+  .final .cta { display: flex; justify-content: center; margin-top: var(--space-6); }
+</style>

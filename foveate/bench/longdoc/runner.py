@@ -323,9 +323,63 @@ class Report:
             ),
             encoding="utf-8",
         )
+        (directory / "summary.json").write_text(
+            json.dumps(self.summary(), indent=1), encoding="utf-8"
+        )
         path = directory / "longdoc.md"
         path.write_text(self.to_markdown(), encoding="utf-8")
         return path
+
+    def summary(self) -> dict[str, object]:
+        """Returns provenance and the per-pipeline rows as plain data."""
+        return {
+            "model": self.model,
+            "judge": self.judge_model,
+            "budget": self.budget,
+            "timestamp": self.timestamp,
+            "documents": self.documents,
+            "rows": [dataclasses.asdict(row) for row in self.rows()],
+        }
+
+    @classmethod
+    def load(cls, path: pathlib.Path, items: Sequence[gold.GoldItem]) -> Report:
+        """Reads a `longdoc.json` written by `write`.
+
+        Args:
+            path: The JSON file.
+            items: Gold items to resolve item ids against.
+
+        Raises:
+            ValidationError: If an outcome refers to an unknown item.
+        """
+        data = json.loads(path.read_text(encoding="utf-8"))
+        by_id = {item.id: item for item in items}
+        outcomes = []
+        for raw in data["outcomes"]:
+            if raw["item"] not in by_id:
+                raise errors.ValidationError(f"unknown item {raw['item']!r}")
+            result = dict(raw["result"])
+            result["cited_pages"] = tuple(result["cited_pages"])
+            outcomes.append(
+                metrics.Outcome(
+                    item=by_id[raw["item"]],
+                    pipeline=raw["pipeline"],
+                    run=raw["run"],
+                    result=pipelines.Result(**result),
+                    correct=raw["correct"],
+                    method=raw["method"],
+                    precision=raw["precision"],
+                    recall=raw["recall"],
+                )
+            )
+        return cls(
+            outcomes=tuple(outcomes),
+            model=data["model"],
+            judge_model=data["judge"],
+            budget=data["budget"],
+            timestamp=data["timestamp"],
+            documents=len({o.item.doc_name for o in outcomes}),
+        )
 
 
 async def run(

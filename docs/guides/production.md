@@ -1,4 +1,7 @@
-# Production
+---
+title: "Production"
+description: "Reliability, cost control, observability, privacy and deployment checks."
+---
 
 Foveate is async-first. Inside a service, `await foveator.aask(...)` and `await context.acompress(...)`. The
 synchronous methods are for scripts and notebooks; they run the same code.

@@ -1,4 +1,7 @@
-# Concepts
+---
+title: "Concepts"
+description: "Pages, foveation tiers, selection, grounded answers, plans, compression and the runtime."
+---
 
 ## Pages are the unit
 

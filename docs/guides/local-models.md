@@ -1,4 +1,7 @@
-# Local models with vLLM
+---
+title: "Local models with vLLM"
+description: "Run Foveate against a small local model on CPU with Docker."
+---
 
 Small local models have 4-32k windows, so "send the whole document" is not an
 option. That is where Foveate matters most.

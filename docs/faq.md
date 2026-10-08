@@ -1,4 +1,7 @@
-# FAQ
+---
+title: "FAQ"
+description: "Short answers about models, grounding, PDFs, tables, privacy and the benchmark data."
+---
 
 **Is this just RAG?**
 Retrieval is one step. Foveate also keeps neighbouring context condensed and

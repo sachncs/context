@@ -1,0 +1,67 @@
+---
+import fs from 'node:fs';
+import path from 'node:path';
+
+const base = import.meta.env.BASE_URL;
+const root = path.resolve(process.cwd(), '..', 'bench', 'results');
+let summary: any = null;
+if (fs.existsSync(root)) {
+  const runs = fs
+    .readdirSync(root)
+    .map((name) => path.join(root, name, 'summary.json'))
+    .filter((file) => fs.existsSync(file))
+    .map((file) => JSON.parse(fs.readFileSync(file, 'utf-8')))
+    .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
+  summary = runs[0] ?? null;
+}
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+const tokens = (x: number) => (x ? Math.round(x).toLocaleString('en-US') : 'n/a');
+const names: Record<string, string> = {
+  'full-context': 'Send everything',
+  truncate: 'Truncate',
+  'naive-rag': 'Plain RAG',
+  foveate: 'Foveate',
+};
+---
+{summary ? (
+  <div>
+    <div class="scroll">
+      <table>
+        <caption>
+          FinanceBench, {summary.documents} filings, answer model {summary.model}, evidence budget {summary.budget.toLocaleString('en-US')} tokens. Run on {String(summary.timestamp).slice(0, 10)}.
+        </caption>
+        <thead>
+          <tr><th scope="col">Pipeline</th><th scope="col">Correct</th><th scope="col">Quotes verified</th><th scope="col">Abstains when it should</th><th scope="col">Prompt tokens</th></tr>
+        </thead>
+        <tbody>
+          {summary.rows.map((r: any) => (
+            <tr class={r.pipeline === 'foveate' ? 'hl' : ''}>
+              <th scope="row">{names[r.pipeline] ?? r.pipeline}</th>
+              <td>{pct(r.accuracy)}</td>
+              <td>{pct(r.grounded)}</td>
+              <td>{r.unanswerable ? pct(r.correct_abstain) : 'n/a'}</td>
+              <td>{tokens(r.prompt_tokens)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+    <p class="muted note">All numbers come from <a href={`${base}docs/benchmarks/`}>the benchmark run</a>, including the ones where Foveate does not win.</p>
+  </div>
+) : (
+  <div class="card pending">
+    <h3>The first full run is in progress</h3>
+    <p class="muted">Four pipelines, 30 real filings questions, three runs each, with gold sets for citations, unanswerable questions, paraphrases and needles. Numbers appear here when the run ends. Until then there is nothing to show, and nothing is estimated.</p>
+    <p><a href={`${base}docs/benchmarks/`}>Read the method</a></p>
+  </div>
+)}
+<style>
+  .scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius); background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 36rem; font-size: .95rem; }
+  caption { text-align: left; padding: var(--space-4); color: var(--muted); font-size: .85rem; }
+  th, td { text-align: left; padding: .75rem var(--space-4); border-top: 1px solid var(--border); font-variant-numeric: tabular-nums; }
+  thead th { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+  tr.hl { background: var(--accent-soft); }
+  .note { margin-top: var(--space-4); font-size: .9rem; }
+  .pending p + p { margin-top: var(--space-3); }
+</style>
