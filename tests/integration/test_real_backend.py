@@ -4,10 +4,10 @@ import asyncio
 
 import pytest
 
-from ceng import errors, messages, observability
-from ceng import runtime as runtime_lib
-from ceng.backends import base, resilient
-from ceng.cache import base as cache_base
+from foveate import errors, messages, observability
+from foveate import runtime as runtime_lib
+from foveate.backends import base, resilient
+from foveate.cache import base as cache_base
 from tests.integration import conftest
 
 USER = messages.Role.USER
@@ -74,7 +74,7 @@ def test_cache_serves_second_identical_call(unique):
 
 
 def test_reasoning_model_truncation_is_recovered(unique):
-    """With default reasoning effort a tiny cap yields empty content; ceng
+    """With default reasoning effort a tiny cap yields empty content; foveate
     must retry with a larger cap instead of failing."""
     metrics = observability.MetricsObserver()
     rt = runtime_lib.Runtime(
@@ -136,7 +136,7 @@ def test_retry_policy_against_real_timeout():
 
 def test_litellm_backend_reaches_the_real_provider():
     pytest.importorskip("litellm")
-    from ceng.backends import LiteLLMBackend
+    from foveate.backends import LiteLLMBackend
 
     backend = LiteLLMBackend(
         base_url=conftest.BASE_URL, api_key=conftest.API_KEY

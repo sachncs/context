@@ -13,12 +13,12 @@ test:
 	$(BIN)/pytest --cov --cov-report=term-missing
 
 lint:
-	$(BIN)/ruff check src tests examples
-	$(BIN)/ruff format --check src tests examples
+	$(BIN)/ruff check foveate tests examples
+	$(BIN)/ruff format --check foveate tests examples
 
 format:
-	$(BIN)/ruff check --fix src tests examples
-	$(BIN)/ruff format src tests examples
+	$(BIN)/ruff check --fix foveate tests examples
+	$(BIN)/ruff format foveate tests examples
 
 typecheck:
 	$(BIN)/mypy

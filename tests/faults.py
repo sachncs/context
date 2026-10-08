@@ -13,8 +13,8 @@ import collections
 import threading
 from collections.abc import Callable, Sequence
 
-from ceng import usage as usage_lib
-from ceng.backends import base
+from foveate import usage as usage_lib
+from foveate.backends import base
 
 Step = str | BaseException | base.Completion | Callable[[base.Request], str]
 

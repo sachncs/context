@@ -1,9 +1,9 @@
 import pytest
 
-from ceng import Context, Message, Role, errors, verification
-from ceng.compression import Offload
-from ceng.stores import MemoryNotesStore
-from ceng.verification import macro
+from foveate import Context, Message, Role, errors, verification
+from foveate.compression import Offload
+from foveate.stores import MemoryNotesStore
+from foveate.verification import macro
 from tests.test_compression import ctx_of, make_runtime
 
 TREE = [

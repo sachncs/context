@@ -17,7 +17,7 @@ before reporting an issue.
 for this repository.
 
 If private reporting is unavailable, email **sachncs@gmail.com** with the
-subject `SECURITY: ceng vulnerability`. Please do not include secrets or
+subject `SECURITY: foveate vulnerability`. Please do not include secrets or
 production credentials in the initial report.
 
 ## Response SLA

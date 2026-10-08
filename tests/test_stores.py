@@ -2,10 +2,10 @@ import threading
 
 import pytest
 
-from ceng import errors
-from ceng.internals import filelock
-from ceng.stores import FilesystemNotesStore, MemoryNotesStore, NotesStore
-from ceng.stores import base as store_base
+from foveate import errors
+from foveate.internals import filelock
+from foveate.stores import FilesystemNotesStore, MemoryNotesStore, NotesStore
+from foveate.stores import base as store_base
 
 
 @pytest.fixture(params=["memory", "filesystem"])

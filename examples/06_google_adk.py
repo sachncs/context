@@ -1,7 +1,7 @@
 """Keep a Google ADK agent's request contents within a token budget.
 
-Requires: pip install "ceng-context[openai]" google-adk litellm
-Configure the model via the CENG_* variables in common.py plus OPENAI_API_KEY.
+Requires: pip install "foveate[openai]" google-adk litellm
+Configure the model via the FOVEATE_* variables in common.py plus OPENAI_API_KEY.
 """
 
 import asyncio
@@ -15,7 +15,7 @@ from google.adk.runners import Runner
 from google.adk.sessions import InMemorySessionService
 from google.genai import types
 
-from ceng.integrations import adk as ceng_adk
+from foveate.integrations import adk as foveate_adk
 
 FILLER = (
     "We reviewed logistics, parking and catering without any decision. " * 20
@@ -30,12 +30,12 @@ TURNS = [
 
 async def main() -> None:
     with common.model_runtime() as runtime:
-        callback = ceng_adk.model_callback(runtime, budget=300, keep_last=2)
+        callback = foveate_adk.model_callback(runtime, budget=300, keep_last=2)
         agent = LlmAgent(
             name="assistant",
             model=LiteLlm(
                 model=f"openai/{runtime.model}",
-                api_base=os.environ.get("CENG_BASE_URL"),
+                api_base=os.environ.get("FOVEATE_BASE_URL"),
                 api_key=os.environ["OPENAI_API_KEY"],
                 extra_body={"reasoning_effort": "low"},
                 max_tokens=2000,

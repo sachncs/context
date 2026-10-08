@@ -2,9 +2,9 @@
 
 import common
 
-from ceng import Context, Message, Role
-from ceng.bench import Formula
-from ceng.evolution import Evolver, EvolverConfig
+from foveate import Context, Message, Role
+from foveate.bench import Formula
+from foveate.evolution import Evolver, EvolverConfig
 
 
 def main() -> None:

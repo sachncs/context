@@ -3,9 +3,9 @@ import time
 
 import pytest
 
-from ceng import errors, messages, observability
-from ceng import runtime as runtime_lib
-from ceng.cache import base, sqlite
+from foveate import errors, messages, observability
+from foveate import runtime as runtime_lib
+from foveate.cache import base, sqlite
 from tests import faults as scripted
 
 USER = [messages.Message(messages.Role.USER, "hello")]
@@ -166,7 +166,11 @@ class TestRuntimeComplete:
 class TestFromEnv:
     def test_defaults_disabled_cache(self):
         rt = runtime_lib.Runtime.from_env(
-            {"CENG_CACHE_DIR": "", "CENG_MODEL": "m", "CENG_CONCURRENCY": "3"}
+            {
+                "FOVEATE_CACHE_DIR": "",
+                "FOVEATE_MODEL": "m",
+                "FOVEATE_CONCURRENCY": "3",
+            }
         )
         assert rt.model == "m" and rt.concurrency == 3
         assert isinstance(rt.cache, base.NullCache)
@@ -174,41 +178,41 @@ class TestFromEnv:
     def test_rate_limit_and_deadline_from_env(self):
         rt = runtime_lib.Runtime.from_env(
             {
-                "CENG_CACHE_DIR": "",
-                "CENG_RATE_LIMIT_PER_SECOND": "5",
-                "CENG_DEADLINE_SECONDS": "30",
+                "FOVEATE_CACHE_DIR": "",
+                "FOVEATE_RATE_LIMIT_PER_SECOND": "5",
+                "FOVEATE_DEADLINE_SECONDS": "30",
             }
         )
         assert rt.backend.rate_per_second == 5.0 and rt.backend.deadline == 30.0
         with pytest.raises(errors.ConfigError):
             runtime_lib.Runtime.from_env(
-                {"CENG_CACHE_DIR": "", "CENG_DEADLINE_SECONDS": "soon"}
+                {"FOVEATE_CACHE_DIR": "", "FOVEATE_DEADLINE_SECONDS": "soon"}
             )
 
     def test_tokenizer_follows_model(self):
         pytest.importorskip("tiktoken")
         rt = runtime_lib.Runtime.from_env(
-            {"CENG_CACHE_DIR": "", "CENG_MODEL": "gpt-4o-mini"}
+            {"FOVEATE_CACHE_DIR": "", "FOVEATE_MODEL": "gpt-4o-mini"}
         )
         assert rt.tokenizer.encoding_name == "o200k_base"
 
     def test_sqlite_cache(self, tmp_path):
-        rt = runtime_lib.Runtime.from_env({"CENG_CACHE_DIR": str(tmp_path)})
+        rt = runtime_lib.Runtime.from_env({"FOVEATE_CACHE_DIR": str(tmp_path)})
         assert isinstance(rt.cache, sqlite.SqliteCache)
         rt.close()
 
     @pytest.mark.parametrize(
         "env",
         [
-            {"CENG_TIMEOUT_SECONDS": "abc"},
-            {"CENG_RETRY_ATTEMPTS": "1.5"},
-            {"CENG_BACKEND": "nope"},
-            {"CENG_CONCURRENCY": "0"},
+            {"FOVEATE_TIMEOUT_SECONDS": "abc"},
+            {"FOVEATE_RETRY_ATTEMPTS": "1.5"},
+            {"FOVEATE_BACKEND": "nope"},
+            {"FOVEATE_CONCURRENCY": "0"},
         ],
     )
     def test_strict(self, env):
         with pytest.raises(errors.ConfigError):
-            runtime_lib.Runtime.from_env({"CENG_CACHE_DIR": "", **env})
+            runtime_lib.Runtime.from_env({"FOVEATE_CACHE_DIR": "", **env})
 
     def test_context_manager(self, backend):
         with runtime_lib.Runtime(backend=backend) as rt:
@@ -262,7 +266,7 @@ def test_single_flight_cancelling_a_follower_leaves_leader_running():
 
 class TestTruncationAndOptions:
     def truncated(self):
-        from ceng.backends import base as backend_base
+        from foveate.backends import base as backend_base
 
         return backend_base.Completion(text="", finish_reason="length")
 
@@ -283,7 +287,7 @@ class TestTruncationAndOptions:
         assert len(backend.requests) == 1 + runtime_lib.LENGTH_RETRIES
 
     def test_partial_text_on_length_is_accepted(self):
-        from ceng.backends import base as backend_base
+        from foveate.backends import base as backend_base
 
         backend = scripted.ScriptedBackend(
             [
@@ -321,9 +325,9 @@ class TestTruncationAndOptions:
     def test_env_base_url_and_options(self):
         rt = runtime_lib.Runtime.from_env(
             {
-                "CENG_CACHE_DIR": "",
-                "CENG_BASE_URL": "http://localhost:9/v1",
-                "CENG_OPTIONS": '{"reasoning_effort": "low"}',
+                "FOVEATE_CACHE_DIR": "",
+                "FOVEATE_BASE_URL": "http://localhost:9/v1",
+                "FOVEATE_OPTIONS": '{"reasoning_effort": "low"}',
             }
         )
         assert rt.options == {"reasoning_effort": "low"}
@@ -332,17 +336,17 @@ class TestTruncationAndOptions:
     @pytest.mark.parametrize(
         "env",
         [
-            {"CENG_OPTIONS": "{bad"},
-            {"CENG_OPTIONS": "[1]"},
-            {"CENG_BACKEND": "none", "CENG_BASE_URL": "http://x"},
+            {"FOVEATE_OPTIONS": "{bad"},
+            {"FOVEATE_OPTIONS": "[1]"},
+            {"FOVEATE_BACKEND": "none", "FOVEATE_BASE_URL": "http://x"},
         ],
     )
     def test_env_rejects_bad_values(self, env):
         with pytest.raises(errors.ConfigError):
-            runtime_lib.Runtime.from_env({"CENG_CACHE_DIR": "", **env})
+            runtime_lib.Runtime.from_env({"FOVEATE_CACHE_DIR": "", **env})
 
     def test_short_truncated_text_means_hidden_reasoning_and_is_retried(self):
-        from ceng.backends import base as backend_base
+        from foveate.backends import base as backend_base
 
         starved = backend_base.Completion(text="Not", finish_reason="length")
         backend = scripted.ScriptedBackend([starved, "A proper full answer."])

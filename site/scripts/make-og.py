@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate the social/OG card for the ceng site (1200x630)."""
+"""Generate the social/OG card for the foveate site (1200x630)."""
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 W, H = 1200, 630

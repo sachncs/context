@@ -1,9 +1,9 @@
 {
-  "name": "ceng-site",
+  "name": "foveate-site",
   "type": "module",
   "version": "2.0.0",
   "private": true,
-  "description": "ceng — Context, engineered. Product marketing site.",
+  "description": "foveate — Context, engineered. Product marketing site.",
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",

@@ -2,16 +2,16 @@
 import Logo from "./Logo.astro";
 import Icons from "./Icons.astro";
 const gh = "https://github.com/sachncs/context";
-const pypi = "https://pypi.org/project/ceng-context/";
+const pypi = "https://pypi.org/project/foveate/";
 ---
 <header id="site-nav" class="fixed inset-x-0 top-0 z-50 border-b border-transparent transition-all">
   <nav aria-label="Primary" class="mx-auto flex h-[4.75rem] max-w-6xl items-center justify-between px-5 sm:px-6 lg:px-8">
-    <a href="#top" class="flex items-center gap-3" aria-label="ceng home"><Logo size={27} withWordmark /></a>
+    <a href="#top" class="flex items-center gap-3" aria-label="foveate home"><Logo size={27} withWordmark /></a>
     <div class="hidden items-center gap-8 md:flex"><a href="#product" class="nav-link">Product</a><a href="#install" class="nav-link">Workflow</a><a href="#install" class="nav-link">Install</a></div>
-    <div class="hidden items-center gap-3 md:flex"><a href={gh} target="_blank" rel="noreferrer" class="nav-source"><Icons name="github" class="h-4 w-4" strokeWidth={0} /> Source</a><a href={pypi} target="_blank" rel="noreferrer" class="btn btn-primary px-4 py-2.5 text-[0.84rem]">Get ceng <Icons name="arrow-right" class="h-3.5 w-3.5" /></a></div>
+    <div class="hidden items-center gap-3 md:flex"><a href={gh} target="_blank" rel="noreferrer" class="nav-source"><Icons name="github" class="h-4 w-4" strokeWidth={0} /> Source</a><a href={pypi} target="_blank" rel="noreferrer" class="btn btn-primary px-4 py-2.5 text-[0.84rem]">Get foveate <Icons name="arrow-right" class="h-3.5 w-3.5" /></a></div>
     <button data-menu-btn aria-label="Open menu" aria-expanded="false" class="flex h-10 w-10 items-center justify-center rounded-full border border-white/12 bg-white/[0.04] text-slate-200 md:hidden"><Icons name="menu" class="h-5 w-5" /></button>
   </nav>
-  <div id="mobile-menu" class="overflow-hidden border-b border-white/8 bg-ink-950/95 backdrop-blur-2xl md:hidden"><div class="flex flex-col gap-1 px-5 py-4"><a href="#product" class="mobile-link">Product</a><a href="#install" class="mobile-link">Workflow</a><a href="#install" class="mobile-link">Install</a><a href={gh} target="_blank" rel="noreferrer" class="mobile-link mt-2">View source on GitHub</a><a href={pypi} target="_blank" rel="noreferrer" class="btn btn-primary mt-2 px-4 py-3 text-sm">Install ceng-context</a></div></div>
+  <div id="mobile-menu" class="overflow-hidden border-b border-white/8 bg-ink-950/95 backdrop-blur-2xl md:hidden"><div class="flex flex-col gap-1 px-5 py-4"><a href="#product" class="mobile-link">Product</a><a href="#install" class="mobile-link">Workflow</a><a href="#install" class="mobile-link">Install</a><a href={gh} target="_blank" rel="noreferrer" class="mobile-link mt-2">View source on GitHub</a><a href={pypi} target="_blank" rel="noreferrer" class="btn btn-primary mt-2 px-4 py-3 text-sm">Install foveate</a></div></div>
 </header>
 <style>
   .nav-link { color: rgb(148 163 184); font-size: .88rem; font-weight: 500; transition: color .2s ease; }

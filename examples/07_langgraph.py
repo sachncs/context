@@ -1,7 +1,7 @@
 """Keep a LangGraph agent's history within a token budget.
 
-Requires: pip install "ceng-context[openai]" langgraph langchain-openai
-Configure the model via the CENG_* variables in common.py plus OPENAI_API_KEY.
+Requires: pip install "foveate[openai]" langgraph langchain-openai
+Configure the model via the FOVEATE_* variables in common.py plus OPENAI_API_KEY.
 """
 
 import asyncio
@@ -12,7 +12,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_openai import ChatOpenAI
 from langgraph.prebuilt import create_react_agent
 
-from ceng.integrations import langgraph as ceng_lg
+from foveate.integrations import langgraph as foveate_lg
 
 FILLER = (
     "We reviewed logistics, parking and catering without any decision. " * 20
@@ -29,10 +29,10 @@ TURNS = [
 
 async def main() -> None:
     with common.model_runtime() as runtime:
-        node = ceng_lg.compression_node(runtime, budget=300, keep_last=2)
+        node = foveate_lg.compression_node(runtime, budget=300, keep_last=2)
         model = ChatOpenAI(
             model=runtime.model,
-            base_url=os.environ.get("CENG_BASE_URL"),
+            base_url=os.environ.get("FOVEATE_BASE_URL"),
             api_key=os.environ["OPENAI_API_KEY"],
             extra_body={"reasoning_effort": "low"},
             max_tokens=2000,

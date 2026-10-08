@@ -1,13 +1,13 @@
 """Fixtures for tests that call a real LLM provider.
 
 Configuration (environment):
-    NVIDIA_API_KEY / CENG_TEST_API_KEY   key for the OpenAI-compatible API
-    CENG_TEST_BASE_URL                   default https://integrate.api.nvidia.com/v1
-    CENG_TEST_MODEL                      default openai/gpt-oss-20b
-    CENG_TEST_RATE                       calls per second, default 0.6
-    CENG_TEST_NO_CACHE=1                 bypass the persistent response cache
+    NVIDIA_API_KEY / FOVEATE_TEST_API_KEY   key for the OpenAI-compatible API
+    FOVEATE_TEST_BASE_URL                   default https://integrate.api.nvidia.com/v1
+    FOVEATE_TEST_MODEL                      default openai/gpt-oss-20b
+    FOVEATE_TEST_RATE                       calls per second, default 0.6
+    FOVEATE_TEST_NO_CACHE=1                 bypass the persistent response cache
 
-Real responses are cached on disk (`.ceng/test-cache`, git-ignored) so reruns
+Real responses are cached on disk (`.foveate/test-cache`, git-ignored) so reruns
 are fast and cheap; tests that assert cache or latency behaviour use unique
 prompts. Without a key every test here is skipped.
 """
@@ -21,21 +21,23 @@ import uuid
 
 import pytest
 
-from ceng import observability
-from ceng import runtime as runtime_lib
-from ceng.backends import OpenAIBackend, ResilientBackend, RetryPolicy
-from ceng.cache import base as cache_base
-from ceng.cache import sqlite as cache_sqlite
+from foveate import observability
+from foveate import runtime as runtime_lib
+from foveate.backends import OpenAIBackend, ResilientBackend, RetryPolicy
+from foveate.cache import base as cache_base
+from foveate.cache import sqlite as cache_sqlite
 
-API_KEY = os.environ.get("CENG_TEST_API_KEY") or os.environ.get(
+API_KEY = os.environ.get("FOVEATE_TEST_API_KEY") or os.environ.get(
     "NVIDIA_API_KEY"
 )
 BASE_URL = os.environ.get(
-    "CENG_TEST_BASE_URL", "https://integrate.api.nvidia.com/v1"
+    "FOVEATE_TEST_BASE_URL", "https://integrate.api.nvidia.com/v1"
 )
-MODEL = os.environ.get("CENG_TEST_MODEL", "openai/gpt-oss-20b")
-RATE = float(os.environ.get("CENG_TEST_RATE", "0.6"))
-CACHE_DIR = pathlib.Path(__file__).resolve().parents[2] / ".ceng" / "test-cache"
+MODEL = os.environ.get("FOVEATE_TEST_MODEL", "openai/gpt-oss-20b")
+RATE = float(os.environ.get("FOVEATE_TEST_RATE", "0.6"))
+CACHE_DIR = (
+    pathlib.Path(__file__).resolve().parents[2] / ".foveate" / "test-cache"
+)
 
 
 def fold(text: str) -> str:
@@ -46,7 +48,7 @@ def fold(text: str) -> str:
 
 
 requires_key = pytest.mark.skipif(
-    not API_KEY, reason="set NVIDIA_API_KEY (or CENG_TEST_API_KEY) to run"
+    not API_KEY, reason="set NVIDIA_API_KEY (or FOVEATE_TEST_API_KEY) to run"
 )
 
 
@@ -77,7 +79,7 @@ def metrics() -> observability.MetricsObserver:
 @pytest.fixture(scope="session")
 def runtime(metrics: observability.MetricsObserver):
     cache: cache_base.Cache
-    if os.environ.get("CENG_TEST_NO_CACHE"):
+    if os.environ.get("FOVEATE_TEST_NO_CACHE"):
         cache = cache_base.NullCache()
     else:
         cache = cache_sqlite.SqliteCache(CACHE_DIR)

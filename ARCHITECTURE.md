@@ -1,6 +1,6 @@
 # Architecture
 
-ceng v2 is built around one value type, `Context`, and a set of extension
+foveate v2 is built around one value type, `Context`, and a set of extension
 points that are abstract base classes with explicit registries.
 
 ```

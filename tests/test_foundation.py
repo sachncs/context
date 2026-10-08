@@ -3,10 +3,10 @@ import logging
 
 import pytest
 
-from ceng import errors, messages, observability, prompts, usage
-from ceng.backends import classify
-from ceng.internals import hashing, registry, runner
-from ceng.tokenizers import (
+from foveate import errors, messages, observability, prompts, usage
+from foveate.backends import classify
+from foveate.internals import hashing, registry, runner
+from foveate.tokenizers import (
     HeuristicTokenizer,
     TiktokenTokenizer,
     default_tokenizer,
@@ -186,7 +186,7 @@ class TestObservability:
             def handle(self, event):
                 raise RuntimeError("x")
 
-        with caplog.at_level(logging.INFO, logger="ceng"):
+        with caplog.at_level(logging.INFO, logger="foveate"):
             observability.emit(
                 [Boom(), observability.LoggingObserver()],
                 observability.StepFinished(source="s", step="a"),

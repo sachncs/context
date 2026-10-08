@@ -1,7 +1,7 @@
 """Keep a Pydantic AI agent's history within a token budget.
 
-Requires: pip install "ceng-context[openai]" pydantic-ai
-Configure the model via the CENG_* variables in common.py plus OPENAI_API_KEY.
+Requires: pip install "foveate[openai]" pydantic-ai
+Configure the model via the FOVEATE_* variables in common.py plus OPENAI_API_KEY.
 """
 
 import asyncio
@@ -14,7 +14,7 @@ from pydantic_ai.capabilities import ProcessHistory
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
 
-from ceng.integrations import pydantic_ai as ceng_pai
+from foveate.integrations import pydantic_ai as foveate_pai
 
 FILLER = (
     "We reviewed logistics, parking and catering without any decision. " * 20
@@ -32,11 +32,13 @@ async def main() -> None:
         model = OpenAIChatModel(
             runtime.model,
             provider=OpenAIProvider(
-                base_url=os.environ.get("CENG_BASE_URL"),
+                base_url=os.environ.get("FOVEATE_BASE_URL"),
                 api_key=os.environ["OPENAI_API_KEY"],
             ),
         )
-        processor = ceng_pai.history_processor(runtime, budget=300, keep_last=2)
+        processor = foveate_pai.history_processor(
+            runtime, budget=300, keep_last=2
+        )
         agent = Agent(
             model,
             capabilities=[ProcessHistory(processor)],

@@ -2,8 +2,8 @@
 
 import common
 
-from ceng import Context, Message, Role, Runtime
-from ceng.stores import MemoryNotesStore
+from foveate import Context, Message, Role, Runtime
+from foveate.stores import MemoryNotesStore
 
 
 def main() -> None:

@@ -2,9 +2,9 @@
 
 import pytest
 
-from ceng import runtime as runtime_lib
-from ceng.cache import base as cache_base
-from ceng.tokenizers import HeuristicTokenizer
+from foveate import runtime as runtime_lib
+from foveate.cache import base as cache_base
+from foveate.tokenizers import HeuristicTokenizer
 from tests import faults as scripted
 
 
