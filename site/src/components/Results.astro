@@ -4,6 +4,7 @@ import path from 'node:path';
 
 const base = import.meta.env.BASE_URL;
 let summary: any = null;
+let allRuns: any[] = [];
 const dir = path.resolve(process.cwd(), '..', 'bench', 'results');
 if (fs.existsSync(dir)) {
   const runs = fs
@@ -14,6 +15,7 @@ if (fs.existsSync(dir)) {
     .filter((run) => Array.isArray(run.rows))
     .sort((a, b) => String(b.timestamp).localeCompare(String(a.timestamp)));
   summary = runs[0] ?? null;
+  allRuns = runs;
 }
 const pct = (x: number) => `${Math.round(x * 100)}%`;
 const tokens = (x: number) => (x ? Math.round(x).toLocaleString('en-US') : 'n/a');
@@ -24,36 +26,40 @@ const names: Record<string, string> = {
   foveate: 'Foveate',
 };
 ---
-{summary ? (
-  <div>
-    <div class="scroll">
-      <table>
-        <caption>
-          FinanceBench, {summary.documents} filings, answer model {summary.model}, evidence budget {summary.budget.toLocaleString('en-US')} tokens. Run on {String(summary.timestamp).slice(0, 10)}.
-        </caption>
-        <thead>
-          <tr><th scope="col">Pipeline</th><th scope="col">Correct</th><th scope="col">Quotes verified</th><th scope="col">Abstains when it should</th><th scope="col">Prompt tokens</th></tr>
-        </thead>
-        <tbody>
-          {summary.rows.map((r: any) => (
-            <tr class={r.pipeline === 'foveate' ? 'hl' : ''}>
-              <th scope="row">{names[r.pipeline] ?? r.pipeline}</th>
-              <td>{pct(r.accuracy)}</td>
-              <td>{pct(r.grounded)}</td>
-              <td>{r.unanswerable ? pct(r.correct_abstain) : 'n/a'}</td>
-              <td>{tokens(r.prompt_tokens)}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-    <p class="muted note">All numbers come from <a href={`${base}docs/benchmarks/`}>the benchmark run</a>, including the ones where Foveate does not win.</p>
+{allRuns.length > 0 ? (
+  <div class="runs">
+    {[...allRuns].reverse().map((run: any) => (
+      <div>
+        <h3>{run.rows.some((r: any) => r.pipeline === 'full-context') ? 'Run 1: default settings (keyword retrieval)' : 'Run 2: embeddings and query expansion'}</h3>
+        <div class="scroll">
+          <table>
+            <caption>
+              FinanceBench, {run.documents} filings, answer model {run.model}, evidence budget {run.budget.toLocaleString('en-US')} tokens. Run on {String(run.timestamp).slice(0, 10)}.
+            </caption>
+            <thead>
+              <tr><th scope="col">Pipeline</th><th scope="col">Correct</th><th scope="col">Quotes verified</th><th scope="col">Abstains when it should</th><th scope="col">Prompt tokens</th></tr>
+            </thead>
+            <tbody>
+              {run.rows.map((r: any) => (
+                <tr class={r.pipeline === 'foveate' ? 'hl' : ''}>
+                  <th scope="row">{names[r.pipeline] ?? r.pipeline}</th>
+                  <td>{pct(r.accuracy)}</td>
+                  <td>{pct(r.grounded)}</td>
+                  <td>{r.unanswerable ? pct(r.correct_abstain) : 'n/a'}</td>
+                  <td>{tokens(r.prompt_tokens)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    ))}
+    <p class="muted note">All numbers come from <a href={`${base}docs/benchmarks/`}>the benchmark runs</a>, including the ones where Foveate does not win. Thirty questions is a small sample.</p>
   </div>
 ) : (
   <div class="card pending">
-    <h3>The first full run is in progress</h3>
-    <p class="muted">Four pipelines, 30 real filings questions, three runs each, with gold sets for citations, unanswerable questions, paraphrases and needles. Numbers appear here when the run ends. Until then there is nothing to show, and nothing is estimated.</p>
-    <p><a href={`${base}docs/benchmarks/`}>Read the method</a></p>
+    <h3>No benchmark results found</h3>
+    <p class="muted">Run the benchmark to fill this table. <a href={`${base}docs/benchmarks/`}>Read the method</a></p>
   </div>
 )}
 <style>
@@ -64,5 +70,7 @@ const names: Record<string, string> = {
   thead th { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
   tr.hl { background: var(--accent-soft); }
   .note { margin-top: var(--space-4); font-size: .9rem; }
+  .runs { display: grid; gap: var(--space-8); }
+  .runs h3 { margin-bottom: var(--space-3); }
   .pending p + p { margin-top: var(--space-3); }
 </style>
