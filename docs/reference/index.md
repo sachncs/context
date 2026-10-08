@@ -32,7 +32,7 @@ class and function has a docstring with arguments and errors; use
 | `foveate.models` | Context windows of known models, `auto_budget` |
 | `foveate.grounding` | `Answer`, `Citation`, quote verification, `NOT_FOUND` |
 | `foveate.fencing` | `escape`, `suspicious` |
-| `foveate.compression` | `Compressor` registry: `ppa`, `hierarchical`, `ushape`, `window`, `extractive`, `truncate`, `offload`, `tool_output`; `Pipeline` (`a+b`), `Fallback` (`a\|b`) |
+| `foveate.compression` | `Compressor` registry: `ppa`, `hierarchical`, `ushape`, `window`, `extractive`, `selective`, `query`, `truncate`, `offload`, `tool_output`, `clear_tool_results`; `Pipeline` (`a+b`), `Fallback` (`a\|b`) |
 | `foveate.backends` | `Backend`, `LiteLLMBackend`, `OpenAIBackend`, `VLLMBackend`, `NoBackend`, `ResilientBackend`, `RetryPolicy`, `CircuitBreaker`, embedders |
 | `foveate.cache` | `Cache`, `MemoryCache`, `SqliteCache`, `NullCache` |
 | `foveate.observability` | `Event`s, `Observer`, `LoggingObserver`, `MetricsObserver` |
@@ -41,7 +41,8 @@ class and function has a docstring with arguments and errors; use
 | `foveate.stores`, `foveate.okf` | Notes stores and portable knowledge format for `offload` and evolution |
 | `foveate.verification` | `fits`, `macro_fallacy` verifiers for compressed contexts |
 | `foveate.evolution` | ACE-style playbook evolution |
-| `foveate.bench` | `Benchmark`, `Runner` (playbook tasks); `bench.longdoc` (long-document benchmark) |
+| `foveate.bench` | `Benchmark`, `Runner` (playbook tasks); `bench.longdoc` (long documents, gold sets, `starter_items`); `bench.needle` (length x depth grids); `bench.compression` (accuracy against compression ratio); `bench.scoring` (exact match, F1, atom recall) |
+| `foveate.memory` | `Memory`: session notes, durable facts, `recall`, `consolidate` |
 
 ## Extending
 
