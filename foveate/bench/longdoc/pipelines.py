@@ -73,6 +73,7 @@ class Pipeline(abc.ABC):
         budget: int,
         retrieval: str = "bm25",
         expand: int = 0,
+        inference: bool = False,
     ) -> None:
         """Creates the pipeline.
 
@@ -84,11 +85,14 @@ class Pipeline(abc.ABC):
                 search the same way.
             expand: Alternative search phrasings written per question
                 (`foveate` only).
+            inference: Allow one short inference step beyond the text (for
+                needles whose wording differs from the question).
         """
         self.runtime = runtime
         self.budget = budget
         self.retrieval = retrieval
         self.expand = expand
+        self.inference = inference
 
     @abc.abstractmethod
     async def answer(
@@ -113,6 +117,7 @@ class Pipeline(abc.ABC):
             run_tag=tag,
             retrieval=self.retrieval,
             expand=self.expand,
+            inference=self.inference,
         )
 
     async def run_fixed(

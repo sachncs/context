@@ -11,10 +11,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import dataclasses
+import os
 import pathlib
 import sys
 
 from foveate import Runtime
+from foveate.backends.embeddings import OpenAIEmbedder
 from foveate.bench import needle
 from foveate.bench.needle import cases
 from foveate.tokenizers import base as tokenizer_base
@@ -59,6 +62,20 @@ def build_cases(
     ]
 
 
+def with_embedder(runtime: Runtime, model: str) -> Runtime:
+    """Returns `runtime` with an embedder when `model` is set."""
+    if not model:
+        return runtime
+    embedder = OpenAIEmbedder(
+        model,
+        base_url=os.environ.get("FOVEATE_BASE_URL"),
+        api_key=os.environ.get("OPENAI_API_KEY"),
+        passage_options={"input_type": "passage"},
+        query_options={"input_type": "query"},
+    )
+    return dataclasses.replace(runtime, embedder=embedder)
+
+
 def main() -> int:
     """Parses arguments and runs the grid."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -68,6 +85,11 @@ def main() -> int:
     parser.add_argument("--seeds", type=int, default=2)
     parser.add_argument("--needles", type=int, default=3)
     parser.add_argument("--budget", type=int, default=4000)
+    parser.add_argument(
+        "--retrieval", default="bm25", choices=("bm25", "embedding", "hybrid")
+    )
+    parser.add_argument("--embedding-model", default="")
+    parser.add_argument("--inference", action="store_true")
     parser.add_argument("--concurrency", type=int, default=3)
     parser.add_argument(
         "--pipelines", default="full-context,truncate,naive-rag,foveate"
@@ -75,12 +97,15 @@ def main() -> int:
     parser.add_argument("--out", default=str(ROOT / "bench/results/needle"))
     args = parser.parse_args()
     holder: dict[str, needle.Source] = {}
-    with Runtime.from_env() as runtime:
+    with Runtime.from_env() as base_runtime:
+        runtime = with_embedder(base_runtime, args.embedding_model)
         grid = build_cases(args, runtime.tokenizer, holder)
         config = needle.Config(
             pipelines=tuple(args.pipelines.split(",")),
             budget=args.budget,
             concurrency=args.concurrency,
+            retrieval=args.retrieval,
+            inference=args.inference,
         )
         print(f"{len(grid)} cases x {len(config.pipelines)} pipelines")
         report = asyncio.run(

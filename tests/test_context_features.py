@@ -250,3 +250,29 @@ class TestSupportAndCaching:
             )()
 
         assert providers.usage_from_response(Bare()).cached_tokens == 0
+
+
+def test_inference_mode_changes_the_system_prompt_only():
+    from foveate.foveator import ANSWER, ANSWER_INFERENCE
+
+    assert "inference" in ANSWER_INFERENCE.system
+    assert "inference" not in ANSWER.system
+    assert ANSWER_INFERENCE.user == ANSWER.user
+    assert ANSWER_INFERENCE.fingerprint != ANSWER.fingerprint
+    seen = []
+
+    def reply(request):
+        seen.append(request.messages[0].content)
+        return json.dumps({"found": False, "answer": "", "citations": []})
+
+    from foveate import runtime as runtime_lib
+    from tests import faults
+
+    runtime = runtime_lib.Runtime(
+        backend=faults.ScriptedBackend(default=reply), tokenizer=TOK
+    )
+    Foveator(runtime, budget=4000, max_rounds=1, inference=True).ask(
+        "q?", [make_doc()]
+    )
+    Foveator(runtime, budget=4000, max_rounds=1).ask("q?", [make_doc()])
+    assert "inference" in seen[0] and "inference" not in seen[1]
