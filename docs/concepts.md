@@ -26,6 +26,17 @@ model sees:
 The allocation never exceeds the budget. It is a pure function of the scores,
 so `Plan` can show it before any model call.
 
+### Two options that change what is shown
+
+* `FoveationConfig(order="edges")` arranges the full pages so the best-scoring ones sit at the
+  start and the end of the evidence block and the weakest in the middle, where models read
+  least reliably. The default, `"reading"`, keeps document order.
+* `FoveationConfig(query_aware=True)` condenses neighbouring pages by keeping the sentences
+  that share rare words with the question instead of the most frequent words. It uses the
+  `query` compressor, which you can also call directly on any text.
+
+Both are off by default until the [benchmarks](benchmarks.md) show they help.
+
 ## Selection
 
 A `Retriever` ranks chunks (page slices that remember their page and heading):
@@ -79,6 +90,32 @@ back to `b` if `a` fails. `tool_output` shrinks JSON, CSV, HTML and logs
 without a model while keeping their shape (keys, header, counts of what was
 cut). Every result carries a `CompressionReport` with tokens before and after,
 steps, cost and whether anything was truncated.
+
+## Memory
+
+`foveate.memory.Memory` keeps two layers over any notes store. Session notes are scratch
+space for the current task. Facts are short durable statements kept across sessions;
+`consolidate` turns a session's notes into facts with one model call. `recall(query)`
+ranks stored notes with BM25 (no model call), and `message(query, budget)` renders the best
+ones as a system message that fits a token budget.
+
+<!-- run -->
+```python
+from foveate import Memory
+from foveate.stores import MemoryNotesStore
+
+memory = Memory(MemoryNotesStore())
+memory.remember("Deployments run in eu-west-1.")
+memory.remember("Looked at the billing export", session="s1")
+assert "eu-west-1" in memory.recall("where do deployments run")[0].content
+```
+
+## Clearing old tool results
+
+`clear_tool_results` replaces the oldest tool results with a one-line stub that keeps the
+tool name and says how many tokens were removed, until the context fits. The newest
+`keep` results stay. No model is called. Use it first for agents:
+`context.compress("clear_tool_results+ushape", budget=6000)`.
 
 ## The runtime
 
