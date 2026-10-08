@@ -1,0 +1,43 @@
+---
+import '../styles/tokens.css';
+import '../styles/landing.css';
+import Header from '../components/Header.astro';
+import Footer from '../components/Footer.astro';
+
+interface Props { title: string; description: string; current?: string; }
+const { title, description, current } = Astro.props;
+const base = import.meta.env.BASE_URL;
+const canonical = new URL(Astro.url.pathname, Astro.site).toString();
+const og = new URL(`${base}og.png`, Astro.site).toString();
+---
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href={`${base}favicon.svg`} />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={og} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <script is:inline>
+      (function () {
+        var stored = null;
+        try { stored = localStorage.getItem('starlight-theme'); } catch (e) {}
+        var theme = stored || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+        document.documentElement.dataset.theme = theme;
+      })();
+    </script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <Header current={current} />
+    <main id="main"><slot /></main>
+    <Footer />
+  </body>
+</html>

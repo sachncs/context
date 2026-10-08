@@ -1,4 +1,7 @@
-# Evaluating your own pipeline
+---
+title: "Evaluating your own pipeline"
+description: "Compare full context, truncation, naive RAG and Foveate on your own documents."
+---
 
 The benchmark that ships with Foveate is a library, not a leaderboard. Point it
 at your documents and questions to see what Foveate does for *your* data.

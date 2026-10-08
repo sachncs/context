@@ -459,6 +459,12 @@ class TestRunnerAndReport:
         path = report.write(tmp_path / "out")
         data = json.loads((tmp_path / "out" / "longdoc.json").read_text())
         assert path.exists() and len(data["outcomes"]) == len(report.outcomes)
+        summary = json.loads((tmp_path / "out" / "summary.json").read_text())
+        assert {r["pipeline"] for r in summary["rows"]} == set(rows)
+        loaded = runner.Report.load(tmp_path / "out" / "longdoc.json", items)
+        assert loaded.rows() == report.rows()
+        with pytest.raises(errors.ValidationError):
+            runner.Report.load(tmp_path / "out" / "longdoc.json", items[:1])
 
     def test_document_failure_is_scored_as_error_not_crash(self, tmp_path):
         c = runner.Corpus(

@@ -1,4 +1,7 @@
-# Agents and tools
+---
+title: "Agents and tools"
+description: "Page tools, history compression and tool-output reducers for Pydantic AI, ADK and LangGraph."
+---
 
 Agents fail on context for two reasons: they are handed whole documents, and
 their history and tool output grow every turn. Foveate has a fix for each, for

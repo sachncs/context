@@ -1,4 +1,7 @@
-# Quickstart
+---
+title: "Quickstart"
+description: "Install Foveate, plan a 200-page question without a model, then get a cited answer."
+---
 
 Five minutes, from install to a cited answer.
 

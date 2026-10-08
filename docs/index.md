@@ -1,4 +1,7 @@
-# Foveate
+---
+title: "Overview"
+description: "What Foveate does, who it is for, and when to use it."
+---
 
 **Context engineering for LLM apps: put the right pages in the window, prove the answer.**
 
