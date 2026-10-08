@@ -277,6 +277,44 @@ redistributed).
   answer model at low reasoning effort, and in a debugging case the needle page was reduced to
   an outline line, so retrieval also needs work. We report it rather than drop it.
 
+## Small models and larger models
+
+A claim worth testing: with the right context, a small model can match a much larger one. We
+tried it on 12 FinanceBench questions plus 8 unanswerable ones, with embedding retrieval for
+both retrieval-based pipelines, one run each, graded by `gpt-oss-20b`. This sample is far too
+small for statistics; read it as a smoke test. Raw results: `bench/results/model-30b/` and
+`bench/results/small-*/`.
+
+**A 30B-class model** (`nvidia/nemotron-3.5-lightning-30b-a3b`, a mixture-of-experts model
+with about 3B active parameters) behind each pipeline, 12,000-token budget:
+
+| | Send everything | Plain RAG | Foveate |
+|---|---|---|---|
+| Correct answers | 58% (17% did not fit) | **75%** | 67% |
+| Abstains on unanswerable questions | 50% | **100%** | 88% |
+| Answers an unanswerable question | 12% | 0% | 12% |
+| Every cited quote verified | 10% | 0% | **25%** |
+| Mean prompt tokens | 78,501 | 13,044 | 24,929 |
+
+With this model, plain retrieval did at least as well as Foveate on correctness and
+abstention. The model rarely followed the citation format (0-25% verified), so grounding
+could not do its job. Both retrieval pipelines beat sending the whole filing on correctness
+and used far fewer tokens, which is the part of the claim these numbers do support.
+
+**A 1B reasoning model** (`openbmb/MiniCPM5-1B`, served by vLLM on CPU with an 8,192-token
+window, 4,000-token budget) produced almost no usable answers: in 83% to 92% of calls the
+model spent its whole token allowance thinking and the window left no room to continue. That
+run measures a limit of this setup (a reasoning model in a small window), not whether
+context engineering helps a small model, so it supports no claim either way. It did lead to a
+fix: Foveate now caps its "give the model more room to think" retries to what fits in the
+window, and reports the failure instead of sending a request the server rejects.
+
+**So the claim that a 1B model can beat a 30B model is not established by our data.** What the
+data do support is narrower: retrieval and page selection cut tokens by roughly 3x to 7x against sending
+a whole filing and did not cost accuracy for the models we tried (20B and 30B-class); whether
+the same holds for a model with 1B parameters needs a non-reasoning small model, a larger
+window, and more than 12 questions.
+
 ## Reproduce
 
 ```bash
