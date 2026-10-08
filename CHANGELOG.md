@@ -64,5 +64,5 @@ First release.
   gold-set builders (answerable, unanswerable, paraphrase, needle depth),
   pipelines `full-context`, `truncate`, `naive-rag`, `foveate`, metrics and
   report.
-- Playbook evolution (ACE) with `finer`, `formula` and `ddxplus` benchmarks.
+- Playbook evolution (ACE): `Evolver` learns a playbook from graded samples; `finer`, `formula` and `ddxplus` benchmarks.
 - Notes stores, portable OKF bundles, verification (`fits`, `macro_fallacy`).

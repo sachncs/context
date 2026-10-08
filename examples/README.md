@@ -10,6 +10,7 @@ Run any of them from this directory. The first three need no model.
 | `04_agent_memory.py` | Session notes, durable facts and recall | no |
 | `05_resilient_backend.py` | Retries, timeout and breaker around any backend | no |
 | `06_evaluate_your_documents.py` | Build a starter evaluation set from your own files | no |
+| `07_evolve_a_playbook.py` | Learn a playbook from graded samples (ACE) | yes |
 | `frameworks/` | The same ideas inside Pydantic AI, Google ADK, LangGraph and Strands | yes |
 
 Models: any OpenAI-compatible endpoint.

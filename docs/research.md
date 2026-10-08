@@ -157,7 +157,7 @@ Foveate is evaluated.
 * Zhang et al. (2026), *Agentic Context Engineering: Evolving Contexts for Self-Improving
   Language Models*, [arXiv:2510.04618](https://arxiv.org/abs/2510.04618), ICLR 2026. Contexts as
   evolving playbooks; reported gains of +10.6% on agents and +8.6% on finance. Implemented in
-  `foveate.evolution`. Code: [ace-agent/ace](https://github.com/ace-agent/ace).
+  `foveate.evolution`; see [Evolving a playbook](guides/evolving-playbooks.md). Code: [ace-agent/ace](https://github.com/ace-agent/ace).
 * Xu et al., *A-MEM: Agentic Memory for LLM Agents*, [arXiv:2502.12110](https://arxiv.org/abs/2502.12110);
   *Anatomy of Agentic Memory*, [arXiv:2602.19320](https://arxiv.org/abs/2602.19320);
   *A Survey of Agent Memory in the Second Half*, [arXiv:2602.06052](https://arxiv.org/abs/2602.06052).

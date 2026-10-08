@@ -1,0 +1,40 @@
+---
+import data from '../data/foveation.json';
+const entry = data.entries[1];
+const plan = entry.budgets['8000'];
+const tiers: string = plan.tiers;
+const counts = { F: 0, C: 0, O: 0, D: 0 } as Record<string, number>;
+for (const t of tiers) counts[t] += 1;
+const fmt = (n: number) => n.toLocaleString('en-US');
+---
+<figure class="plan" aria-labelledby="plan-caption">
+  <div class="grid" role="img" aria-label={`${tiers.length} pages. ${counts.F} sent in full, ${counts.C} condensed, ${counts.O} as outline lines, ${counts.D} not sent.`}>
+    {tiers.split('').map((t, i) => <i class={t + (i + 1 === entry.gold_page ? ' A' : '')} title={`Page ${i + 1}`}></i>)}
+  </div>
+  <ul class="legend" aria-hidden="true">
+    <li><i class="sw F"></i>Full ({counts.F})</li>
+    <li><i class="sw C"></i>Condensed ({counts.C})</li>
+    <li><i class="sw O"></i>Outline ({counts.O})</li>
+    <li><i class="sw D"></i>Not sent ({counts.D})</li>
+    <li><i class="sw A"></i>Page with the answer</li>
+  </ul>
+  <figcaption id="plan-caption">
+    <strong>{entry.filing}, {entry.pages} pages.</strong> One question, one budget of 8,000 tokens:
+    {fmt(plan.prompt_tokens)} of {fmt(entry.document_tokens)} tokens are sent. This is the real plan the library computed.
+  </figcaption>
+</figure>
+<style>
+  .plan { margin: 0; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: var(--space-6); box-shadow: var(--shadow); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(15px, 1fr)); gap: 4px; }
+  .grid :global(i) { aspect-ratio: 1; border-radius: 3px; display: block; border: 1px solid transparent; }
+  .grid :global(i.F), .sw.F { background: var(--tier-full); }
+  .grid :global(i.C), .sw.C { background: var(--tier-condensed); }
+  .grid :global(i.O), .sw.O { background: var(--tier-outline); }
+  .grid :global(i.D), .sw.D { background: transparent; border-color: var(--border-strong); }
+  .grid :global(i.A), .sw.A { box-shadow: 0 0 0 2px var(--surface), 0 0 0 4px var(--good); }
+  .legend { list-style: none; display: flex; flex-wrap: wrap; gap: .4rem 1.1rem; padding: 0; margin: var(--space-4) 0 0; font-size: .78rem; color: var(--muted); }
+  .legend li { display: inline-flex; align-items: center; gap: .45rem; }
+  .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid transparent; }
+  figcaption { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); font-size: .9rem; color: var(--muted); line-height: 1.55; }
+  figcaption strong { color: var(--text); font-weight: 600; }
+</style>

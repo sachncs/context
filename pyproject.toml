@@ -58,7 +58,7 @@ Changelog = "https://github.com/sachncs/foveate/blob/master/CHANGELOG.md"
 include = ["foveate*"]
 
 [tool.setuptools.package-data]
-foveate = ["py.typed", "bench/longdoc/gold/*.jsonl"]
+foveate = ["py.typed", "bench/fixtures/*.jsonl", "bench/seeds/*.md", "bench/longdoc/gold/*.jsonl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -99,6 +99,7 @@ convention = "google"
 "tests/**" = ["D", "S101", "ANN", "S311", "N818", "RUF059", "SIM117", "E501"]
 "examples/**" = ["D", "ANN", "S101", "E501", "S105"]
 "integrations/**" = ["D", "ANN", "S101", "E501", "N818", "SIM117"]
+"foveate/evolution/prompts.py" = ["E501"]  # verbatim upstream prompt text
 
 [tool.mypy]
 python_version = "3.10"

@@ -70,6 +70,12 @@ def test_every_example_compiles(path, tmp_path):
     )
 
 
+def test_evolution_example_degrades_without_a_model(capsys, monkeypatch):
+    monkeypatch.delenv("FOVEATE_MODEL", raising=False)
+    run_example("07_evolve_a_playbook.py")
+    assert "FOVEATE_MODEL" in capsys.readouterr().out
+
+
 def test_every_offline_example_is_listed():
     names = sorted(p.name for p in EXAMPLES.glob("0*.py"))
     assert set(OFFLINE) <= set(names) and "02_ask_with_citations.py" in names

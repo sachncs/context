@@ -1,0 +1,53 @@
+---
+const tabs = [
+  { id: 'pydantic', label: 'Pydantic AI', code: `import foveate_pydantic_ai as foveate_pai
+
+agent = Agent(
+    model,
+    tools=foveate_pai.document_tools([report]),
+    capabilities=[ProcessHistory(foveate_pai.history_processor(runtime, 6000))],
+)` },
+  { id: 'adk', label: 'Google ADK', code: `import foveate_adk
+
+agent = LlmAgent(
+    name="analyst", model="gemini-2.0-flash",
+    tools=foveate_adk.document_tools([report]),
+    before_model_callback=foveate_adk.model_callback(runtime, 6000),
+)` },
+  { id: 'langgraph', label: 'LangGraph', code: `import foveate_langgraph as foveate_lg
+
+agent = create_react_agent(
+    model,
+    foveate_lg.document_tools([report]),
+    pre_model_hook=foveate_lg.compression_node(runtime, budget=6000),
+)` },
+  { id: 'strands', label: 'Strands Agents', code: `import foveate_strands
+
+agent = Agent(
+    model=model,
+    tools=foveate_strands.document_tools([report]),
+    conversation_manager=foveate_strands.conversation_manager(runtime, 6000),
+)` },
+];
+---
+<div class="tabs">
+  {tabs.map((t, i) => (
+    <>
+      <input type="radio" name="fw" id={`fw-${t.id}`} checked={i === 0} />
+      <label for={`fw-${t.id}`} class={`l-${t.id}`}>{t.label}</label>
+    </>
+  ))}
+  {tabs.map((t) => (
+    <div class={`panel p-${t.id}`}><pre class="code"><code>{t.code}</code></pre></div>
+  ))}
+</div>
+<style>
+  .tabs { display: flex; flex-wrap: wrap; gap: .4rem; }
+  input { position: absolute; opacity: 0; pointer-events: none; }
+  label { padding: .5rem 1rem; border: 1px solid var(--border-strong); border-radius: 999px; font-size: .88rem; font-weight: 560; cursor: pointer; color: var(--muted); transition: all .15s; }
+  label:hover { color: var(--text); border-color: var(--text); }
+  .panel { display: none; width: 100%; margin-top: var(--space-4); }
+  #fw-pydantic:checked ~ .p-pydantic, #fw-adk:checked ~ .p-adk, #fw-langgraph:checked ~ .p-langgraph, #fw-strands:checked ~ .p-strands { display: block; }
+  #fw-pydantic:checked ~ .l-pydantic, #fw-adk:checked ~ .l-adk, #fw-langgraph:checked ~ .l-langgraph, #fw-strands:checked ~ .l-strands { background: var(--text); color: var(--bg); border-color: var(--text); }
+  input:focus-visible + label { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>

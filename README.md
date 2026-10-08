@@ -67,6 +67,7 @@ found. The roadmap lists these as the next things to fix.
 * **Compression** for chat history and tool output, mostly without a model.
 * **Memory**: session notes, durable facts, recall by query.
 * **Reliability**: cache, retries, timeouts, circuit breaker, rate limits, reasoning-model recovery.
+* **Evolution**: learn a playbook of strategies from graded samples ([guide](docs/guides/evolving-playbooks.md)).
 * **Safety**: fencing for untrusted text. **Evaluation**: a harness and a starter test set from your files.
 
 ## Install

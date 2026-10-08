@@ -76,6 +76,7 @@ export default defineConfig({
           items: [
             { label: 'Long documents and page control', slug: 'docs/guides/long-documents' },
             { label: 'Agents and tools', slug: 'docs/guides/agents-and-tools' },
+            { label: 'Evolving a playbook', slug: 'docs/guides/evolving-playbooks' },
             { label: 'Local models with vLLM', slug: 'docs/guides/local-models' },
             { label: 'Evaluating your own pipeline', slug: 'docs/guides/evaluating' },
             { label: 'Production', slug: 'docs/guides/production' },
