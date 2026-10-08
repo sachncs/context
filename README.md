@@ -38,7 +38,7 @@ When the document does not contain the answer, you get an explicit
 
 30 real SEC filings questions, same prompt and citation check for every pipeline, answer model
 `gpt-oss-20b` (full method, gold sets and the places Foveate does **not** win are in
-[docs/benchmarks.md](docs/benchmarks.md)).
+[docs/benchmarks.md](docs/benchmarks.md); positioning in [docs/why.md](docs/why.md)).
 
 | | Send everything | Truncate | Plain RAG | **Foveate** |
 |---|---|---|---|---|
