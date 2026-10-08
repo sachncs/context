@@ -68,7 +68,7 @@ Changelog = "https://github.com/sachncs/context/blob/master/CHANGELOG.md"
 include = ["foveate*"]
 
 [tool.setuptools.package-data]
-foveate = ["py.typed", "bench/fixtures/*.jsonl", "bench/seeds/*.md"]
+foveate = ["py.typed", "bench/fixtures/*.jsonl", "bench/seeds/*.md", "bench/longdoc/gold/*.jsonl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

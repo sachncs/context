@@ -354,3 +354,35 @@ class TestTruncationAndOptions:
         out = run(rt.complete(USER, source="t", namespace="n", max_tokens=100))
         assert out.text == "A proper full answer."
         assert [r.max_tokens for r in backend.requests] == [100, 400]
+
+
+class TestInlineReasoning:
+    @pytest.mark.parametrize(
+        "raw,clean",
+        [
+            ("<think>plan {x}</think>\n\n144", "144"),
+            ("<think>still thinking...", ""),
+            ("thoughts\n</think>\nanswer", "answer"),
+            ("a <b>bold</b> claim", "a <b>bold</b> claim"),
+            ("<THINK>x</THINK>ok", "ok"),
+        ],
+    )
+    def test_strip_reasoning(self, raw, clean):
+        from foveate.internals import reasoning
+
+        assert reasoning.strip_reasoning(raw) == clean
+
+    def test_runtime_returns_only_the_visible_answer(self):
+        from foveate import Message, Role
+        from tests.test_compression import make_runtime
+
+        rt, _ = make_runtime(responder=lambda r: '<think>hmm {</think>{"a": 1}')
+        out = asyncio.run(
+            rt.complete(
+                (Message(Role.USER, "q"),),
+                source="t",
+                namespace="n",
+                max_tokens=50,
+            )
+        )
+        assert out.text == '{"a": 1}'

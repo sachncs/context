@@ -1,8 +1,6 @@
-# Production operations
+# Production
 
-The published distribution is `foveate`; the import name is `foveate`.
-
-foveate is async-first. Inside a service, `await context.acompress(...)`. The
+Foveate is async-first. Inside a service, `await foveator.aask(...)` and `await context.acompress(...)`. The
 synchronous methods are for scripts and notebooks; they run the same code.
 
 ## Runtime and credentials
@@ -83,7 +81,20 @@ leave headroom against the model's hard context limit.
 2. Update `CHANGELOG.md` and the version in `pyproject.toml` and
    `foveate/__init__.py` (a test keeps them equal).
 3. Push a `vX.Y.Z` tag. The release workflow re-runs the full CI matrix
-   (Linux, macOS, Windows × Python 3.10-3.13), builds, publishes to PyPI via
-   trusted publishing, then creates the GitHub release.
+   (Linux, macOS, Windows × Python 3.10-3.13), builds, publishes `foveate` to
+   PyPI via trusted publishing, then creates the GitHub release.
 4. Configure the PyPI trusted publisher for the `Release` workflow and `pypi`
    environment before the first release.
+
+## Answering documents in production
+
+* `Foveator.plan(...)` before the call; gate on `plan.estimated_cost_usd`.
+* Alert on `answer.grounded == False` and on the share of `abstained` answers;
+  set `ungrounded="abstain"` if a wrong claim costs more than a missing one.
+* Retrieved text is fenced and escaped (`foveate.fencing`); treat that as
+  defence in depth, and use `fencing.suspicious(page_text)` to log hostile pages.
+* Trace with `foveate.tracing.TracingObserver` (OpenTelemetry spans carrying
+  `gen_ai.*` token attributes).
+* Pin the model name, and set `context_window` when your provider serves less
+  than the model supports.
+* Re-run [your evaluation](evaluating.md) before changing models or budgets.

@@ -37,13 +37,18 @@ def build_core(seed: int) -> None:
     documents: dict[str, object] = {}
     answerable: list[gold.GoldItem] = []
     skipped = []
+    dead: set[str] = set()
     started = time.monotonic()
     for index, question in enumerate(questions, start=1):
+        if question.doc_link in dead:
+            skipped.append((question.id, "filing unavailable"))
+            continue
         try:
             document = documents.get(question.doc_name) or bench.document(
                 question
             )
         except errors.FoveateError as exc:
+            dead.add(question.doc_link)
             skipped.append((question.id, str(exc)[:80]))
             print(
                 f"[{index}/{len(questions)}] SKIP {question.id}: {exc}",
@@ -104,9 +109,13 @@ PARAPHRASE_PROMPT = (
 
 async def build_paraphrases(runtime: Runtime) -> None:
     """Adds model-written paraphrases of sampled answerable questions."""
-    items = gold.read_items(GOLD_DIR / "answerable.jsonl")[
-        :PARAPHRASE_QUESTIONS
-    ]
+    answerable = gold.read_items(GOLD_DIR / "answerable.jsonl")
+    by_id = {q.id: q for q in dataset.FinanceBench().questions()}
+    chosen = dataset.stratified_sample(
+        [by_id[i.meta["source"]] for i in answerable], PARAPHRASE_QUESTIONS
+    )
+    wanted = {q.id for q in chosen}
+    items = [i for i in answerable if i.meta["source"] in wanted]
     made: list[gold.GoldItem] = []
     for item in items:
         reply = await runtime.complete(

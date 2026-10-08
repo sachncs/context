@@ -1,7 +1,18 @@
 # Architecture
 
-foveate v2 is built around one value type, `Context`, and a set of extension
-points that are abstract base classes with explicit registries.
+Foveate has two value types, `Document` (pages) and `Context` (messages), and
+a set of extension points that are abstract base classes with explicit
+registries. Documents flow through selection, foveation and grounding;
+conversations and tool output flow through compression.
+
+```
+question + Document(s)
+   -> selection (Retriever: bm25 | embedding | hybrid | rerank)  -> page scores
+   -> foveation (allocate FULL / CONDENSED / OUTLINE / DROPPED under a budget)
+   -> prompt (fenced pages + outline)  -> Runtime.complete -> JSON answer
+   -> grounding (verify quotes on the cited pages) -> retry / flag / abstain
+   -> Answer(text, citations, grounded, usage, cost)
+```
 
 ```
 Context (frozen)  --compress()-->  Context (frozen, with CompressionReport)
@@ -14,12 +25,13 @@ Context (frozen)  --compress()-->  Context (frozen, with CompressionReport)
 
 | Layer | Package / module | Role |
 |---|---|---|
-| API | `context`, `integrations` | `Context`: compress, verify, save, load; agent-framework adapters |
+| API | `foveator`, `context`, `integrations` | `Foveator.ask/plan`; `Context.compress`; agent tools and history adapters |
+| Documents | `documents`, `selection`, `foveation`, `assembly`, `grounding`, `models`, `fencing` | Pages, retrieval, fidelity tiers, slots, citation checks, model windows, injection fencing |
 | Strategies | `compression`, `verification` | `Compressor`, `Verifier` ABCs and implementations |
 | Domain | `partition`, `okf`, `stores`, `evolution`, `bench` | Partitioners, OKF model/bundles, notes stores, ACE, benchmarks |
 | Services | `runtime` | `Runtime.complete`: cache, single-flight, validation, accounting |
 | I/O | `backends`, `cache`, `tokenizers` | Providers + resilience, caches, token counting |
-| Foundation | `messages`, `errors`, `usage`, `prompts`, `observability`, `internals` | Value types and helpers |
+| Foundation | `messages`, `errors`, `usage`, `prompts`, `observability`, `tracing`, `internals` | Value types and helpers |
 
 ## Extension points
 
@@ -29,8 +41,13 @@ the known ones.
 
 | ABC | Registry key examples | Implementations |
 |---|---|---|
-| `Compressor` | `ppa`, `hierarchical`, `ushape`, `window`, `truncate`, `extractive`, `offload` | plus `Pipeline` (`a+b`) and `Fallback` (`a\|b`) |
+| `Compressor` | `ppa`, `hierarchical`, `ushape`, `window`, `truncate`, `extractive`, `offload`, `tool_output` | plus `Pipeline` (`a+b`) and `Fallback` (`a\|b`) |
 | `Verifier` | `fits`, `macro_fallacy` | |
+| `Loader` | `pdf`, `docx`, `html`, `markdown`, `text` | |
+| `Retriever` | `bm25`, `embedding`, `hybrid`, `rerank` | |
+| `Embedder` | | `HashingEmbedder`, `OpenAIEmbedder` |
+| `Reducer` | `json`, `csv`, `html`, `log` | used by `tool_output` |
+| `Pipeline` (bench) | `full-context`, `truncate`, `naive-rag`, `foveate` | |
 | `Backend` | `litellm`, `openai`, `vllm`, `none` | wrapped by `ResilientBackend` |
 | `Cache` | `memory`, `sqlite`, `null` | |
 | `Tokenizer` | `heuristic`, `tiktoken` | |
@@ -39,7 +56,7 @@ the known ones.
 | `NotesStore` | `memory`, `filesystem` | |
 | `CuratorOp` | `ADD`, `UPDATE`, `MERGE`, `DELETE` | |
 | `Benchmark` | `finer`, `formula`, `ddxplus` | |
-| `Observer` | | `LoggingObserver`, `MetricsObserver` |
+| `Observer` | | `LoggingObserver`, `MetricsObserver`, `TracingObserver` |
 | `HistoryAdapter` | | Pydantic AI, ADK, LangChain/LangGraph messages |
 
 Strategies are **frozen dataclasses whose fields are their options**, so
@@ -112,7 +129,7 @@ framework hook around it.
 ## Naming rule: no underscore-prefixed names
 
 Google's style guide uses a leading underscore for non-public names. This
-project deliberately does not: `tests/test_style.py` AST-scans `src/` and
+project deliberately does not: `tests/test_style.py` AST-scans `foveate/` and
 fails on any function, class, variable, argument or attribute that starts with
 a single underscore (dunders are fine). The public API is delimited instead by:
 
@@ -123,22 +140,19 @@ a single underscore (dunders are fine). The public API is delimited instead by:
 Anything not exported from a package `__init__` or this document is not a
 compatibility promise, even though Python cannot enforce that.
 
-## Deliberate deviations from the original plan
+## Design notes
 
 - `Cache` is synchronous: it wraps local SQLite/dicts, so async buys nothing.
-- No `tighten()` hook: budget enforcement is the base class' overflow policy
-  plus `Hierarchical` for iterative reduction.
 - Playbook bullet ids are deterministic `uuid5` of normalised content (same
   content, same id), which keeps cache keys reproducible and cannot collide.
-- AppWorld was removed: it was a stub that required external credentials.
 - No test double ships in the package: `ScriptedBackend` lives in
   `tests/faults.py` for fault injection only, and `Runtime.without_llm()`
   (`NoBackend`) serves LLM-free use.
-- Cache keys are SHA-256 fingerprint strings (`internals.hashing`), not typed
-  `CacheKey`/`CacheEntry` objects; values are small JSON strings.
-- Messages are plain text: multi-part content is flattened on ingest
-  (`Message.from_mapping`), so there is no `ContentPart` type.
-- `Observer` has one `handle(event)` method over typed `Event` subclasses
-  rather than separate `on_*` methods.
-- Output validation rejects empty completions (with one regeneration); length
-  is bounded by the provider-enforced `max_tokens`, not re-validated.
+- Cache keys are SHA-256 fingerprint strings (`internals.hashing`).
+- Messages are plain text: multi-part content is flattened on ingest.
+- `Observer` has one `handle(event)` method over typed `Event` subclasses.
+- Citation checking is deterministic (normalised substring, then a
+  longest-common-subsequence ratio), so it needs no model and cannot be talked
+  out of its verdict by the document.
+- Inline reasoning (`<think>...</think>`) is stripped in `Runtime.complete`,
+  before caching and parsing.

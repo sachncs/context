@@ -26,7 +26,7 @@ from foveate.backends import none as none_backend
 from foveate.backends import resilient
 from foveate.cache import base as cache_base
 from foveate.cache import sqlite as cache_sqlite
-from foveate.internals import hashing, runner
+from foveate.internals import hashing, reasoning, runner
 
 DEFAULT_MODEL = "gpt-4o-mini"
 DEFAULT_CACHE_DIR = ".foveate/cache"
@@ -346,6 +346,9 @@ class Runtime:
         while True:
             started = time.monotonic()
             completion = await self.backend.complete(current)
+            completion = dataclasses.replace(
+                completion, text=reasoning.strip_reasoning(completion.text)
+            )
             self.emit(
                 observability.BackendCall(
                     source=source,
