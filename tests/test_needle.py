@@ -237,7 +237,9 @@ class TestSources:
 
 
 def test_book_pages_handle_text_without_blank_lines_and_stay_near_size():
-    text = " ".join(f"Sentence {i} is here." for i in range(4000))  # one long line
+    text = " ".join(
+        f"Sentence {i} is here." for i in range(4000)
+    )  # one long line
     pages = haystack.book_pages(text, 3000, TOK, seed=2)
     sizes = [TOK.count(p) for p in pages]
     assert 3000 <= sum(sizes) <= 3000 + 600 and max(sizes) <= 600
