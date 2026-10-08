@@ -48,7 +48,11 @@ export default defineConfig({
         },
         {
           label: 'Evidence',
-          items: [{ label: 'Benchmarks', slug: 'docs/benchmarks' }],
+          items: [
+            { label: 'Benchmarks', slug: 'docs/benchmarks' },
+            { label: 'The twelve rules', slug: 'docs/playbook' },
+            { label: 'Research and sources', slug: 'docs/research' },
+          ],
         },
         { label: 'Reference', items: [{ label: 'API and settings', slug: 'docs/reference' }] },
         {
