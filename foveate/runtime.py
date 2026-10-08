@@ -16,7 +16,7 @@ import time
 from collections.abc import Awaitable, Callable, Mapping, Sequence
 from types import TracebackType
 
-from foveate import errors, observability
+from foveate import errors, models, observability
 from foveate import messages as messages_lib
 from foveate import tokenizers as tokenizers_lib
 from foveate import usage as usage_lib
@@ -33,6 +33,7 @@ DEFAULT_CACHE_DIR = ".foveate/cache"
 VALIDATION_RETRIES = 1
 LENGTH_RETRIES = 3
 LENGTH_GROWTH = 4
+WINDOW_MARGIN = 64
 
 
 class SingleFlight:
@@ -371,9 +372,15 @@ class Runtime:
                 and current.max_tokens is not None
             ):
                 length_left -= 1
-                current = dataclasses.replace(
-                    current, max_tokens=current.max_tokens * LENGTH_GROWTH
+                grown = self.cap_to_window(
+                    current, current.max_tokens * LENGTH_GROWTH
                 )
+                if grown <= current.max_tokens:
+                    raise errors.ValidationError(
+                        "model returned no text (token cap reached and the "
+                        "context window leaves no room to grow it)"
+                    )
+                current = dataclasses.replace(current, max_tokens=grown)
                 continue
             if empty_left > 0 and not completion.truncated:
                 empty_left -= 1
@@ -382,6 +389,20 @@ class Runtime:
                 "model returned no text"
                 + (" (token cap reached)" if completion.truncated else "")
             )
+
+    def cap_to_window(self, request: backend_base.Request, wanted: int) -> int:
+        """Limits a larger completion cap so prompt plus cap fit the window.
+
+        Without a known `context_window` the wanted cap is returned.
+        """
+        window = self.context_window
+        if window is None:
+            info = models.lookup(request.model)
+            window = info.context_window if info else None
+        if window is None:
+            return wanted
+        prompt = sum(self.tokenizer.count(m.content) for m in request.messages)
+        return max(0, min(wanted, window - prompt - WINDOW_MARGIN))
 
     async def aclose(self) -> None:
         """Closes the backend and cache."""
