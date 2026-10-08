@@ -1,6 +1,6 @@
 ---
 title: Roadmap
-description: What ships in 0.2.0, what is being built, and what is being considered.
+description: What ships in 0.2.0, what the benchmarks say to fix next, and what is being considered.
 items:
 - title: Page-level selection and foveation
   status: shipping
@@ -73,8 +73,8 @@ items:
   source: 'Uber: evaluation-first agent platform'
 - title: Compression guideline tuning
   status: planned
-  summary: Learn compression instructions from failures, using the evolution loop already in Foveate.
-  why: Compression that adapts to your task.
+  summary: 'Learn compression instructions from failures: compare runs where full context succeeded and compressed context failed, and rewrite the guideline.'
+  why: Compression that adapts to your task instead of one fixed prompt.
   source: ACON (arXiv:2510.00615); ACE (arXiv:2510.04618)
 - title: Table-aware PDF extraction
   status: planned
@@ -120,9 +120,39 @@ items:
   summary: Summaries with fixed sections (goal, decisions, facts, open items) that keep recent turns verbatim.
   why: Partial, structured rewriting was consistently helpful across models.
   source: Beyond Token Savings (arXiv:2609.32961)
+- title: Consistent answers across reworded questions
+  status: building
+  summary: 'Make the same question asked three ways return the same verdict: stabilise page selection across paraphrases and make the retry round deterministic.'
+  why: In the first run Foveate agreed with itself on 57% of paraphrases and runs against 70% for plain retrieval.
+  source: Benchmarks run 1 and 2
+- title: Short facts inside long pages
+  status: building
+  summary: Score chunks as well as pages, so a single sentence inside a long page can still win a full-page slot.
+  why: Plain chunk retrieval found hidden sentences at mid-document depths that Foveate's page ranking missed (100% against 50%).
+  source: Benchmark run 2, needle items
+- title: Fewer tokens for the same answer
+  status: planned
+  summary: Trim the condensed and outline tiers when the evidence is already strong, and stop after one round when the first answer is verified.
+  why: Foveate sent about 45% more tokens than plain retrieval and took about 66% longer in run 2.
+  source: Benchmark run 2
+- title: Does the quote support the answer?
+  status: planned
+  summary: 'Go beyond checking that a quote exists on the page: check that the quote supports the claim, and report how strongly.'
+  why: A real sentence can be quoted for a claim it does not prove.
+  source: Context sufficiency work such as Provence
+- title: Reasoning across pages and non-literal questions
+  status: exploring
+  summary: Help models connect a question to a fact that shares none of its words, with retrieval that understands the link and a controlled inference step.
+  why: No pipeline solved NoLiMa-style needles (0 to 2%), including sending the whole text.
+  source: NoLiMa (arXiv:2502.05167)
+- title: More answer models and larger samples
+  status: planned
+  summary: Repeat the benchmarks with three or more answer models, 100 or more questions, and model-based compression methods such as ppa.
+  why: Thirty questions and one model cannot separate small differences; rankings change between models.
+  source: Beyond Token Savings (arXiv:2609.32961)
 ---
 
-Status of each item. The list is the same one shown on the site's Coming next page.
+Status of each item. The list is the same one shown on the site's Coming next page. Items under "Being built now" and "Planned" that name a benchmark are the gaps the benchmarks found; they are listed here so the results are not only a score but a to-do list.
 
 ## Shipping in 0.2.0
 
@@ -142,15 +172,20 @@ Status of each item. The list is the same one shown on the site's Coming next pa
 ## Being built now
 
 * **Compression benchmark.** Accuracy against compression ratio for each method on documents, needle cells, chat history and tool output.
+* **Consistent answers across reworded questions.** Make the same question asked three ways return the same verdict: stabilise page selection across paraphrases and make the retry round deterministic.
+* **Short facts inside long pages.** Score chunks as well as pages, so a single sentence inside a long page can still win a full-page slot.
 
 ## Planned
 
 * **Context awareness.** Tell the model how many tokens it has used and how many remain.
-* **Compression guideline tuning.** Learn compression instructions from failures, using the evolution loop already in Foveate.
+* **Compression guideline tuning.** Learn compression instructions from failures: compare runs where full context succeeded and compressed context failed, and rewrite the guideline.
 * **Table-aware PDF extraction.** Keep rows and columns when reading tables from PDFs.
 * **Streaming answers.** Stream the answer while citations are verified at the end.
 * **Coverage-aware selection.** Choose pages that cover complementary regions of a document instead of near-duplicates.
 * **Structured history summaries.** Summaries with fixed sections (goal, decisions, facts, open items) that keep recent turns verbatim.
+* **Fewer tokens for the same answer.** Trim the condensed and outline tiers when the evidence is already strong, and stop after one round when the first answer is verified.
+* **Does the quote support the answer?.** Go beyond checking that a quote exists on the page: check that the quote supports the claim, and report how strongly.
+* **More answer models and larger samples.** Repeat the benchmarks with three or more answer models, 100 or more questions, and model-based compression methods such as ppa.
 
 ## Exploring
 
@@ -159,5 +194,6 @@ Status of each item. The list is the same one shown on the site's Coming next pa
 * **PII redaction.** Mask personal data before text leaves your machine.
 * **TypeScript SDK.** The same page-first workflow for JavaScript and TypeScript apps.
 * **Hosted evaluation dashboard.** A shared place to compare pipelines and track results over time.
+* **Reasoning across pages and non-literal questions.** Help models connect a question to a fact that shares none of its words, with retrieval that understands the link and a controlled inference step.
 
 Open an issue to vote for an item or to propose another.

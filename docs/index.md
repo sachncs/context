@@ -1,91 +1,59 @@
 ---
-title: "Overview"
-description: "What Foveate does, who it is for, and when to use it."
+title: "Foveate documentation"
+description: "Foveate is a Python library for getting the right text in front of a language model: select, shape, compress, remember, verify and measure."
 ---
 
-**Context engineering for LLM apps: put the right pages in the window, prove the answer.**
+Foveate is a Python library for **context engineering**: deciding what a language model sees. Give it
+a 200-page report and a question, and it sends the pages that matter in full, the pages around them
+in short, and an outline of the rest. The answer comes back with the page and the exact quote, and
+Foveate checks the quote against the page.
 
-Foveate takes long documents (a 200-page 10-K, a manual, a contract), long
-conversations and bulky tool output, and turns them into a prompt that fits the
-model, costs less, and comes back with **page citations that are checked
-against the source**.
+It has no required dependencies, talks to any OpenAI-compatible model server, and works with the
+agent framework you already use.
 
-The name comes from the eye: the *fovea* is the small centre of sharp vision.
-To *foveate* is to keep full detail where it matters and coarse detail
-everywhere else.
+## Where to start
 
-## Why use it
-
-You uploaded 200 pages. Without Foveate one of three things happens:
-
-| What happens | Consequence |
+| If you want to... | Go to |
 |---|---|
-| The document does not fit the model window | A provider error, or silent truncation: the answer is missing from what the model saw |
-| It fits, so you send all of it | 100k+ tokens per question: slow, expensive, and the model loses facts in the middle |
-| You bolt on a retriever | Chunks with no page numbers, nothing checks the answer, no way to say "not in the document" |
+| See it work in five minutes | [Quickstart](quickstart.md) |
+| Understand the idea first | [What is context engineering?](learn/context-engineering.md) |
+| Learn the rules of thumb | [The playbook](playbook/index.md) |
+| Ask questions about long documents | [Long documents guide](guides/long-documents.md) |
+| Build an agent | [Agents and tools](guides/agents-and-tools.md) |
+| Run a small model locally | [Local models](guides/local-models.md) |
+| Check it on your own data | [Evaluating your pipeline](guides/evaluating.md) |
+| See the evidence | [Benchmarks](benchmarks.md) |
 
-With Foveate, each question gets the relevant pages at full fidelity, their
-neighbours condensed, and a cheap outline of the rest. The model answers in
-JSON with `(document, page, quote)` citations. Every quote is searched for on
-the cited page. Unsupported answers are retried with feedback, then flagged or
-turned into an explicit "not found".
+## What problem it solves
 
-See [why context engineering](why.md) for what changes and [benchmarks](benchmarks.md) for measured results, including where Foveate
-does not help.
+Sending a whole document to a model has four costs: it may not fit, it costs money every time, it is
+slow, and the model reads long prompts less reliably. Plain retrieval fixes some of that but leaves
+you with chunks that have no page numbers and answers nobody checks. [Why context
+engineering](why.md) explains the trade-offs and where Foveate fits among the alternatives.
 
-## Who it is for
+## What is in the box
 
-* Developers building document Q&A, research, finance, legal or support tools.
-* Agent builders whose context fills up with tool output and chat history.
-* Teams that must be able to audit an answer (which page said that?).
-* Anyone running small local models (4-32k windows) where "send everything"
-  is impossible.
+| Area | What you get | Learn more |
+|---|---|---|
+| Documents | PDF, DOCX, HTML, Markdown and text as numbered pages | [Pages and documents](learn/pages-and-documents.md) |
+| Selection | Keyword search, embeddings, hybrid, query expansion, re-ranking | [Selecting pages](learn/selection.md) |
+| Foveation | Full, condensed, outline and dropped tiers inside a token budget | [Foveation](learn/foveation.md) |
+| Grounding | Page citations, checked quotes, retry, abstention | [Grounded answers](learn/grounding.md) |
+| Planning | Tokens and cost before any model call | [Planning and cost](learn/planning.md) |
+| Compression | Chat history and tool output, with and without a model | [Compression](learn/compression.md) |
+| Memory | Session notes, durable facts, recall | [Memory](learn/memory.md) |
+| Reliability | Cache, retries, timeouts, circuit breaker, rate limits, reasoning-model recovery | [Reliability](learn/reliability.md) |
+| Safety | Fencing and checks for untrusted text | [Safety](learn/safety.md) |
+| Evaluation | Benchmarks and a starter test set from your own files | [Evaluating](guides/evaluating.md) |
 
-## When to use it (and when not)
+## What it is not
 
-Use it when documents are bigger than you want to pay to send, bigger than the
-window, or when answers must be cited and verifiable.
+* Not a vector database. It uses the retriever you configure and keeps vectors in a local cache.
+* Not an agent framework. It plugs into [Pydantic AI, Google ADK, LangGraph and Strands
+  Agents](guides/agents-and-tools.md) through small separate packages.
+* Not a guarantee. The [benchmarks](benchmarks.md) show where it helps and where it does not.
 
-Skip it when everything already fits comfortably in a few thousand tokens and
-nobody needs to audit the answer: just send it.
+## Status
 
-## Where it runs
-
-Python 3.10-3.13 on Linux, macOS and Windows. Works with any model reachable
-through LiteLLM, any OpenAI-compatible server (vLLM, Ollama, NVIDIA, Together,
-...), or an in-process vLLM engine. Plugs into Pydantic AI, Google ADK and
-LangGraph. Compression that needs no model is built in.
-
-## How to start
-
-```bash
-pip install foveate            # core, no required dependencies
-pip install "foveate[pdf]"     # to read PDFs
-```
-
-Then follow the [quickstart](quickstart.md) (5 minutes), read the
-[concepts](concepts.md), or jump to a guide:
-
-* [Long documents and page control](guides/long-documents.md)
-* [Agents and tools](guides/agents-and-tools.md)
-* [Local models with vLLM](guides/local-models.md)
-* [Evaluating your own pipeline](guides/evaluating.md)
-* [Production](guides/production.md)
-
-## What it contains
-
-| Area | What you get |
-|---|---|
-| Documents | PDF, DOCX, HTML, Markdown, text loaders; page-addressable `Document` |
-| Selection | BM25 (no dependencies), embeddings, hybrid fusion, LLM re-rank |
-| Foveation | Full / condensed / outline / dropped tiers under a token budget |
-| Grounding | Page citations verified against the source, retry, abstention |
-| Planning | `Plan`: tokens and cost before any model call |
-| Compression | Chat history and tool output: ppa, hierarchical, ushape, window, extractive, truncate, offload, tool-output reducers, pipelines |
-| Agents | `read_pages` / `search_document` tools and history compression for Pydantic AI, ADK, LangGraph |
-| Reliability | Retry, timeout, circuit breaker, rate limit, deadline, cache, single-flight |
-| Observability | Typed events, metrics, OpenTelemetry spans |
-| Safety | Prompt-injection fencing for retrieved text |
-| Evaluation | A long-document benchmark with gold sets you can rerun |
-
-Also: [reference](reference/index.md), [FAQ](faq.md), [roadmap](roadmap.md).
+Version 0.2.0, beta. The API may change between minor versions; the [changelog](../CHANGELOG.md) lists
+what changed. Source and issues: [github.com/sachncs/foveate](https://github.com/sachncs/foveate).

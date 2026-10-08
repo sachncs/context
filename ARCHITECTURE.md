@@ -25,10 +25,10 @@ Context (frozen)  --compress()-->  Context (frozen, with CompressionReport)
 
 | Layer | Package / module | Role |
 |---|---|---|
-| API | `foveator`, `context`, `integrations` | `Foveator.ask/plan`; `Context.compress`; agent tools and history adapters |
+| API | `foveator`, `context`, `agents` | `Foveator.ask/plan`; `Context.compress`; framework-neutral agent tools and history compression |
 | Documents | `documents`, `selection`, `foveation`, `assembly`, `grounding`, `models`, `fencing` | Pages, retrieval, fidelity tiers, slots, citation checks, model windows, injection fencing |
 | Strategies | `compression`, `verification` | `Compressor`, `Verifier` ABCs and implementations |
-| Domain | `partition`, `okf`, `stores`, `evolution`, `bench` | Partitioners, OKF model/bundles, notes stores, ACE, benchmarks |
+| Domain | `partition`, `okf`, `stores`, `memory`, `bench` | Partitioners, OKF model/bundles, notes stores, agent memory, benchmarks |
 | Services | `runtime` | `Runtime.complete`: cache, single-flight, validation, accounting |
 | I/O | `backends`, `cache`, `tokenizers` | Providers + resilience, caches, token counting |
 | Foundation | `messages`, `errors`, `usage`, `prompts`, `observability`, `tracing`, `internals` | Value types and helpers |
@@ -48,14 +48,13 @@ the known ones.
 | `Embedder` | | `HashingEmbedder`, `OpenAIEmbedder` |
 | `Reducer` | `json`, `csv`, `html`, `log` | used by `tool_output` |
 | `Pipeline` (bench) | `full-context`, `truncate`, `naive-rag`, `foveate` | |
-| `Backend` | `litellm`, `openai`, `vllm`, `none` | wrapped by `ResilientBackend` |
+| `Backend` | `openai` (stdlib HTTP, any OpenAI-compatible server), `vllm`, `none` | wrapped by `ResilientBackend` |
 | `Cache` | `memory`, `sqlite`, `null` | |
 | `Tokenizer` | `heuristic`, `tiktoken` | |
 | `Partitioner` | `recursive`, `fixed` | |
 | `Codec` | `okf`, `json` | |
 | `NotesStore` | `memory`, `filesystem` | |
 | `CuratorOp` | `ADD`, `UPDATE`, `MERGE`, `DELETE` | |
-| `Benchmark` | `finer`, `formula`, `ddxplus` | |
 | `Observer` | | `LoggingObserver`, `MetricsObserver`, `TracingObserver` |
 | `HistoryAdapter` | | Pydantic AI, ADK, LangChain/LangGraph messages |
 
@@ -80,7 +79,7 @@ from a `PromptTemplate`, routes it through `Runtime.complete`, and records a
 
 ## Runtime.complete: the only LLM call path
 
-Every LLM call in the library (compression, verification, evolution, bench)
+Every LLM call in the library (compression, verification, memory, bench)
 goes through `Runtime.complete`:
 
 1. Build a `Request` and a cache key from `namespace` + the **full request
@@ -116,15 +115,23 @@ primitives are bound to the loop that created them. `internals.looplocal`
 gives every running loop its own provider client, semaphore and pacing lock
 (held weakly), which prevents "Event loop is closed" errors on repeated calls.
 
-## Agent-framework integrations
+## Agents without framework dependencies
 
-`integrations.history.HistoryCompressor` is framework-neutral: if the history
-fits, it is returned untouched; otherwise it cuts at a turn boundary (never
-between a tool call and its result), flattens the older messages to text,
-compresses them with `ushape` (one transcript, leading system messages kept)
-and falls back to an offline method on provider failure. A `HistoryAdapter`
-maps one framework's messages; `pydantic_ai`, `adk` and `langgraph` supply the
-framework hook around it.
+`foveate.agents.HistoryCompressor` is framework-neutral: if the history fits, it is returned untouched;
+otherwise it cuts at a turn boundary (never between a tool call and its result), flattens the older messages
+to text, compresses them (`ushape` by default, with leading system messages kept) and falls back to an offline
+method on provider failure. A `HistoryAdapter` maps one framework's messages to plain text and back.
+`DocumentTools` gives any agent `read_pages`, `search_document` and `document_outline` as typed functions.
+
+The adapters for Pydantic AI, Google ADK, LangGraph and Strands Agents are separate packages in the
+`integrations/` directory (`foveate-pydantic-ai`, `foveate-adk`, `foveate-langgraph`, `foveate-strands`). The
+core package imports none of those frameworks, so installing Foveate never pulls in an agent stack.
+
+## No SDKs in the core
+
+Model calls use `urllib` in a worker thread (`backends/http.py`), speaking the OpenAI chat-completions and
+embeddings formats that vLLM, Ollama, NVIDIA, Together and most gateways also serve. HTTP statuses map onto the
+transient/permanent error taxonomy (429 and `Retry-After`, 408, 409 and 5xx are retried; other 4xx are not).
 
 ## Naming rule: no underscore-prefixed names
 

@@ -32,9 +32,43 @@ export default defineConfig({
           label: 'Start here',
           items: [
             { label: 'Overview', slug: 'docs' },
-            { label: 'Why context engineering', slug: 'docs/why' },
             { label: 'Quickstart', slug: 'docs/quickstart' },
-            { label: 'Concepts', slug: 'docs/concepts' },
+            { label: 'Install and connect a model', slug: 'docs/install' },
+            { label: 'Why context engineering', slug: 'docs/why' },
+          ],
+        },
+        {
+          label: 'Learn',
+          items: [
+            { label: 'What is context engineering?', slug: 'docs/learn/context-engineering' },
+            { label: 'Pages and documents', slug: 'docs/learn/pages-and-documents' },
+            { label: 'Selecting pages', slug: 'docs/learn/selection' },
+            { label: 'Foveation', slug: 'docs/learn/foveation' },
+            { label: 'Grounded answers', slug: 'docs/learn/grounding' },
+            { label: 'Planning and cost', slug: 'docs/learn/planning' },
+            { label: 'Compressing history and tool output', slug: 'docs/learn/compression' },
+            { label: 'Memory', slug: 'docs/learn/memory' },
+            { label: 'Reliability', slug: 'docs/learn/reliability' },
+            { label: 'Safety', slug: 'docs/learn/safety' },
+            { label: 'Glossary', slug: 'docs/learn/glossary' },
+          ],
+        },
+        {
+          label: 'The playbook',
+          items: [
+            { label: 'Overview', slug: 'docs/playbook' },
+            { label: '1. Measure first', slug: 'docs/playbook/01-measure-first' },
+            { label: '2. Send less, not more', slug: 'docs/playbook/02-send-less' },
+            { label: '3. Evidence at the edges', slug: 'docs/playbook/03-edges' },
+            { label: '4. Keep prefixes stable', slug: 'docs/playbook/04-stable-prefixes' },
+            { label: '5. Trim before you summarise', slug: 'docs/playbook/05-trim-first' },
+            { label: '6. Clear old tool output', slug: 'docs/playbook/06-clear-tool-output' },
+            { label: '7. Pull context just in time', slug: 'docs/playbook/07-just-in-time' },
+            { label: '8. Two kinds of memory', slug: 'docs/playbook/08-memory' },
+            { label: '9. Cite and verify', slug: 'docs/playbook/09-cite-and-verify' },
+            { label: '10. Abstain', slug: 'docs/playbook/10-abstain' },
+            { label: '11. Fence untrusted text', slug: 'docs/playbook/11-fence-untrusted-text' },
+            { label: '12. Tell the model its room', slug: 'docs/playbook/12-room' },
           ],
         },
         {
@@ -51,11 +85,18 @@ export default defineConfig({
           label: 'Evidence',
           items: [
             { label: 'Benchmarks', slug: 'docs/benchmarks' },
-            { label: 'The twelve rules', slug: 'docs/playbook' },
             { label: 'Research and sources', slug: 'docs/research' },
           ],
         },
-        { label: 'Reference', items: [{ label: 'API and settings', slug: 'docs/reference' }] },
+        {
+          label: 'Reference',
+          items: [
+            { label: 'API overview', slug: 'docs/reference' },
+            { label: 'Settings', slug: 'docs/reference/settings' },
+            { label: 'Errors', slug: 'docs/reference/errors' },
+            { label: 'Extending Foveate', slug: 'docs/reference/extending' },
+          ],
+        },
         {
           label: 'Project',
           items: [
