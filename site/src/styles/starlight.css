@@ -1,12 +1,26 @@
-/* Docs readability. */
-.sl-markdown-content { line-height: 1.7; }
+/* Docs: readable, editorial, consistent with the landing pages. */
+:root { --sl-text-body: 1rem; --sl-line-height: 1.75; }
+.sl-markdown-content { line-height: 1.75; font-size: 1.02rem; }
 .sl-markdown-content :not(a, strong, em, del, span, input, code, br, svg, path)
   + :not(a, strong, em, del, span, input, code, br, svg, path, :where(.not-content *)) {
-  margin-top: 1.1rem;
+  margin-top: 1.15rem;
 }
-.sl-markdown-content table { display: block; overflow-x: auto; font-size: 0.92rem; }
-.sl-markdown-content th { text-align: left; }
-.sl-markdown-content :not(pre) > code { font-size: 0.88em; padding: 0.1em 0.35em; border-radius: 5px; }
-.hero-note { color: var(--muted); }
+h1#_top { font-family: var(--font-serif); font-weight: 400; font-size: clamp(2.4rem, 5vw, 3.4rem); letter-spacing: -0.015em; line-height: 1.05; }
+.sl-markdown-content h2 { font-family: var(--font-serif); font-weight: 400; font-size: 2rem; letter-spacing: -0.01em; margin-top: 2.6rem; padding-top: 1.4rem; border-top: 1px solid var(--border); }
+.sl-markdown-content h3 { font-size: 1.15rem; font-weight: 640; margin-top: 2rem; }
+.sl-markdown-content table { display: block; overflow-x: auto; font-size: 0.93rem; border-collapse: collapse; }
+.sl-markdown-content th { text-align: left; font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 650; }
+.sl-markdown-content th, .sl-markdown-content td { padding: 0.65rem 0.9rem; border-bottom: 1px solid var(--border); vertical-align: top; }
+.sl-markdown-content :not(pre) > code { font-size: 0.86em; padding: 0.12em 0.4em; border-radius: 6px; border: 1px solid var(--border); background: var(--surface-2); }
+.sl-markdown-content blockquote { border-left: 2px solid var(--accent); padding-left: 1.2rem; color: var(--muted); }
+.sl-markdown-content a { text-underline-offset: 3px; }
+.sl-markdown-content hr { border-color: var(--border); }
+.content-panel { padding-block: 2.5rem; }
+.sidebar-content { font-size: 0.92rem; }
+.sidebar-content summary { font-weight: 650; letter-spacing: 0.01em; }
+.right-sidebar-panel h2 { font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+footer.sl-flex { margin-top: 3rem; }
+.pagination-links a { border-radius: var(--radius); border-color: var(--border-strong); }
+header.header { backdrop-filter: blur(12px); }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }

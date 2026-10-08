@@ -1,0 +1,45 @@
+---
+import { readSummary } from '../data/results';
+
+const base = import.meta.env.BASE_URL;
+const run = readSummary('run1');
+const needle = readSummary('needle', 'literal');
+const row = (name: string) => run?.rows.find((r: any) => r.pipeline === name);
+const foveate = row('foveate');
+const plain = row('naive-rag');
+const full = row('full-context');
+const pct = (x: number) => `${Math.round(x * 100)}%`;
+const longest = needle ? Math.max(...needle.cells.map((c: any) => c.length)) : 0;
+const at = (p: string) => needle?.cells.find((c: any) => c.pipeline === p && c.length === longest && c.depth === 0.5);
+const share = at('foveate') && at('full-context') ? at('foveate').prompt_tokens / at('full-context').prompt_tokens : null;
+const stats = foveate && plain && full ? [
+  { value: pct(foveate.accuracy), label: 'of questions answered correctly', note: `against ${pct(plain.accuracy)} for plain retrieval and ${pct(full.accuracy)} for sending the whole filing` },
+  { value: pct(foveate.correct_abstain), label: 'correct refusals', note: `on ${foveate.unanswerable} questions the filing could not answer; sending everything answered ${pct(full.hallucinated)} of them anyway` },
+  { value: pct(foveate.grounded), label: 'answers with every quote verified', note: `against ${pct(plain.grounded)} for plain retrieval; each quote is checked against its page` },
+  ...(share ? [{ value: pct(share), label: 'of the tokens to find a hidden fact', note: `in ${Math.round(longest / 1000)},000 tokens of text, matching what sending everything found` }] : []),
+] : [];
+---
+{stats.length > 0 && (
+  <div class="proof">
+    <dl>
+      {stats.map((s) => (
+        <div class="stat">
+          <dt>{s.label}</dt>
+          <dd><span class="num">{s.value}</span></dd>
+          <p>{s.note}</p>
+        </div>
+      ))}
+    </dl>
+    <p class="caveat">Thirty real filing questions, one answer model (gpt-oss-20b). Foveate also trails plain retrieval at finding hidden facts in long pages and at giving the same answer to reworded questions. <a href={`${base}evidence/`}>See every result</a>.</p>
+  </div>
+)}
+<style>
+  dl { display: grid; grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr)); margin: 0; border-top: 1px solid var(--border-strong); }
+  .stat { padding: var(--space-6) var(--space-6) var(--space-6) 0; border-bottom: 1px solid var(--border); display: grid; align-content: start; gap: .35rem; }
+  @media (min-width: 62rem) { .stat { border-bottom: 0; border-right: 1px solid var(--border); padding-left: var(--space-6); } .stat:first-child { padding-left: 0; } .stat:last-child { border-right: 0; } }
+  dt { order: 2; font-size: .92rem; font-weight: 600; color: var(--text); }
+  dd { order: 1; margin: 0; }
+  .num { font-family: var(--font-serif); font-size: clamp(3.4rem, 6vw, 4.6rem); line-height: 1; letter-spacing: -.02em; font-variant-numeric: lining-nums; }
+  .stat p { order: 3; font-size: .86rem; color: var(--muted); line-height: 1.5; }
+  .caveat { margin-top: var(--space-6); font-size: .88rem; color: var(--muted); max-width: 52rem; }
+</style>
