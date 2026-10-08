@@ -18,7 +18,7 @@ import logging
 import time
 from collections.abc import Sequence
 
-from foveate import assembly, errors, models, prompts
+from foveate import assembly, errors, fencing, models, prompts
 from foveate import messages as messages_lib
 from foveate import runtime as runtime_lib
 from foveate import usage as usage_lib
@@ -238,12 +238,15 @@ class Foveator:
 
     def render(self, fov: Foveation) -> tuple[str, str]:
         """Returns `(outline, pages)` text for the prompt."""
-        outline = "\n".join(p.text for p in fov.tier(Tier.OUTLINE)) or "(none)"
+        outline = (
+            "\n".join(fencing.escape(p.text) for p in fov.tier(Tier.OUTLINE))
+            or "(none)"
+        )
         parts = []
         for page in fov.shown():
             tag = f"[{page.doc_id} p.{page.page}"
             tag += " | condensed]" if page.tier is Tier.CONDENSED else "]"
-            parts.append(f"{tag}\n{page.text}")
+            parts.append(f"{tag}\n{fencing.escape(page.text)}")
         return outline, "\n\n".join(parts) or "(no pages)"
 
     async def ask_once(

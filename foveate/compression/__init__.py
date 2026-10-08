@@ -18,6 +18,7 @@ from foveate.compression.report import (
     StepRecord,
     Trace,
 )
+from foveate.compression.tooloutput import Reducer, ToolOutput
 from foveate.compression.truncate import Side, Truncate
 from foveate.compression.ushape import MiddleMode, UShape
 from foveate.compression.window import SlidingWindow
@@ -100,9 +101,11 @@ __all__ = [
     "Overflow",
     "PartitionSummarizeCombine",
     "Pipeline",
+    "Reducer",
     "Side",
     "SlidingWindow",
     "StepRecord",
+    "ToolOutput",
     "Trace",
     "Truncate",
     "UShape",
