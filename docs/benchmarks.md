@@ -155,6 +155,65 @@ points on top of embeddings. Reordering pages changes what the model sees, not w
 are chosen, so it does not move this measure. Whether better retrieval raises answer accuracy
 and consistency is measured in the next run (it is not claimed here).
 
+## Compression: how far can the context shrink?
+
+Each method gets the same token budget (the original size divided by the ratio) and a fact is
+planted where naive compression loses it. Then the model answers from the compressed text.
+Answer model `gpt-oss-20b`; **4 samples per cell**, so each percentage moves in steps of
+25 points and small differences mean nothing. All methods here need no model call (the
+model-based `ppa` strategy was too slow for this rate-limited key and is not in this sweep).
+Raw results: `bench/results/compression/`. Tasks:
+
+* **document**: one sentence hidden in the middle of about 6,000 tokens of prose.
+* **history**: a setting stated once, early in a long chat.
+* **atoms**: six facts of different importance stated once each in a long chat; we also
+  count how many survive (critical atom recall), without asking the model.
+* **tool**: one field in a large JSON tool result.
+* **qa**: HotpotQA (public multi-hop questions, ten paragraphs each), scored by exact match
+  and F1 as in the compression papers.
+
+Correct answers at 4x and 16x compression:
+
+| Task | Method | 4x | 16x |
+|---|---|---|---|
+| document | query-aware | 100% | 100% |
+| document | selective | 100% | 100% |
+| document | Foveate (4x only; needs 1,500 tokens) | 100% | n/a |
+| document | extractive, truncate | 0% | 0% |
+| history | extractive, query-aware | 100% | 100% |
+| history | selective | 0% | 0% |
+| history | truncate, window, drop-the-middle | 0-100%* | 0% |
+| atoms (facts kept) | extractive, query-aware, selective | 100% | 100% |
+| atoms (facts kept) | truncate, window, drop-the-middle | 0-100%* | 0% |
+| tool | query-aware | 50% | 50% |
+| tool | structure-preserving reducer (`tool_output`) | 0% | 0% |
+| qa (F1 >= 0.5 or exact) | query-aware | 75% | 75% |
+| qa | truncate | 75% | 50% |
+| qa | extractive, selective | 25-50% | 0-25% |
+| qa | uncompressed reference | 50% | n/a |
+
+\* `truncate` keeps the beginning, so it passes while the planted fact is still within the
+kept part and fails after; at 8x and 16x it could not reach the budget on a chat made of many
+short messages (recorded as errors, counted as wrong).
+
+What this suggests, with the caveat of four samples per cell and synthetic filler:
+
+* **The compressor has to know the question.** Methods that look at the question or at word
+  rarity (`query`, `selective`) kept the planted fact at 16x in the document task; methods that
+  cut by position or by word frequency lost it. This matches the finding of query-conditioned
+  compression papers.
+* **No method wins everywhere.** `selective` kept the fact in a document but not in a chat;
+  `extractive` kept it in a chat but not in a document. Picking a method per task, and
+  measuring, matters; this is the "rankings change between tasks and models" result of the
+  *Beyond Token Savings* study, seen on a small scale.
+* **A structure-preserving reducer is the wrong tool when the answer is one specific row.**
+  `tool_output` keeps a JSON's shape and cuts rows, so the row the question needs was usually
+  gone. Use it to keep an agent's history small, and a query-aware method when you need a value.
+* **On HotpotQA, query-aware compression kept answers usable down to 16x**: F1 0.77 against
+  0.70 uncompressed on four questions, which is within noise but shows no loss.
+* The model-based `ppa` strategy, the sweep over more samples, and a second answer model are
+  not done yet.
+
 ## Needle in a haystack
 
 A fact is hidden at a known depth in a long text and the model is asked for it. Same pipelines,
