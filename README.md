@@ -51,8 +51,10 @@ When the document does not contain the answer, you get an explicit
 
 Thirty questions is a small sample, so read differences under about 15 points as likely rather
 than certain. Foveate is no better than plain retrieval at finding the evidence page (67% against
-66%), uses more tokens than it, and is less consistent across reworded questions. These are the
-first things being worked on.
+66%), uses more tokens than it, and is less consistent across reworded questions. A second run with embeddings and query expansion raised
+how often the evidence page reached the prompt but not the answer accuracy (Foveate 60%, plain RAG with
+the same embeddings 47%), and Foveate missed a hidden sentence in long pages that plain RAG found.
+These are the first things being worked on.
 
 
 ## What you get

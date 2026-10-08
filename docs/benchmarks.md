@@ -155,6 +155,40 @@ points on top of embeddings. Reordering pages changes what the model sees, not w
 are chosen, so it does not move this measure. Whether better retrieval raises answer accuracy
 and consistency is measured in the next run (it is not claimed here).
 
+## Run 2: embeddings and query expansion
+
+The retrieval check above says better retrieval puts the evidence page in the prompt far more
+often. Run 2 asks whether that turns into better answers. Same 30 questions, paraphrases,
+unanswerable questions and needles as run 1, same model and 12,000-token budget, three runs.
+Both pipelines now retrieve with embeddings (`nvidia/nemotron-3-embed-1b`); Foveate also writes
+two alternative search phrasings per question. `full-context` and `truncate` do not retrieve
+and were not repeated. Raw results: `bench/results/run2/`.
+
+| | Plain RAG (embeddings) | Foveate (embeddings + expansion) |
+|---|---|---|
+| Correct answers | 47% | **60%** |
+| Wrongly said "not found" | 30% | **3%** |
+| Gold evidence page cited (recall) | 79% | 76% |
+| Every cited quote found on its page | 86% | 86% |
+| Abstains on unanswerable questions | 100% | 100% |
+| Same verdict across paraphrases and runs | 53% | 50% |
+| Needle found (10 items) | **100%** | 80% |
+| Mean prompt tokens | **11,081** | 16,080 |
+| Median latency | **6.3 s** | 10.5 s |
+
+* **Retrieval improved, answers did not.** Gold-page recall rose from 66-67% to 76-79% for
+  both pipelines, but correctness did not rise (Foveate 67% to 60%, plain RAG 50% to 47%, both
+  within the noise of 30 questions). The evidence page reaching the prompt is necessary, not
+  sufficient: the model still has to read a financial statement correctly.
+* **Foveate's lead over plain RAG held** (60% against 47%), mostly because plain RAG said
+  "not found" on 30% of answerable questions while Foveate's second round and condensed
+  neighbours cut that to 3%.
+* **Where Foveate lost.** It missed the hidden sentence in two of the four mid-document
+  needle items (50% at 50% and 75% depth), where plain RAG found all of them, because it
+  ranks whole pages and a short sentence inside a long page scores lower than in a small chunk.
+  It also sent about 45% more tokens and took about 66% longer.
+* **Consistency did not improve** (50% to 53% across paraphrases and runs).
+
 ## Compression: how far can the context shrink?
 
 Each method gets the same token budget (the original size divided by the ratio) and a fact is
