@@ -76,15 +76,16 @@ class Loader(abc.ABC):
 
 
 def decode(data: bytes) -> str:
-    """Decodes UTF-8 text (BOM tolerated).
+    """Decodes UTF-8 text (BOM tolerated) and normalises line endings to LF.
 
     Raises:
         ValidationError: If the bytes are not valid UTF-8.
     """
     try:
-        return data.decode("utf-8-sig")
+        text = data.decode("utf-8-sig")
     except UnicodeDecodeError as exc:
         raise errors.ValidationError(f"not valid UTF-8: {exc}") from exc
+    return text.replace("\r\n", "\n").replace("\r", "\n")
 
 
 @Loader.registry.register("text")
