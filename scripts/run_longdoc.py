@@ -11,10 +11,13 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import dataclasses
+import os
 import pathlib
 import sys
 
 from foveate import Runtime, models
+from foveate.backends.embeddings import OpenAIEmbedder
 from foveate.bench.longdoc import dataset, gold, runner
 
 ROOT = pathlib.Path(__file__).resolve().parents[1]
@@ -63,6 +66,20 @@ def needle_items(corpus: runner.Corpus, window: int) -> list[gold.GoldItem]:
     return [n for n in needles if n.doc_name in usable]
 
 
+def with_embedder(runtime: Runtime, model: str) -> Runtime:
+    """Returns `runtime` with an embedder when `model` is set."""
+    if not model:
+        return runtime
+    embedder = OpenAIEmbedder(
+        model,
+        base_url=os.environ.get("FOVEATE_BASE_URL"),
+        api_key=os.environ.get("OPENAI_API_KEY"),
+        passage_options={"input_type": "passage"},
+        query_options={"input_type": "query"},
+    )
+    return dataclasses.replace(runtime, embedder=embedder)
+
+
 def main() -> int:
     """Parses arguments and runs."""
     parser = argparse.ArgumentParser(description=__doc__)
@@ -76,10 +93,16 @@ def main() -> int:
     )
     parser.add_argument("--out", default=str(ROOT / "bench/results"))
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--retrieval", default="bm25", choices=("bm25", "embedding", "hybrid")
+    )
+    parser.add_argument("--expand", type=int, default=0)
+    parser.add_argument("--embedding-model", default="")
     args = parser.parse_args()
     items, chosen = select(args.n, args.seed)
     bench = dataset.FinanceBench()
-    with Runtime.from_env() as runtime:
+    with Runtime.from_env() as base_runtime:
+        runtime = with_embedder(base_runtime, args.embedding_model)
         corpus = runner.Corpus(bench, bench.questions(), runtime)
         window = (
             runtime.context_window
@@ -101,6 +124,8 @@ def main() -> int:
             budget=args.budget,
             runs=args.runs,
             concurrency=args.concurrency,
+            retrieval=args.retrieval,
+            expand=args.expand,
         )
         report = asyncio.run(
             runner.run(items, corpus, runtime, runtime, config, print)
