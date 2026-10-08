@@ -78,9 +78,6 @@ jobs:
           python - <<'PY'
           import glob, zipfile
           names = zipfile.ZipFile(glob.glob("dist/*.whl")[0]).namelist()
-          for name in ("finer", "formula", "ddxplus"):
-              assert f"foveate/bench/fixtures/{name}.jsonl" in names, name
-              assert f"foveate/bench/seeds/{name}.md" in names, name
           assert "foveate/py.typed" in names
           assert any(n.startswith("foveate/bench/longdoc/gold/") for n in names)
           stray = [n for n in names if not n.split("/")[0] in ("foveate",) and ".dist-info" not in n.split("/")[0]]
@@ -92,7 +89,7 @@ jobs:
           "$RUNNER_TEMP/venv/bin/pip" install dist/*.whl
           cd "$RUNNER_TEMP"
           "$RUNNER_TEMP/venv/bin/python" -I -c "import foveate, importlib.metadata as m; assert foveate.__version__ == m.version('foveate')"
-          "$RUNNER_TEMP/venv/bin/python" -I -c "from foveate.bench import Formula; assert len(Formula().seed_playbook()) > 0 and len(Formula().load_samples()) == 20"
+          "$RUNNER_TEMP/venv/bin/python" -I -c "import importlib.resources as r; p = r.files('foveate').joinpath('bench/longdoc/gold/answerable.jsonl'); assert len(p.read_text(encoding='utf-8').splitlines()) > 100"
           "$RUNNER_TEMP/venv/bin/python" -I -c "from foveate import Document, Foveator, Runtime; d = Document.load(b'a b c. ' * 400, format='text', doc_id='x'); p = Foveator(Runtime.without_llm(), budget=1000).plan('a?', [d]); assert p.document_tokens > 0"
 
   site:

@@ -82,7 +82,7 @@ report = await run(items, corpus, answer_runtime, judge_runtime,
                    Config(pipelines=("full-context", "naive-rag", "foveate"),
                           budget=6000, runs=3))
 print(report.to_markdown())
-report.write("bench/results")
+report.write("results")
 ```
 
 The FinanceBench loader downloads the public questions and filings into

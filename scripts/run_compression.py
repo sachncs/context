@@ -4,7 +4,7 @@
     python scripts/run_compression.py --tasks document --methods truncate,query
 
 The answer model comes from the FOVEATE_* environment variables. Results go
-to bench/results/compression/.
+to results/compression/.
 """
 
 from __future__ import annotations
@@ -29,9 +29,7 @@ def main() -> int:
     parser.add_argument("--samples", type=int, default=6)
     parser.add_argument("--tokens", type=int, default=6000)
     parser.add_argument("--concurrency", type=int, default=3)
-    parser.add_argument(
-        "--out", default=str(ROOT / "bench/results/compression")
-    )
+    parser.add_argument("--out", default=str(ROOT / "results/compression"))
     args = parser.parse_args()
     config = compression.Config(
         tasks=tuple(args.tasks.split(",")),

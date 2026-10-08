@@ -5,13 +5,13 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "foveate"
 version = "0.2.0"
-description = "Partition-Prompt-Aggregate context engineering for LLMs."
+description = "Context engineering for LLM apps: page selection, verified citations, compression and evaluation. No required dependencies."
 readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.10"
 authors = [{ name = "Sachin" }]
 maintainers = [{ name = "Sachin", email = "sachncs@gmail.com" }]
-keywords = ["llm", "context-engineering", "compression", "vllm", "litellm"]
+keywords = ["llm", "context-engineering", "rag", "compression", "long-context", "agents"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
@@ -28,9 +28,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-litellm = ["litellm>=1.40,<2"]
 vllm = ["vllm>=0.29.0"]
-openai = ["openai>=1.0,<4"]
 tokenize = ["tiktoken>=0.5"]
 pdf = ["pypdf>=4"]
 docx = ["python-docx>=1"]
@@ -49,14 +47,6 @@ dev = [
     "ruff>=0.6",
     "mypy>=1.10",
 ]
-frameworks = [
-    "pydantic-ai-slim[openai]>=2",
-    "google-adk>=1.10",
-    "litellm>=1.40,<2",
-    "langgraph>=1.0",
-    "langchain-openai>=1.0",
-]
-all = ["litellm>=1.40,<2", "vllm>=0.29.0", "openai>=1.0,<4", "tiktoken>=0.5"]
 
 [project.urls]
 Homepage = "https://github.com/sachncs/foveate"
@@ -68,7 +58,7 @@ Changelog = "https://github.com/sachncs/foveate/blob/master/CHANGELOG.md"
 include = ["foveate*"]
 
 [tool.setuptools.package-data]
-foveate = ["py.typed", "bench/fixtures/*.jsonl", "bench/seeds/*.md", "bench/longdoc/gold/*.jsonl"]
+foveate = ["py.typed", "bench/longdoc/gold/*.jsonl"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -81,12 +71,6 @@ source = ["foveate"]
 
 [tool.coverage.report]
 fail_under = 90
-omit = [
-    # Covered by the framework CI job (needs the heavy framework packages).
-    "foveate/integrations/pydantic_ai.py",
-    "foveate/integrations/adk.py",
-    "foveate/integrations/langgraph.py",
-]
 exclude_lines = [
     "pragma: no cover",
     "if TYPE_CHECKING:",
@@ -114,7 +98,7 @@ convention = "google"
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["D", "S101", "ANN", "S311", "N818", "RUF059", "SIM117", "E501"]
 "examples/**" = ["D", "ANN", "S101", "E501", "S105"]
-"foveate/evolution/prompts.py" = ["E501"]  # verbatim upstream prompt text
+"integrations/**" = ["D", "ANN", "S101", "E501", "N818", "SIM117"]
 
 [tool.mypy]
 python_version = "3.10"
@@ -124,7 +108,6 @@ files = ["foveate"]
 
 [[tool.mypy.overrides]]
 module = [
-    "litellm.*", "openai.*", "vllm.*", "tiktoken.*", "yaml.*",
-    "pydantic_ai.*", "google.*", "langchain_core.*", "langgraph.*",
+    "vllm.*", "tiktoken.*", "yaml.*",
 ]
 ignore_missing_imports = true

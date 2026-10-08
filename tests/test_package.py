@@ -37,4 +37,4 @@ def test_package_data_declared_for_resources():
         (ROOT / "pyproject.toml").read_text(encoding="utf-8")
     )
     data = config["tool"]["setuptools"]["package-data"]["foveate"]
-    assert "bench/fixtures/*.jsonl" in data and "bench/seeds/*.md" in data
+    assert "bench/longdoc/gold/*.jsonl" in data and "py.typed" in data

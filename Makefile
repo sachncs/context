@@ -1,4 +1,4 @@
-.PHONY: setup test lint format typecheck check build site clean
+.PHONY: setup test lint format typecheck check integrations build site clean
 
 PYTHON ?= python3
 VENV ?= .venv
@@ -13,15 +13,18 @@ test:
 	$(BIN)/pytest --cov --cov-report=term-missing
 
 lint:
-	$(BIN)/ruff check foveate tests examples
-	$(BIN)/ruff format --check foveate tests examples
+	$(BIN)/ruff check foveate tests examples integrations scripts
+	$(BIN)/ruff format --check foveate tests examples integrations scripts
 
 format:
-	$(BIN)/ruff check --fix foveate tests examples
-	$(BIN)/ruff format foveate tests examples
+	$(BIN)/ruff check --fix foveate tests examples integrations scripts
+	$(BIN)/ruff format foveate tests examples integrations scripts
 
 typecheck:
 	$(BIN)/mypy
+
+integrations:
+	for d in integrations/*/; do (cd $$d && ../../$(BIN)/pip install -q -e . && ../../$(BIN)/pytest -q --no-cov -p no:cacheprovider -W ignore tests) || exit 1; done
 
 check: lint typecheck test
 

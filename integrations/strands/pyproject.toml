@@ -1,0 +1,28 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "foveate-strands"
+version = "0.2.0"
+description = "Foveate for Strands Agents: page tools and history compression."
+readme = "README.md"
+license = { text = "Apache-2.0" }
+requires-python = ">=3.10"
+dependencies = ["foveate>=0.2.0", "strands-agents>=1.0"]
+keywords = ["llm", "context-engineering", "agents"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Typing :: Typed",
+]
+
+[project.urls]
+Homepage = "https://github.com/sachncs/foveate"
+Issues = "https://github.com/sachncs/foveate/issues"
+
+[tool.setuptools.packages.find]
+include = ["foveate_strands*"]
+
+[tool.setuptools.package-data]
+foveate_strands = ["py.typed"]

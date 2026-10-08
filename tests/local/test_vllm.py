@@ -1,6 +1,6 @@
-"""Small local model served by vLLM (see docker/vllm-cpu/README.md).
+"""Small local model served by vLLM (see docker/README.md).
 
-    docker compose -f docker/vllm-cpu/compose.yml up -d
+    docker compose -f docker/compose.yml up -d
     FOVEATE_TEST_VLLM_URL=http://localhost:8000/v1 pytest tests/local
 
 Skipped unless FOVEATE_TEST_VLLM_URL is set.

@@ -1,7 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 
-const root = path.resolve(process.cwd(), '..', 'bench', 'results');
+const root = path.resolve(process.cwd(), 'src', 'data', 'results');
 
 export function readSummary(...parts: string[]): any | null {
   const file = path.join(root, ...parts, 'summary.json');

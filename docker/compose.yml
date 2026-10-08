@@ -1,0 +1,31 @@
+# vLLM on CPU, serving a small model through an OpenAI-compatible API.
+#
+#   docker compose -f docker/compose.yml up
+#   export FOVEATE_BASE_URL=http://localhost:8000/v1
+#   export FOVEATE_MODEL=openbmb/MiniCPM5-1B
+name: foveate-vllm
+services:
+  vllm:
+    image: vllm/vllm-openai-cpu:latest
+    command:
+      - --model=${VLLM_MODEL:-openbmb/MiniCPM5-1B}
+      - --served-model-name=${VLLM_MODEL:-openbmb/MiniCPM5-1B}
+      - --max-model-len=${VLLM_MAX_LEN:-8192}
+      - --dtype=bfloat16
+      - --trust-remote-code
+    environment:
+      VLLM_CPU_KVCACHE_SPACE: "${VLLM_KV:-4}"
+      HF_HOME: /models
+    volumes:
+      - hf-cache:/models
+    ports:
+      - "8000:8000"
+    shm_size: 4g
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:8000/v1/models"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 120s
+volumes:
+  hf-cache:

@@ -20,8 +20,8 @@ Chat histories and arbitrary messages go through `Context`:
     )
 
 Subpackages: `documents`, `selection`, `grounding`, `compression`,
-`verification`, `integrations` (Pydantic AI, Google ADK, LangGraph), `bench`,
-`okf`, `stores`, `evolution`, `backends`, `cache`, `tokenizers`.
+`verification`, `agents`, `bench`,
+`okf`, `stores`, `memory`, `backends`, `cache`, `tokenizers`.
 """
 
 from foveate import errors

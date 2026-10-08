@@ -19,8 +19,7 @@ htmlcov/
 .foveate_playbook_cache/
 *.db
 *.sqlite3
-bench/results/*
-!bench/results/.gitkeep
+results/
 .DS_Store
 .foveate/
 *.swp

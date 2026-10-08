@@ -4,7 +4,7 @@
     python scripts/run_needle.py --family nonliteral        # downloads NoLiMa
 
 The answer model comes from the FOVEATE_* environment variables. Results go
-to bench/results/needle/.
+to results/needle/.
 """
 
 from __future__ import annotations
@@ -94,7 +94,7 @@ def main() -> int:
     parser.add_argument(
         "--pipelines", default="full-context,truncate,naive-rag,foveate"
     )
-    parser.add_argument("--out", default=str(ROOT / "bench/results/needle"))
+    parser.add_argument("--out", default=str(ROOT / "results/needle"))
     args = parser.parse_args()
     holder: dict[str, needle.Source] = {}
     with Runtime.from_env() as base_runtime:
