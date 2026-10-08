@@ -29,11 +29,16 @@ class Config:
         pipelines: Pipeline names to compare.
         budget: Prompt budget for the evidence-limited pipelines.
         concurrency: Cases processed in parallel.
+        retrieval: `bm25`, `embedding` or `hybrid` for `naive-rag` and
+            `foveate`.
+        inference: Allow one inference step (needed for non-literal needles).
     """
 
     pipelines: tuple[str, ...] = DEFAULT_PIPELINES
     budget: int = 4_000
     concurrency: int = 3
+    retrieval: str = "bm25"
+    inference: bool = False
 
     def __post_init__(self) -> None:
         if self.budget < 2_000 or self.concurrency < 1:
@@ -214,7 +219,9 @@ async def run(
     """
     cfg = config or Config()
     built = {
-        name: pipelines.Pipeline.registry.get(name)(runtime, cfg.budget)
+        name: pipelines.Pipeline.registry.get(name)(
+            runtime, cfg.budget, cfg.retrieval, 0, cfg.inference
+        )
         for name in cfg.pipelines
     }
 

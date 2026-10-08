@@ -64,6 +64,19 @@ ANSWER = prompts.PromptTemplate(
         "{feedback}Question: {question}"
     ),
 )
+INFERENCE_NOTE = (
+    " You may draw a short, strong logical inference from the pages and "
+    "common knowledge (for example that a landmark is in a given city); "
+    "cite the page that contains the supporting fact."
+)
+ANSWER_INFERENCE = dataclasses.replace(
+    ANSWER,
+    name="foveator.answer.inference",
+    system=ANSWER.system.replace(
+        " Reply with a single JSON",
+        INFERENCE_NOTE + " Reply with a single JSON",
+    ),
+)
 ANSWER_TOKENS = 1_500
 FIXED_OVERHEAD = 400
 EXPANSION_PAGES = 4
@@ -115,6 +128,9 @@ class Foveator:
         budget: Prompt token budget; None derives it from the model window.
         retrieval: `bm25`, `embedding` or `hybrid`.
         rerank: Re-rank candidates with the model.
+        inference: Let the model combine the pages with common knowledge in
+            one short step (for questions whose wording differs from the
+            text); it must still cite the supporting page.
         expand: Number of alternative search phrasings the model writes for
             each question (0 disables). Costs one short call per question.
         k: Chunks retrieved per question.
@@ -136,6 +152,7 @@ class Foveator:
     retrieval: str = "hybrid"
     rerank: bool = False
     expand: int = 0
+    inference: bool = False
     k: int = 24
     chunker: chunking.Chunker | None = None
     foveation: FoveationConfig = dataclasses.field(
@@ -270,12 +287,13 @@ class Foveator:
     ) -> tuple[dict[str, object], str, usage_lib.Usage]:
         """Asks the model once and parses its JSON reply."""
         outline, pages = self.render(fov)
+        template = ANSWER_INFERENCE if self.inference else ANSWER
         completion = await self.runtime.complete(
             (
-                messages_lib.Message(messages_lib.Role.SYSTEM, ANSWER.system),
+                messages_lib.Message(messages_lib.Role.SYSTEM, template.system),
                 messages_lib.Message(
                     messages_lib.Role.USER,
-                    ANSWER.render_user(
+                    template.render_user(
                         question=question,
                         feedback=feedback,
                         outline=outline,
@@ -284,7 +302,7 @@ class Foveator:
                 ),
             ),
             source="foveator",
-            namespace=f"foveator:{ANSWER.fingerprint}:{self.run_tag}",
+            namespace=f"foveator:{template.fingerprint}:{self.run_tag}",
             max_tokens=self.answer_tokens,
             temperature=self.temperature,
         )
