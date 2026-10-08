@@ -15,11 +15,13 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
+from pydantic_ai import Tool
 from pydantic_ai import messages as pai
 
 from foveate import messages as messages_lib
 from foveate import runtime as runtime_lib
-from foveate.integrations import history
+from foveate.documents import document as document_lib
+from foveate.integrations import history, tools
 
 Role = messages_lib.Role
 
@@ -60,16 +62,16 @@ class PydanticAIAdapter(history.HistoryAdapter[pai.ModelMessage]):
                         )
                     )
         else:
-            for part in message.parts:
-                if isinstance(part, pai.TextPart):
+            for reply in message.parts:
+                if isinstance(reply, pai.TextPart):
                     flat.append(
-                        messages_lib.Message(Role.ASSISTANT, part.content)
+                        messages_lib.Message(Role.ASSISTANT, reply.content)
                     )
-                elif isinstance(part, pai.ToolCallPart):
+                elif isinstance(reply, pai.ToolCallPart):
                     flat.append(
                         messages_lib.Message(
                             Role.ASSISTANT,
-                            f"[tool call {part.tool_name}({part.args})]",
+                            f"[tool call {reply.tool_name}({reply.args})]",
                         )
                     )
         return [m for m in flat if m.content]
@@ -149,3 +151,14 @@ def history_processor(
             options=dict(options),
         )
     )
+
+
+def document_tools(
+    documents: Sequence[document_lib.Document], max_tokens: int = 4000
+) -> list[Tool[None]]:
+    """Returns `read_pages`, `search_document`, `document_outline` tools.
+
+    agent = Agent(model, tools=foveate_pai.document_tools([doc]))
+    """
+    toolbox = tools.DocumentTools(documents, max_tokens=max_tokens)
+    return [Tool(fn) for fn in toolbox.functions()]
