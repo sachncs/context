@@ -8,6 +8,10 @@ This project adheres to [Semantic Versioning](https://semver.org/).
 
 First release.
 
+### Dependencies
+
+- Pure Python with zero dependencies: model calls use the standard library, and OKF concepts and notes use JSON frontmatter instead of YAML.
+
 ### Long documents
 
 - `Document`: page-addressable documents with loaders for PDF, DOCX, HTML,

@@ -9,7 +9,7 @@ description: "Install Foveate, choose the optional extras, and point it at an Op
 pip install foveate
 ```
 
-The core package has one small dependency (PyYAML) and needs no model SDK. Add extras for what you use:
+The core package is pure Python with no dependencies and needs no model SDK. Add extras for what you use:
 
 | Extra | Adds | Needed for |
 |---|---|---|

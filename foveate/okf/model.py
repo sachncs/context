@@ -1,6 +1,6 @@
 """OKF (Open Knowledge Format) v0.1 data model and markdown rendering.
 
-A concept is one markdown file with YAML frontmatter; its bundle-relative
+A concept is one markdown file with JSON frontmatter; its bundle-relative
 path is its identity and cross-references are ordinary markdown links.
 Only `type` is mandatory. Unknown frontmatter keys flow into `extra` and
 must be scalars or lists of scalars (nested data belongs in the body).
@@ -13,13 +13,12 @@ from __future__ import annotations
 
 import dataclasses
 import datetime
+import json
 import pathlib
 import re
 from collections.abc import Mapping
 from types import MappingProxyType
 from typing import Any
-
-import yaml
 
 from foveate import errors
 
@@ -79,7 +78,7 @@ def require_integer(value: object, field: str) -> int:
 
 @dataclasses.dataclass(frozen=True, slots=True)
 class Frontmatter:
-    """YAML frontmatter of a concept.
+    """JSON frontmatter of a concept.
 
     Attributes:
         type: Mandatory concept type, e.g. "foveate/message".
@@ -139,7 +138,7 @@ class Frontmatter:
 
     @classmethod
     def from_mapping(cls, data: Mapping[str, Any]) -> Frontmatter:
-        """Builds frontmatter from parsed YAML.
+        """Builds frontmatter from parsed JSON.
 
         Raises:
             ValidationError: If `type` is missing or a field is mistyped.
@@ -186,12 +185,9 @@ class Concept:
 
     def render(self) -> str:
         """Renders OKF markdown text (frontmatter, blank line, body)."""
-        block = yaml.safe_dump(
-            self.frontmatter.to_mapping(),
-            sort_keys=False,
-            allow_unicode=True,
-            default_flow_style=False,
-        ).rstrip("\n")
+        block = json.dumps(
+            self.frontmatter.to_mapping(), ensure_ascii=False, indent=2
+        )
         body = self.body
         if body and not body.endswith("\n"):
             body += "\n"
@@ -210,7 +206,7 @@ class Concept:
         text = text.removeprefix("﻿")
         if not text.startswith("---\n"):
             raise errors.ValidationError(
-                "concept must begin with '---' and YAML frontmatter"
+                "concept must begin with '---' and JSON frontmatter"
             )
         remainder = text[4:]
         end = remainder.find("\n---\n")
@@ -222,13 +218,13 @@ class Concept:
         else:
             tail = remainder[end + 5 :]
         try:
-            loaded = yaml.safe_load(remainder[:end])
-        except yaml.YAMLError as exc:
+            loaded = (
+                json.loads(remainder[:end]) if remainder[:end].strip() else {}
+            )
+        except ValueError as exc:
             raise errors.ValidationError(
-                f"invalid frontmatter YAML: {exc}"
+                f"invalid frontmatter JSON: {exc}"
             ) from exc
-        if loaded is None:
-            loaded = {}
         if not isinstance(loaded, dict):
             raise errors.ValidationError("frontmatter must be a mapping")
         return cls(Frontmatter.from_mapping(loaded), tail.strip("\n"), path)

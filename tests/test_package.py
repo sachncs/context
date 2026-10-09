@@ -39,3 +39,17 @@ def test_package_data_declared_for_resources():
     data = config["tool"]["setuptools"]["package-data"]["foveate"]
     assert "bench/fixtures/*.jsonl" in data and "bench/seeds/*.md" in data
     assert "bench/longdoc/gold/*.jsonl" in data
+
+
+def test_core_has_no_dependencies():
+    import pathlib
+
+    try:
+        import tomllib
+    except ModuleNotFoundError:  # Python 3.10
+        import tomli as tomllib
+    root = pathlib.Path(__file__).resolve().parents[1]
+    config = tomllib.loads(
+        (root / "pyproject.toml").read_text(encoding="utf-8")
+    )
+    assert config["project"]["dependencies"] == []

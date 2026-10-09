@@ -21,7 +21,7 @@ print(answer.pages)       # [("annual_report", 60)]
 print(answer.grounded)    # True: the quote was found on page 60
 ```
 
-Foveate has **no required dependencies beyond PyYAML**, talks to any OpenAI-compatible model server
+Foveate is **pure Python with zero dependencies**: it talks to any OpenAI-compatible model server
 (OpenAI, vLLM, Ollama, NVIDIA, Together) with the standard library, and plugs into Pydantic AI, Google
 ADK, LangGraph and Strands Agents through small separate packages.
 

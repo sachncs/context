@@ -66,17 +66,17 @@ class TestConcept:
         assert parsed == c
 
     def test_crlf_bom_and_eof_terminator(self):
-        text = "﻿---\r\ntype: x\r\n---\r\n\r\nhello\r\n"
+        text = '﻿---\r\n{"type": "x"}\r\n---\r\n\r\nhello\r\n'
         assert Concept.parse(text).body == "hello"
-        assert Concept.parse("---\ntype: x\n---").body == ""
+        assert Concept.parse('---\n{"type": "x"}\n---').body == ""
 
     @pytest.mark.parametrize(
         "text",
         [
             "no frontmatter",
-            "---\ntype: x\nnever closed",
-            "---\n- a\n- b\n---\n",
-            "---\n: : :\n---\n",
+            '---\n{"type": "x"}\nnever closed',
+            "---\n[1, 2]\n---\n",
+            "---\n{nope\n---\n",
         ],
     )
     def test_invalid(self, text):
@@ -231,7 +231,7 @@ class TestCodecs:
         message = tmp_path / "c" / "messages" / "0000-user.md"
         message.write_text(
             message.read_text(encoding="utf-8").replace(
-                "role: user", "role: bad"
+                '"role": "user"', '"role": "bad"'
             )
         )
         with pytest.raises(errors.ValidationError, match="role"):

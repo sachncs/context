@@ -1,5 +1,6 @@
 """Documentation stays true: runnable examples run and relative links resolve."""
 
+import json
 import pathlib
 import re
 
@@ -47,11 +48,9 @@ def test_no_stale_names_in_the_docs():
 
 
 def test_roadmap_items_are_complete_and_listed_in_the_body():
-    import yaml
-
     text = (ROOT / "docs/roadmap.md").read_text(encoding="utf-8")
     _, front, body = text.split("---", 2)
-    items = yaml.safe_load(front)["items"]
+    items = json.loads(front)["items"]
     assert items
     for item in items:
         assert item["status"] in {

@@ -18,7 +18,7 @@ LOCK_NAME = ".store.lock"
 
 @base.NotesStore.registry.register("filesystem")
 class FilesystemNotesStore(base.NotesStore):
-    """Stores each note as `<root>/<path>` with YAML frontmatter.
+    """Stores each note as `<root>/<path>` with JSON frontmatter.
 
     Tags and timestamps persist in the frontmatter, writes are atomic
     (`os.replace` of a temporary file) and serialized across threads and
