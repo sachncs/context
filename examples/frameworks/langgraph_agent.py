@@ -1,6 +1,6 @@
 """LangGraph: page tools and a history budget as a pre-model hook.
 
-pip install foveate foveate-langgraph langchain-openai
+pip install "git+https://github.com/sachncs/foveate" "git+https://github.com/sachncs/foveate#subdirectory=integrations/langgraph" langchain-openai
 """
 
 import os

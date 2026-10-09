@@ -40,5 +40,5 @@ system line yourself before each model call.
 ## Mistakes to avoid
 
 * **Stating the window instead of what remains.** "128k context" is not actionable.
-* **Counting with the wrong tokenizer.** Use the model's tokenizer (`pip install "foveate[tokenize]"`);
+* **Counting with the wrong tokenizer.** Use the model's tokenizer (the `foveate[tokenize]` extra, see [Install](../install.md));
   the default estimate is about four characters per token and can be off by 20%.

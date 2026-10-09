@@ -51,7 +51,7 @@ non-reasoning setup, a window large enough for the prompt, and testing.
 ## Documents
 
 **Can it read scanned PDFs?**
-Not yet. Text extraction uses `pypdf`, which needs a text layer. Run OCR first. It is on the roadmap.
+Not yet. Text extraction in `foveate-pdf` uses `pypdf`, which needs a text layer. Run OCR first. It is on the roadmap.
 
 **What about tables?**
 They are extracted as text, so row and column structure can be lost. Numeric questions work when the number

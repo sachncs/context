@@ -24,7 +24,8 @@ def require(module: str, extra: str) -> Any:
         return importlib.import_module(module)
     except ImportError as exc:
         raise errors.ConfigError(
-            f"{module} is required: pip install 'foveate[{extra}]'"
+            f"{module} is required: install foveate with the '{extra}' extra "
+            "(see docs/install.md)"
         ) from exc
 
 

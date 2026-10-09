@@ -5,9 +5,9 @@ from __future__ import annotations
 import abc
 import dataclasses
 import html.parser
-import io
+import importlib.metadata
 import pathlib
-from typing import ClassVar, Literal
+from typing import ClassVar
 
 from foveate import errors
 from foveate.documents import document as document_lib
@@ -175,72 +175,36 @@ class HtmlLoader(Loader):
         return paginate(text, tokenizer, self.page_tokens)
 
 
-@Loader.registry.register("pdf")
-@dataclasses.dataclass(frozen=True)
-class PdfLoader(Loader):
-    """PDF via `pypdf` (install the `pdf` extra). Real page boundaries.
+PLUGINS = {"pdf": "foveate-pdf", "docx": "foveate-docx"}
+ENTRY_POINT_GROUP = "foveate.loaders"
 
-    Attributes:
-        layout: Use pypdf's layout-preserving extraction (better tables,
-            slower).
+
+def discover(format: str) -> None:
+    """Imports the plugin that provides `format`, if one is installed.
+
+    Loaders that need third-party libraries (PDF, DOCX) are separate
+    packages. Each declares an entry point in the `foveate.loaders` group
+    named after its format; importing it registers the loader.
+
+    Raises:
+        ConfigError: If no installed plugin provides `format`.
     """
-
-    layout: bool = False
-
-    def extract(
-        self, data: bytes, tokenizer: tokenizer_base.Tokenizer
-    ) -> list[str]:
-        try:
-            import pypdf
-        except ImportError as exc:
-            raise errors.ConfigError(
-                "PDF support needs pypdf: pip install 'foveate[pdf]'"
-            ) from exc
-        try:
-            reader = pypdf.PdfReader(io.BytesIO(data))
-            if reader.is_encrypted and not reader.decrypt(""):
-                raise errors.ValidationError("PDF is password protected")
-            mode: Literal["plain", "layout"] = (
-                "layout" if self.layout else "plain"
-            )
-            return [
-                page.extract_text(extraction_mode=mode) or ""
-                for page in reader.pages
-            ]
-        except errors.FoveateError:
-            raise
-        except Exception as exc:
-            raise errors.ValidationError(f"cannot read PDF: {exc}") from exc
-
-
-@Loader.registry.register("docx")
-@dataclasses.dataclass(frozen=True)
-class DocxLoader(Loader):
-    """Word documents via `python-docx` (install the `docx` extra).
-
-    Word has no stable page boundaries, so text is cut into pseudo-pages.
-    """
-
-    def extract(
-        self, data: bytes, tokenizer: tokenizer_base.Tokenizer
-    ) -> list[str]:
-        try:
-            import docx
-        except ImportError as exc:
-            raise errors.ConfigError(
-                "DOCX support needs python-docx: pip install 'foveate[docx]'"
-            ) from exc
-        try:
-            parsed = docx.Document(io.BytesIO(data))
-        except Exception as exc:
-            raise errors.ValidationError(f"cannot read DOCX: {exc}") from exc
-        lines = []
-        for paragraph in parsed.paragraphs:
-            style = (paragraph.style.name or "") if paragraph.style else ""
-            prefix = "# " if style.startswith("Heading") else ""
-            if paragraph.text.strip():
-                lines.append(prefix + paragraph.text)
-        return paginate("\n\n".join(lines), tokenizer, self.page_tokens)
+    if format in Loader.registry.names():
+        return
+    for entry in importlib.metadata.entry_points(group=ENTRY_POINT_GROUP):
+        if entry.name == format:
+            entry.load()
+            return
+    hint = PLUGINS.get(format)
+    advice = (
+        f"install the {hint} package (see integrations/ in the repository)"
+        if hint
+        else "register a Loader for it"
+    )
+    known = ", ".join(sorted(Loader.registry.names()))
+    raise errors.ConfigError(
+        f"no loader for {format!r}; {advice}. Built in: {known}"
+    )
 
 
 def load(
@@ -269,6 +233,7 @@ def load(
                 f"cannot infer format of {path.name}; pass format=..."
             )
         origin, stem = str(path), doc_id or path.stem
+    discover(format)
     loader_cls = Loader.registry.get(format)
     try:
         loader = loader_cls(**options)  # type: ignore[arg-type]

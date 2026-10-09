@@ -4,7 +4,7 @@
 framework; this small package is the adapter.
 
 ```bash
-pip install foveate-pydantic-ai
+pip install "git+https://github.com/sachncs/foveate#subdirectory=integrations/pydantic-ai"   # PyPI is coming soon
 ```
 
 See the docstring of `foveate_pydantic_ai` for the two entry points: a history compressor for the

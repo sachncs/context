@@ -1,6 +1,6 @@
 """Google ADK: page tools and a history budget before each model call.
 
-pip install foveate foveate-adk
+pip install "git+https://github.com/sachncs/foveate" "git+https://github.com/sachncs/foveate#subdirectory=integrations/adk"
 export GOOGLE_API_KEY=...
 """
 

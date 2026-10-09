@@ -15,7 +15,7 @@ the headings found on it. You never modify a document; the methods below return 
 ```python
 from foveate import Document
 
-report = Document.load("annual_report.pdf")   # needs: pip install "foveate[pdf]"
+report = Document.load("annual_report.pdf")   # needs the foveate-pdf plugin
 report.id                    # "annual_report" (the file name; used in citations)
 len(report.pages)            # 160
 report.token_count           # 118,420
@@ -57,7 +57,7 @@ cite pages.
 
 ## Limits to know about
 
-* **Scanned PDFs have no text.** Foveate reads the text layer with `pypdf`. A scan without one yields
+* **Scanned PDFs have no text.** The `foveate-pdf` plugin reads the text layer with `pypdf`. A scan without one yields
   empty pages. Run OCR first. (Scanned pages and images are on the [roadmap](../roadmap.md).)
 * **Tables become text.** Row and column structure may be lost, which can make numeric questions
   harder. A number that appears in the extracted text can still be found and cited.

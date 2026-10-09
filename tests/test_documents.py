@@ -16,26 +16,6 @@ from foveate.tokenizers import HeuristicTokenizer
 TOK = HeuristicTokenizer()
 
 
-def make_pdf(pages: int, blank: tuple[int, ...] = ()) -> bytes:
-    from fpdf import FPDF
-
-    pdf = FPDF()
-    pdf.set_font("Helvetica", size=11)
-    for number in range(1, pages + 1):
-        pdf.add_page()
-        if number in blank:
-            continue
-        pdf.set_font("Helvetica", style="B", size=14)
-        pdf.cell(
-            0, 10, f"SECTION {number} OVERVIEW", new_x="LMARGIN", new_y="NEXT"
-        )
-        pdf.set_font("Helvetica", size=11)
-        pdf.multi_cell(
-            0, 6, f"Marker PAGEMARK{number:03d}. " + "Filler text. " * 30
-        )
-    return bytes(pdf.output())
-
-
 class TestPageSpecs:
     def test_forms(self):
         avail = list(range(1, 21))
@@ -116,35 +96,6 @@ class TestDocument:
 
 
 class TestLoaders:
-    def test_pdf_has_real_pages_and_headings(self, tmp_path):
-        path = tmp_path / "filing.pdf"
-        path.write_bytes(make_pdf(12, blank=(5,)))
-        doc = Document.load(path, tokenizer=TOK)
-        assert doc.id == "filing" and len(doc.pages) == 12
-        assert (
-            "PAGEMARK007" in doc.page(7).text
-            and "PAGEMARK007" not in doc.page(8).text
-        )
-        assert (
-            doc.metadata["empty_pages"] == "1" and not doc.page(5).text.strip()
-        )
-        assert any("SECTION 3" in h for h in doc.page(3).headings)
-        assert doc.select("7").text().count("PAGEMARK") == 1
-        assert [m.content[:14] for m in doc.select("1-2").to_messages()] == [
-            "[filing p.1]\nS",
-            "[filing p.2]\nS",
-        ]
-
-    def test_pdf_from_bytes_and_layout_option(self):
-        doc = Document.load(make_pdf(2), format="pdf", doc_id="b", layout=True)
-        assert doc.id == "b" and len(doc.pages) == 2
-
-    def test_corrupt_and_missing_pdf(self, tmp_path):
-        with pytest.raises(errors.ValidationError):
-            Document.load(b"%PDF-1.4 not really", format="pdf")
-        with pytest.raises(errors.ValidationError):
-            Document.load(tmp_path / "missing.pdf")
-
     def test_text_pagination_is_lossless_and_form_feed_wins(self, tmp_path):
         body = "\n\n".join(f"Paragraph {i}. " + "word " * 60 for i in range(40))
         path = tmp_path / "big.txt"
@@ -170,20 +121,6 @@ class TestLoaders:
             html.outline()[0].title == "Big Title" and "Second." in html.text()
         )
 
-    def test_docx(self, tmp_path):
-        import docx
-
-        d = docx.Document()
-        d.add_heading("Quarterly Plan", level=1)
-        d.add_paragraph("We will ship the feature in March.")
-        path = tmp_path / "plan.docx"
-        d.save(path)
-        doc = Document.load(path)
-        assert (
-            "ship the feature" in doc.text()
-            and doc.outline()[0].title == "Quarterly Plan"
-        )
-
     def test_errors(self, tmp_path):
         with pytest.raises(errors.ConfigError):
             Document.load(b"abc")  # bytes need a format
@@ -203,6 +140,10 @@ class TestLoaders:
             Document.load(b"x", format="nope")
 
     def test_registry_names(self):
-        assert {"pdf", "text", "markdown", "html", "docx"} <= set(
-            Loader.registry.names()
-        )
+        assert {"text", "markdown", "html"} <= set(Loader.registry.names())
+
+    def test_missing_plugin_names_the_package(self):
+        if "pdf" in Loader.registry.names():
+            pytest.skip("a pdf plugin is installed")
+        with pytest.raises(errors.ConfigError, match="foveate-pdf"):
+            Document.load(b"%PDF", format="pdf")

@@ -47,6 +47,6 @@ runtime = Runtime(
 
 ## Tokenizers
 
-The default tokenizer estimates about four characters per token. `pip install "foveate[tokenize]"`
+The default tokenizer estimates about four characters per token. The `foveate[tokenize]` extra (see [Install](../install.md))
 adds `tiktoken` and exact counts for OpenAI models. Budgets exclude per-message framing tokens, so
 leave a little headroom against the model's hard limit.

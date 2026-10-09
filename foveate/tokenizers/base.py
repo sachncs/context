@@ -73,7 +73,8 @@ class TiktokenTokenizer(Tokenizer):
             import tiktoken
         except ImportError as exc:
             raise errors.ConfigError(
-                "tiktoken is required: pip install 'foveate[tokenize]'"
+                "tiktoken is required: install foveate with the "
+                "'tokenize' extra (see docs/install.md)"
             ) from exc
         try:
             self.encoding = tiktoken.get_encoding(encoding_name)

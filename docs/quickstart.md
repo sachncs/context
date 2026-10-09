@@ -3,7 +3,7 @@ title: "Quickstart"
 description: "Plan a question about a 200-page report without a model, then ask it with checked citations."
 ---
 
-Five minutes. You need Python 3.10+ and `pip install "foveate[pdf]"`.
+Five minutes. You need Python 3.10+ and Foveate (see [Install](install.md); PyPI is coming soon). Reading PDFs needs the `foveate-pdf` plugin.
 
 ## 1. See what a long document would cost, with no model
 

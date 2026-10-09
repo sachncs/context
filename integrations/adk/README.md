@@ -4,7 +4,7 @@
 framework; this small package is the adapter.
 
 ```bash
-pip install foveate-adk
+pip install "git+https://github.com/sachncs/foveate#subdirectory=integrations/adk"   # PyPI is coming soon
 ```
 
 See the docstring of `foveate_adk` for the two entry points: a history compressor for the

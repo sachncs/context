@@ -1,6 +1,6 @@
 """Pydantic AI: page tools and a history budget.
 
-pip install foveate foveate-pydantic-ai "pydantic-ai-slim[openai]"
+pip install "git+https://github.com/sachncs/foveate" "git+https://github.com/sachncs/foveate#subdirectory=integrations/pydantic-ai" "pydantic-ai-slim[openai]"
 """
 
 import os

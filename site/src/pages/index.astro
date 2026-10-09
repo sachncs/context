@@ -24,7 +24,8 @@ const upcoming = (roadmap?.data.items ?? []).filter((i) => i.status === 'buildin
           <a class="btn primary" href={`${base}docs/quickstart/`}>Start in five minutes</a>
           <a class="btn" href={`${base}docs/learn/context-engineering/`}>New to context engineering?</a>
         </div>
-        <div class="install"><code>pip install "foveate[pdf]"</code><button type="button" data-copy='pip install "foveate[pdf]"' aria-label="Copy install command">Copy</button></div>
+        <div class="install"><code>pip install "git+https://github.com/sachncs/foveate"</code><button type="button" data-copy='pip install "git+https://github.com/sachncs/foveate"' aria-label="Copy install command">Copy</button></div>
+        <p class="soon">PyPI is coming soon. For now, install from GitHub.</p>
       </div>
       <div class="visual">
         <PlanFigure />
@@ -199,6 +200,7 @@ const upcoming = (roadmap?.data.items ?? []).filter((i) => i.status === 'buildin
   h1 em { font-style: italic; color: var(--accent-text); }
   .cta { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-8); }
   .install { display: inline-flex; align-items: center; gap: var(--space-3); margin-top: var(--space-6); padding: .45rem .5rem .45rem 1rem; border: 1px solid var(--border-strong); border-radius: 999px; max-width: 100%; background: var(--surface); }
+  .soon { margin: var(--space-3) 0 0; font-size: .85rem; color: var(--muted); }
   .install code { font-size: .84rem; overflow-x: auto; white-space: nowrap; }
   .install button { border: 0; background: var(--text); color: var(--bg); border-radius: 999px; padding: .45rem .95rem; font: inherit; font-size: .8rem; font-weight: 560; cursor: pointer; min-height: 32px; }
   section.tight { padding-block: clamp(2.5rem, 5vw, 4rem); border-top: 1px solid var(--border-strong); border-bottom: 1px solid var(--border); }
@@ -206,14 +208,14 @@ const upcoming = (roadmap?.data.items ?? []).filter((i) => i.status === 'buildin
   @media (min-width: 62rem) { .trio { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .trio article { padding: var(--space-8) var(--space-8) var(--space-8) 0; border-bottom: 1px solid var(--border); position: relative; }
   @media (min-width: 62rem) { .trio article { border-bottom: 0; border-right: 1px solid var(--border); padding-left: var(--space-8); } .trio article:first-child { padding-left: 0; } .trio article:last-child { border-right: 0; padding-right: 0; } }
-  .trio .n { font-family: var(--font-serif); font-size: 1.1rem; color: var(--muted); display: block; margin-bottom: var(--space-4); }
-  .trio h3 { font-family: var(--font-serif); font-weight: 400; font-size: 1.9rem; letter-spacing: -.01em; margin-bottom: var(--space-3); }
+  .trio .n { font-family: var(--font-sans); font-size: 1.1rem; color: var(--muted); display: block; margin-bottom: var(--space-4); }
+  .trio h3 { font-family: var(--font-sans); font-weight: 600; font-size: 1.9rem; letter-spacing: -.01em; margin-bottom: var(--space-3); }
   .trio p { color: var(--muted); font-size: .98rem; }
   .trio .hl h3 { color: var(--accent-text); }
   .steps { list-style: none; padding: 0; margin: 0; display: grid; gap: 0; grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr)); border-top: 1px solid var(--border-strong); counter-reset: s; }
   .steps li { counter-increment: s; padding: var(--space-6) var(--space-6) var(--space-8) 0; border-bottom: 1px solid var(--border); }
-  .steps li::before { content: counter(s, decimal-leading-zero); display: block; font-family: var(--font-serif); color: var(--muted); font-size: 1rem; margin-bottom: var(--space-3); }
-  .steps h3 { font-family: var(--font-serif); font-weight: 400; font-size: 1.6rem; margin-bottom: var(--space-2); }
+  .steps li::before { content: counter(s, decimal-leading-zero); display: block; font-family: var(--font-sans); color: var(--muted); font-size: 1rem; margin-bottom: var(--space-3); }
+  .steps h3 { font-family: var(--font-sans); font-weight: 600; font-size: 1.6rem; margin-bottom: var(--space-2); }
   .steps p { color: var(--muted); font-size: .95rem; }
   .two { display: grid; gap: clamp(2rem, 5vw, 4rem); grid-template-columns: minmax(0, 1fr); align-items: start; }
   @media (min-width: 62rem) { .two { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
@@ -221,7 +223,7 @@ const upcoming = (roadmap?.data.items ?? []).filter((i) => i.status === 'buildin
   .rules li { border-bottom: 1px solid var(--border); }
   .rules a { display: flex; gap: .9rem; align-items: baseline; padding: .8rem 0; color: var(--text); text-decoration: none; font-size: .95rem; font-weight: 520; }
   .rules a:hover { color: var(--accent-text); }
-  .rules span { font-family: var(--font-serif); color: var(--muted); font-size: 1.05rem; min-width: 1.4rem; }
+  .rules span { font-family: var(--font-sans); color: var(--muted); font-size: 1.05rem; min-width: 1.4rem; }
   .facts { list-style: none; padding: 0; margin: var(--space-12) 0 0; display: grid; gap: var(--space-6); grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); }
   .facts li { color: var(--muted); font-size: .95rem; padding-top: var(--space-4); border-top: 1px solid var(--border-strong); }
   .facts strong { color: var(--text); display: block; margin-bottom: .25rem; }

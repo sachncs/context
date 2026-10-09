@@ -11,7 +11,7 @@ from foveate.documents import Document
 from foveate.documents import page as page_lib
 from foveate.tokenizers import HeuristicTokenizer
 from tests import faults
-from tests.test_documents import make_pdf
+from tests.fakepdf import make_pdf
 
 TOK = HeuristicTokenizer()
 

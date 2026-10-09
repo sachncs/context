@@ -56,7 +56,7 @@ Set `FOVEATE_OPTIONS='{"reasoning_effort": "low"}'` to cut thinking cost where t
 | Backend | Use |
 |---|---|
 | `OpenAIBackend` | Any OpenAI-compatible endpoint: OpenAI, vLLM, Ollama, NVIDIA, Together, gateways. Uses only the standard library, so Foveate needs no SDK. |
-| `VLLMBackend` | An in-process vLLM engine (`pip install "foveate[vllm]"`, Linux) |
+| `VLLMBackend` | An in-process vLLM engine (the `foveate[vllm]` extra, see [Install](../install.md), Linux) |
 | `NoBackend` | `Runtime.without_llm()`: raises if called; for offline use and tests |
 
 Write your own by subclassing `Backend` and implementing `complete`.

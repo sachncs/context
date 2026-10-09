@@ -5,18 +5,37 @@ description: "Install Foveate, choose the optional extras, and point it at an Op
 
 ## Install
 
+Foveate is not on PyPI yet; the `pip install foveate` form is coming soon. Until then, install from GitHub:
+
 ```bash
-pip install foveate
+pip install "git+https://github.com/sachncs/foveate"
 ```
 
-The core package is pure Python with no dependencies and needs no model SDK. Add extras for what you use:
+The core is pure Python with no dependencies and needs no model SDK. It handles text, Markdown and HTML,
+and it does context selection, context management and compression. Everything that needs a third-party
+library is a separate package, installed only if you want it.
 
-| Extra | Adds | Needed for |
+| Add-on | Adds | Needed for |
 |---|---|---|
-| `foveate[pdf]` | `pypdf` | Reading PDFs |
-| `foveate[docx]` | `python-docx` | Reading Word files |
 | `foveate[tokenize]` | `tiktoken` | Exact token counts for OpenAI models (otherwise about four characters per token) |
 | `foveate[vllm]` | `vllm` | Running a model in-process (Linux) |
+
+An extra from GitHub looks like `pip install "foveate[tokenize] @ git+https://github.com/sachncs/foveate"`.
+
+## File formats
+
+PDF and Word support lives in plugin packages in `integrations/`. Install one and `Document.load` finds it
+on its own (through the `foveate.loaders` entry point). There is nothing to import.
+
+| Package | Adds | Reads |
+|---|---|---|
+| `foveate-pdf` | `pypdf` | `.pdf` |
+| `foveate-docx` | `python-docx` | `.docx` |
+
+```bash
+pip install "git+https://github.com/sachncs/foveate#subdirectory=integrations/pdf"
+pip install "git+https://github.com/sachncs/foveate#subdirectory=integrations/docx"
+```
 
 Python 3.10 to 3.13 on Linux, macOS and Windows.
 
@@ -65,11 +84,15 @@ Planning, page selection, memory recall and the model-free compression methods a
 
 Foveate does not depend on any agent framework. Install the adapter for yours as a separate package:
 
+Each adapter lives in `integrations/<name>`. From GitHub, with the same `#subdirectory=` form as above:
+
 ```bash
-pip install foveate-pydantic-ai     # Pydantic AI
-pip install foveate-adk             # Google ADK
-pip install foveate-langgraph       # LangGraph / LangChain
-pip install foveate-strands         # Strands Agents
+pip install "git+https://github.com/sachncs/foveate#subdirectory=integrations/pydantic-ai"   # Pydantic AI
+pip install "git+https://github.com/sachncs/foveate#subdirectory=integrations/adk"           # Google ADK
+pip install "git+https://github.com/sachncs/foveate#subdirectory=integrations/langgraph"     # LangGraph / LangChain
+pip install "git+https://github.com/sachncs/foveate#subdirectory=integrations/strands"       # Strands Agents
 ```
+
+The package names (`foveate-pydantic-ai` and so on) will install directly once they are on PyPI.
 
 See [Agents and tools](guides/agents-and-tools.md).

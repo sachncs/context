@@ -9,7 +9,7 @@ body {
 a { color: var(--accent-text); text-underline-offset: 3px; text-decoration-thickness: 1px; }
 a:hover { text-decoration-thickness: 2px; }
 h1, h2, h3 { margin: 0; text-wrap: balance; }
-h1, h2 { font-family: var(--font-serif); font-weight: 400; letter-spacing: -0.015em; line-height: 1.04; }
+h1, h2 { font-family: var(--font-sans); font-weight: 600; letter-spacing: -0.025em; line-height: 1.08; }
 h1 { font-size: clamp(2.9rem, 6.4vw, 5rem); }
 h2 { font-size: clamp(2.1rem, 4.2vw, 3.1rem); }
 h3 { font-size: 1.05rem; font-weight: 620; letter-spacing: -0.005em; line-height: 1.3; }

@@ -45,7 +45,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        package: [pydantic-ai, adk, langgraph, strands]
+        package: [pydantic-ai, adk, langgraph, strands, pdf, docx]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
@@ -55,7 +55,7 @@ jobs:
       - name: Install Foveate and the adapter with its framework
         run: |
           python -m pip install --upgrade pip
-          pip install -e . pytest
+          pip install -e . pytest fpdf2
           pip install -e integrations/${{ matrix.package }}
       - name: Adapter tests against the real framework classes (no model)
         working-directory: integrations/${{ matrix.package }}

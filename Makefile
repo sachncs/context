@@ -24,7 +24,7 @@ typecheck:
 	$(BIN)/mypy
 
 integrations:
-	for d in integrations/*/; do (cd $$d && ../../$(BIN)/pip install -q -e . && ../../$(BIN)/pytest -q --no-cov -p no:cacheprovider -W ignore tests) || exit 1; done
+	for d in integrations/*/; do (cd $$d && ../../$(BIN)/pip install -q -e . fpdf2 && ../../$(BIN)/pytest -q --no-cov -p no:cacheprovider -W ignore tests) || exit 1; done
 
 check: lint typecheck test
 

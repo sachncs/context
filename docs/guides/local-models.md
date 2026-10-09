@@ -36,7 +36,7 @@ with Runtime.from_env() as runtime:
 
 ## In-process engine
 
-On a Linux machine with vLLM installed (`pip install "foveate[vllm]"`):
+On a Linux machine with vLLM installed (the `foveate[vllm]` extra, see [Install](../install.md)):
 
 ```python
 from foveate import Runtime

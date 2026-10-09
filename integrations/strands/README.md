@@ -4,7 +4,7 @@
 framework; this small package is the adapter.
 
 ```bash
-pip install foveate-strands
+pip install "git+https://github.com/sachncs/foveate#subdirectory=integrations/strands"   # PyPI is coming soon
 ```
 
 See the docstring of `foveate_strands` for the two entry points: a history compressor for the

@@ -5,8 +5,8 @@
   + :not(a, strong, em, del, span, input, code, br, svg, path, :where(.not-content *)) {
   margin-top: 1.15rem;
 }
-h1#_top { font-family: var(--font-serif); font-weight: 400; font-size: clamp(2.4rem, 5vw, 3.4rem); letter-spacing: -0.015em; line-height: 1.05; }
-.sl-markdown-content h2 { font-family: var(--font-serif); font-weight: 400; font-size: 2rem; letter-spacing: -0.01em; margin-top: 2.6rem; padding-top: 1.4rem; border-top: 1px solid var(--border); }
+h1#_top { font-family: var(--font-sans); font-weight: 600; font-size: clamp(2.4rem, 5vw, 3.4rem); letter-spacing: -0.015em; line-height: 1.05; }
+.sl-markdown-content h2 { font-family: var(--font-sans); font-weight: 600; font-size: 2rem; letter-spacing: -0.01em; margin-top: 2.6rem; padding-top: 1.4rem; border-top: 1px solid var(--border); }
 .sl-markdown-content h3 { font-size: 1.15rem; font-weight: 640; margin-top: 2rem; }
 .sl-markdown-content table { display: block; overflow-x: auto; font-size: 0.93rem; border-collapse: collapse; }
 .sl-markdown-content th { text-align: left; font-size: 0.74rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 650; }

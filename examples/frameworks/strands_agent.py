@@ -1,6 +1,6 @@
 """Strands Agents: page tools and a conversation manager that compresses.
 
-pip install foveate foveate-strands "strands-agents[openai]"
+pip install "git+https://github.com/sachncs/foveate" "git+https://github.com/sachncs/foveate#subdirectory=integrations/strands" "strands-agents[openai]"
 """
 
 import os

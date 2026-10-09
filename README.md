@@ -10,7 +10,7 @@ says so.
 ```python
 from foveate import Document, Foveator, Runtime
 
-report = Document.load("annual_report.pdf")                 # pip install "foveate[pdf]"
+report = Document.load("annual_report.pdf")                 # needs the foveate-pdf plugin
 with Runtime.from_env() as runtime:
     answer = Foveator(runtime).ask(
         "What were capital expenditures in fiscal 2018?", [report]
@@ -58,7 +58,7 @@ found. The roadmap lists these as the next things to fix.
 
 ## What you get
 
-* **Documents**: PDF, DOCX, HTML, Markdown and text as numbered pages;
+* **Documents**: HTML, Markdown and text as numbered pages, and PDF and DOCX through plugins;
   `report.select("10-14,40")`, `report.around(40)`.
 * **Selection**: keyword search, embeddings, hybrid fusion, query expansion, re-ranking.
 * **Foveation**: full, condensed, outline and dropped tiers inside your budget.
@@ -73,9 +73,10 @@ found. The roadmap lists these as the next things to fix.
 ## Install
 
 ```bash
-pip install foveate                  # core
-pip install "foveate[pdf]"           # read PDFs
-pip install "foveate[tokenize]"      # exact token counts for OpenAI models
+# PyPI is coming soon. Until then, install from GitHub:
+pip install "git+https://github.com/sachncs/foveate"
+# PDF and Word are plugins (core stays dependency-free):
+pip install "git+https://github.com/sachncs/foveate#subdirectory=integrations/pdf"
 ```
 
 ```bash

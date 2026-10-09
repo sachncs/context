@@ -14,8 +14,9 @@ First release.
 
 ### Long documents
 
-- `Document`: page-addressable documents with loaders for PDF, DOCX, HTML,
-  Markdown and text; `select("10-14,40")`, `around`, `page`, `outline`.
+- `Document`: page-addressable documents with loaders for HTML, Markdown and text
+  (PDF and DOCX are the `foveate-pdf` and `foveate-docx` plugins, found through
+  the `foveate.loaders` entry point); `select("10-14,40")`, `around`, `page`, `outline`.
 - Selection: BM25 (no dependencies), embeddings (any OpenAI-compatible
   endpoint), hybrid rank fusion, optional model re-rank.
 - Foveation: full / condensed / outline / dropped page tiers under a token
